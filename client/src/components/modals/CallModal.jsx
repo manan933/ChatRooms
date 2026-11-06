@@ -34,19 +34,16 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in select-none">
-      <div className="w-full max-w-lg bg-[#0e1320] border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center relative overflow-hidden">
-        {/* Ambient glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in select-none">
+      <div className="w-full max-w-lg bg-[var(--bg-primary)] border border-[var(--border)] rounded-2xl p-6 shadow-2xl flex flex-col items-center relative overflow-hidden">
         {/* Top Header */}
         <div className="w-full flex items-center justify-between mb-8 z-10">
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold">
             <ShieldCheck size={12} />
-            <span>Secure Call</span>
+            <span>Encrypted Call</span>
           </div>
 
-          <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/80 font-mono text-xs font-semibold">
+          <div className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] font-mono text-xs font-semibold">
             {formatDuration(duration)}
           </div>
         </div>
@@ -54,10 +51,10 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
         {/* Center Stage: Video View or Audio Wave Avatar */}
         <div className="my-6 flex flex-col items-center justify-center z-10 w-full">
           {!cameraOff ? (
-            <div className="w-full h-56 rounded-2xl bg-gradient-to-tr from-slate-900 to-indigo-950 border border-white/10 relative overflow-hidden flex items-center justify-center shadow-inner">
+            <div className="w-full h-56 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] relative overflow-hidden flex items-center justify-center">
               <Avatar name={chat.name} src={chat.avatar} size="lg" />
-              <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-sm text-white text-[11px] font-semibold">
-                {chat.name} · 1080p 60fps
+              <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[11px] font-semibold">
+                {chat.name} · 1080p
               </div>
               <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
@@ -65,22 +62,21 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <div className="relative mb-4">
-                <div className="w-24 h-24 rounded-full bg-blue-600/20 animate-ping absolute inset-0 pointer-events-none" />
+              <div className="mb-4">
                 <Avatar name={chat.name} src={chat.avatar} size="xl" />
               </div>
-              <h3 className="text-lg font-bold text-white m-0">{chat.name}</h3>
-              <p className="text-xs text-slate-400 mt-1 m-0">Voice connection active (HD Opus)</p>
+              <h3 className="text-lg font-bold text-[var(--text-primary)] m-0">{chat.name}</h3>
+              <p className="text-xs text-[var(--text-muted)] mt-1 m-0">Voice connection active</p>
 
-              {/* Animated Audio Waveform Bars */}
-              <div className="flex items-center gap-1 mt-6 h-8">
+              {/* Audio Waveform Bars */}
+              <div className="flex items-center gap-1.5 mt-6 h-8">
                 {[14, 24, 32, 18, 28, 12, 22, 30, 16, 26, 14, 20].map((h, i) => (
                   <span
                     key={i}
-                    className="w-1 bg-blue-500 rounded-full animate-pulse"
+                    className="w-1 bg-[var(--accent)] rounded-full"
                     style={{
                       height: `${h}px`,
-                      animationDuration: `${0.4 + (i % 5) * 0.15}s`,
+                      opacity: 0.7 + (i % 3) * 0.15,
                     }}
                   />
                 ))}
@@ -94,49 +90,49 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
           <button
             type="button"
             onClick={() => setMicMuted(!micMuted)}
-            className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+            className={`p-3 rounded-xl border cursor-pointer transition-all ${
               micMuted
-                ? 'bg-red-500/20 border-red-500/40 text-red-400'
-                : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
             }`}
             title={micMuted ? 'Unmute Microphone' : 'Mute Microphone'}
           >
-            {micMuted ? <MicOff size={20} /> : <Mic size={20} />}
+            {micMuted ? <MicOff size={18} /> : <Mic size={18} />}
           </button>
 
           <button
             type="button"
             onClick={() => setCameraOff(!cameraOff)}
-            className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+            className={`p-3 rounded-xl border cursor-pointer transition-all ${
               cameraOff
-                ? 'bg-red-500/20 border-red-500/40 text-red-400'
-                : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
             }`}
             title={cameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
           >
-            {cameraOff ? <VideoOff size={20} /> : <Video size={20} />}
+            {cameraOff ? <VideoOff size={18} /> : <Video size={18} />}
           </button>
 
           <button
             type="button"
             onClick={() => setScreenSharing(!screenSharing)}
-            className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
+            className={`p-3 rounded-xl border cursor-pointer transition-all ${
               screenSharing
-                ? 'bg-blue-500/30 border-blue-500 text-blue-300'
-                : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                ? 'bg-[var(--accent-subtle)] border-[var(--accent)] text-[var(--accent)]'
+                : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
             }`}
             title="Share Screen"
           >
-            <Monitor size={20} />
+            <Monitor size={18} />
           </button>
 
           <button
             type="button"
             onClick={handleEndCall}
-            className="p-3.5 px-6 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold cursor-pointer transition-colors flex items-center gap-2 shadow-lg shadow-red-600/30 border-none"
+            className="py-3 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold cursor-pointer transition-colors flex items-center gap-2 border-none"
             title="End Call"
           >
-            <PhoneOff size={20} />
+            <PhoneOff size={18} />
             <span className="text-xs">End Call</span>
           </button>
         </div>

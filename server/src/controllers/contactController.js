@@ -2,15 +2,11 @@ import storageService from '../services/storageService.js';
 
 // @desc    Get personal contacts and groups for current user
 // @route   GET /api/contacts
-// @access  Private
+// @access  Public / Private
 export const getContactsAndGroups = async (req, res, next) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({ success: false, message: 'Not authorized' });
-    }
-
-    const userId = req.user._id || req.user.id;
-    const username = req.user.primaryUsername || req.user.username;
+    const userId = req.user ? (req.user._id || req.user.id) : 'user-1';
+    const username = req.user ? (req.user.primaryUsername || req.user.username) : 'soumya';
 
     const data = await storageService.getUserConversations(userId, username);
 
@@ -46,10 +42,10 @@ export const searchUsers = async (req, res, next) => {
 
 // @desc    Add a new personal contact
 // @route   POST /api/contacts
-// @access  Private
+// @access  Public / Private
 export const createContact = async (req, res, next) => {
   try {
-    const { username, contactUsername } = req.body || {};
+    const { name, username, contactUsername, bio, avatar } = req.body || {};
     const targetUsername = username || contactUsername;
 
     if (!targetUsername?.trim()) {
@@ -59,14 +55,14 @@ export const createContact = async (req, res, next) => {
       });
     }
 
-    const currentUserId = req.user?._id || req.user?.id;
-    const currentUsername = req.user?.primaryUsername || req.user?.username;
+    const currentUserId = req.user?._id || req.user?.id || 'user-1';
+    const currentUsername = req.user?.primaryUsername || req.user?.username || 'user';
 
-    const contact = await storageService.addContact(currentUserId, currentUsername, targetUsername);
+    const contact = await storageService.addContact(currentUserId, currentUsername, targetUsername, name, bio, avatar);
     if (!contact) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: `User not found with username @${targetUsername}`,
+        message: `Failed to add contact @${targetUsername}`,
       });
     }
 

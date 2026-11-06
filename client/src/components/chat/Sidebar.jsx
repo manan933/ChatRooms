@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Folder,
   FolderOpen,
-  Volume2,
   Copy,
   Check,
   Megaphone,
@@ -65,7 +64,7 @@ export const Sidebar = ({
 
   const { theme, toggleTheme } = useThemeStore();
 
-  // Sync selected workspace from external selection (e.g. login modal or dashboard)
+  // Sync selected workspace from external selection
   React.useEffect(() => {
     if (selectedWorkspace) {
       const idx = workspaces.findIndex((w) => w.id === selectedWorkspace.id || w.name === selectedWorkspace.name);
@@ -159,50 +158,50 @@ export const Sidebar = ({
   return (
     <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden' }}>
       {/* ── Top Brand Header ────────────────────────────────────────── */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
+      <div className="h-13 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-sm font-black text-sm">
+          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
             Z
           </div>
-          <span className="font-extrabold text-base tracking-tight text-[var(--text-primary)]">
+          <span className="font-bold text-sm tracking-tight text-[var(--text-primary)]">
             Zyntra
           </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-            title={theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            title={theme === 'dark' ? 'Switch to Light mode' : 'Switch to Dark mode'}
           >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
           <button
             type="button"
             onClick={onOpenSettings}
-            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Settings"
           >
-            <Settings size={17} />
+            <Settings size={15} />
           </button>
         </div>
       </div>
 
       {/* ── Tabs (Direct vs Workplace) ─────────────────────────────── */}
-      <div className="px-3 pt-3 pb-2 flex items-center gap-1.5 shrink-0 select-none">
+      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1 shrink-0 select-none">
         <button
           type="button"
           onClick={() => setActiveTab('direct')}
-          className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'direct'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-xs border border-[var(--border)]'
+              ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-semibold shadow-xs'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
-          <Users size={14} />
+          <Users size={13} />
           <span>Chats</span>
-          <span className="ml-0.5 text-[10px] opacity-75 font-mono">
+          <span className="ml-0.5 text-[10px] text-[var(--text-muted)] font-mono">
             {directList.length}
           </span>
         </button>
@@ -210,15 +209,15 @@ export const Sidebar = ({
         <button
           type="button"
           onClick={() => setActiveTab('workplace')}
-          className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'workplace'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-xs border border-[var(--border)]'
+              ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-semibold shadow-xs'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
-          <Building2 size={14} />
+          <Building2 size={13} />
           <span>Workplaces</span>
-          <span className="ml-0.5 text-[10px] opacity-75 font-mono">
+          <span className="ml-0.5 text-[10px] text-[var(--text-muted)] font-mono">
             {workspaces.length}
           </span>
         </button>
@@ -229,19 +228,19 @@ export const Sidebar = ({
         <div className="px-3 py-1.5 shrink-0 select-none relative">
           <div
             onClick={() => setWorkspaceDropdownOpen(!workspaceDropdownOpen)}
-            className="p-2.5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between cursor-pointer hover:border-[var(--accent)] transition-all"
+            className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between cursor-pointer hover:border-[var(--border-focus)] transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+              <div className="w-7 h-7 rounded-lg bg-blue-600/10 text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 border border-blue-500/20">
                 {currentWorkspace.name.charAt(0)}
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-extrabold text-[var(--text-primary)] truncate flex items-center gap-1">
+                <div className="text-xs font-semibold text-[var(--text-primary)] truncate flex items-center gap-1">
                   <span>{currentWorkspace.name}</span>
-                  <ChevronDown size={13} className="text-[var(--text-muted)] shrink-0" />
+                  <ChevronDown size={12} className="text-[var(--text-muted)] shrink-0" />
                 </div>
-                <div className="text-[10px] text-[var(--text-muted)] truncate flex items-center gap-1 font-mono">
-                  <span>Code: {currentWorkspace.joinCode || 'WS-001'}</span>
+                <div className="text-[10px] text-[var(--text-muted)] truncate font-mono">
+                  Code: {currentWorkspace.joinCode || 'WS-001'}
                 </div>
               </div>
             </div>
@@ -249,18 +248,18 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={(e) => handleCopyCode(e, currentWorkspace.joinCode || 'WS-001')}
-              className="p-1.5 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)] cursor-pointer"
+              className="p-1 rounded-md bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)] cursor-pointer"
               title="Copy Workplace Code"
             >
-              {copiedWsCode ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+              {copiedWsCode ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
             </button>
           </div>
 
           {/* Switcher Dropdown */}
           {workspaceDropdownOpen && (
-            <div className="absolute top-full left-3 right-3 mt-1 p-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl z-30 animate-fade-in space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1 block">
-                Switch Workplace
+            <div className="absolute top-full left-3 right-3 mt-1 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-xl z-30 space-y-0.5">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] px-2 py-1 block">
+                Workspaces
               </span>
               {workspaces.map((ws, idx) => (
                 <button
@@ -270,28 +269,28 @@ export const Sidebar = ({
                     setActiveWorkspaceIndex(idx);
                     setWorkspaceDropdownOpen(false);
                   }}
-                  className={`w-full p-2 rounded-xl text-left flex items-center justify-between cursor-pointer border-none transition-colors ${
+                  className={`w-full p-2 rounded-lg text-left flex items-center justify-between cursor-pointer border-none transition-colors ${
                     activeWorkspaceIndex === idx
-                      ? 'bg-[var(--accent)] text-white'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <span className="text-xs font-bold truncate">{ws.name}</span>
-                  <span className="text-[10px] opacity-75 font-mono">{ws.nodes?.length || 3} channels</span>
+                  <span className="text-xs font-medium truncate">{ws.name}</span>
+                  <span className="text-[10px] opacity-75 font-mono">{ws.nodes?.length || 1} channels</span>
                 </button>
               ))}
 
-              <div className="pt-1 border-t border-[var(--border)] flex items-center gap-1">
+              <div className="pt-1 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => {
                     setWorkspaceDropdownOpen(false);
                     onOpenWorkspaceModal?.();
                   }}
-                  className="w-full py-1.5 px-2 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--accent)] text-xs font-bold rounded-xl cursor-pointer border border-[var(--border)] flex items-center justify-center gap-1"
+                  className="w-full py-1.5 px-2 bg-transparent hover:bg-[var(--bg-hover)] text-blue-400 text-xs font-medium rounded-lg cursor-pointer border-none flex items-center justify-center gap-1"
                 >
-                  <Plus size={13} />
-                  <span>Join / Create New</span>
+                  <Plus size={12} />
+                  <span>Join or Create Workspace</span>
                 </button>
               </div>
             </div>
@@ -302,45 +301,45 @@ export const Sidebar = ({
       {/* ── Search Input ────────────────────────────────────────────── */}
       <div className="px-3 py-1 shrink-0">
         <div className="relative flex items-center">
-          <Search size={14} className="absolute left-3 text-[var(--text-muted)] pointer-events-none" />
+          <Search size={13} className="absolute left-2.5 text-[var(--text-muted)] pointer-events-none" />
           <input
             type="text"
-            placeholder={activeTab === 'direct' ? 'Search chats or @handle...' : 'Search channels or folders...'}
+            placeholder={activeTab === 'direct' ? 'Search conversations...' : 'Search channels...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--accent)] transition-all"
+            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 transition-colors"
           />
         </div>
       </div>
 
       {/* ── Action Buttons ──────────────────────────────────────────── */}
-      <div className="px-3 py-2 flex items-center gap-2 shrink-0">
+      <div className="px-3 py-1.5 flex items-center gap-2 shrink-0">
         {activeTab === 'direct' ? (
           <button
             type="button"
             onClick={onOpenNewChat}
-            className="w-full py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
+            className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
           >
-            <MessageSquarePlus size={14} />
-            <span>+ New Chat</span>
+            <MessageSquarePlus size={13} />
+            <span>New Chat</span>
           </button>
         ) : (
           <div className="flex items-center gap-1.5 w-full">
             <button
               type="button"
               onClick={() => setCreateChannelModalOpen(true)}
-              className="flex-1 py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
+              className="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
             >
-              <Hash size={14} />
-              <span>+ Channel</span>
+              <Hash size={13} />
+              <span>Create Channel</span>
             </button>
             <button
               type="button"
               onClick={onOpenWorkspaceModal}
-              className="py-1.5 px-2.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] rounded-xl text-xs font-semibold transition-all flex items-center justify-center cursor-pointer"
-              title="Add / Join Workplace"
+              className="py-1.5 px-2.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg text-xs font-medium transition-colors flex items-center justify-center cursor-pointer"
+              title="Add or Join Workplace"
             >
-              <Plus size={14} />
+              <Plus size={13} />
             </button>
           </div>
         )}
@@ -350,122 +349,115 @@ export const Sidebar = ({
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5">
         {activeTab === 'direct' ? (
           directList.length === 0 ? (
-            <div className="text-center py-10 px-4 text-[var(--text-muted)] text-xs">
-              <p className="font-semibold mb-1 text-[var(--text-secondary)]">No conversations found</p>
-              <p>Click &ldquo;+ New Chat&rdquo; above to find friends by username.</p>
+            <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs">
+              <p className="font-medium mb-1 text-[var(--text-secondary)]">No conversations found</p>
+              <p>Click &ldquo;New Chat&rdquo; to start a conversation.</p>
             </div>
           ) : (
             <>
-              {directList.filter(i => i.type === 'contact').length > 0 && (
+              {directList.filter((i) => i.type === 'contact').length > 0 && (
                 <div className="pt-2 pb-1 px-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                     Direct Messages
                   </span>
                 </div>
               )}
-              {directList.filter(i => i.type === 'contact').map((item) => {
-                const isActive = activeChat?.id === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelectChat(item)}
-                    className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-colors cursor-pointer border-none text-left ${
-                      isActive
-                        ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
-                        : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
-                    }`}
-                  >
-                    <Avatar name={item.name} src={item.avatar} size="md" status={item.status || 'online'} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <span className="text-sm truncate font-semibold text-[var(--text-primary)]">{item.name}</span>
-                        {item.lastMessageTime && (
-                          <span className="text-[10px] text-[var(--text-muted)] shrink-0 font-medium">
-                            {formatTime(item.lastMessageTime)}
+              {directList
+                .filter((i) => i.type === 'contact')
+                .map((item) => {
+                  const isActive = activeChat?.id === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onSelectChat(item)}
+                      className={`w-full p-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer border-none text-left ${
+                        isActive
+                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
+                          : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <Avatar name={item.name} src={item.avatar} size="sm" status={item.status || 'online'} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <span className="text-xs truncate font-medium text-[var(--text-primary)]">
+                            {item.name}
                           </span>
-                        )}
+                          {item.lastMessageTime && (
+                            <span className="text-[10px] text-[var(--text-muted)] shrink-0 font-normal">
+                              {formatTime(item.lastMessageTime)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[var(--text-muted)] truncate m-0 leading-tight">
+                          {item.lastMessage || 'Connected on Zyntra'}
+                        </p>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] truncate m-0 leading-tight">
-                        {item.lastMessage || 'Connected on Zyntra'}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
 
-              {directList.filter(i => i.type === 'group').length > 0 && (
-                <div className="pt-4 pb-1 px-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              {directList.filter((i) => i.type === 'group').length > 0 && (
+                <div className="pt-3 pb-1 px-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                     Groups
                   </span>
                 </div>
               )}
-              {directList.filter(i => i.type === 'group').map((item) => {
-                const isActive = activeChat?.id === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onSelectChat(item)}
-                    className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-colors cursor-pointer border-none text-left ${
-                      isActive
-                        ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
-                        : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
-                    }`}
-                  >
-                    <Avatar name={item.name} src={item.avatar} size="md" status={null} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1 mb-0.5">
-                        <span className="text-sm truncate font-semibold text-[var(--text-primary)]">{item.name}</span>
-                        {item.lastMessageTime && (
-                          <span className="text-[10px] text-[var(--text-muted)] shrink-0 font-medium">
-                            {formatTime(item.lastMessageTime)}
+              {directList
+                .filter((i) => i.type === 'group')
+                .map((item) => {
+                  const isActive = activeChat?.id === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => onSelectChat(item)}
+                      className={`w-full p-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer border-none text-left ${
+                        isActive
+                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
+                          : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
+                      }`}
+                    >
+                      <Avatar name={item.name} src={item.avatar} size="sm" status={null} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                          <span className="text-xs truncate font-medium text-[var(--text-primary)]">
+                            {item.name}
                           </span>
-                        )}
+                          {item.lastMessageTime && (
+                            <span className="text-[10px] text-[var(--text-muted)] shrink-0 font-normal">
+                              {formatTime(item.lastMessageTime)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[var(--text-muted)] truncate m-0 leading-tight">
+                          {item.lastMessage || 'Group created'}
+                        </p>
                       </div>
-                      <p className="text-xs text-[var(--text-muted)] truncate m-0 leading-tight">
-                        {item.lastMessage || 'Group created'}
-                      </p>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
             </>
           )
         ) : workspaces.length === 0 ? (
-          <div className="text-center py-10 px-4 text-[var(--text-muted)] text-xs">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center mx-auto mb-2.5">
-              <Building2 size={20} />
+          <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs">
+            <div className="w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-muted)] flex items-center justify-center mx-auto mb-2">
+              <Building2 size={16} />
             </div>
-            <p className="font-bold mb-1 text-[var(--text-primary)]">No Workspaces Joined</p>
-            <p className="mb-4 text-[var(--text-muted)]">Connect with your team to see channels and discussions.</p>
+            <p className="font-semibold mb-1 text-[var(--text-primary)]">No Workspaces</p>
+            <p className="mb-3 text-[var(--text-muted)]">Join an existing workspace or create one.</p>
             <button
               type="button"
               onClick={onOpenWorkspaceModal}
-              className="py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold rounded-xl border-none cursor-pointer shadow-xs"
+              className="py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg border-none cursor-pointer"
             >
-              Choose or Join Workspace
-            </button>
-          </div>
-        ) : groupedWorkspaceChannels.root.length === 0 && Object.keys(groupedWorkspaceChannels.folders).length === 0 ? (
-          <div className="text-center py-10 px-4 text-[var(--text-muted)] text-xs">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center mx-auto mb-2.5">
-              <Hash size={20} />
-            </div>
-            <p className="font-bold mb-1 text-[var(--text-primary)]">No Channels in {currentWorkspace?.name}</p>
-            <p className="mb-4 text-[var(--text-muted)]">Create the first channel to start communicating.</p>
-            <button
-              type="button"
-              onClick={() => setCreateChannelModalOpen(true)}
-              className="py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold rounded-xl border-none cursor-pointer shadow-xs"
-            >
-              + Create Channel
+              Open Workspace Menu
             </button>
           </div>
         ) : (
           /* ── WORKPLACES CHANNELS TREE ────────────────────────────── */
-          <div className="space-y-2 select-none pt-1">
+          <div className="space-y-1 select-none pt-1">
             {/* Root Channels */}
             {groupedWorkspaceChannels.root.map((channel) => {
               const isActive = activeChat?.id === channel.id;
@@ -474,19 +466,19 @@ export const Sidebar = ({
                   key={channel.id}
                   type="button"
                   onClick={() => onSelectChat(channel)}
-                  className={`w-full px-2.5 py-1.5 rounded-xl flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
+                  className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
                     isActive
-                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-bold'
+                      ? 'bg-blue-600/10 text-blue-400 font-semibold'
                       : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {channel.isAnnouncement ? (
-                      <Megaphone size={14} className="text-amber-400 shrink-0" />
+                      <Megaphone size={13} className="text-amber-400 shrink-0" />
                     ) : (
-                      <Hash size={14} className="opacity-75 shrink-0" />
+                      <Hash size={13} className={isActive ? 'text-blue-400 shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
                     )}
-                    <span className="text-xs font-semibold truncate">{channel.rawName}</span>
+                    <span className="text-xs truncate">{channel.rawName}</span>
                   </div>
                   <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
                     {channel.membersCount}
@@ -502,18 +494,17 @@ export const Sidebar = ({
                 <div key={folderName} className="space-y-0.5">
                   <div
                     onClick={() => toggleFolder(folderName)}
-                    className="flex items-center justify-between px-2 py-1 rounded-lg text-[11px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-1.5 truncate">
-                      {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-                      {isExpanded ? <FolderOpen size={13} className="text-[var(--accent)]" /> : <Folder size={13} />}
-                      <span className="truncate uppercase tracking-wider text-[10px]">{folderName}</span>
+                      {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                      <span className="truncate uppercase tracking-wider">{folderName}</span>
                     </div>
-                    <span className="text-[10px] font-mono opacity-75">{folderChannels.length}</span>
+                    <span className="font-mono text-[9px] opacity-75">{folderChannels.length}</span>
                   </div>
 
                   {isExpanded && (
-                    <div className="pl-4 space-y-0.5 border-l border-[var(--border)] ml-3 my-0.5">
+                    <div className="pl-3 space-y-0.5 border-l border-[var(--border)] ml-2.5 my-0.5">
                       {folderChannels.map((channel) => {
                         const isActive = activeChat?.id === channel.id;
                         return (
@@ -521,15 +512,15 @@ export const Sidebar = ({
                             key={channel.id}
                             type="button"
                             onClick={() => onSelectChat(channel)}
-                            className={`w-full px-2 py-1.5 rounded-xl flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
+                            className={`w-full px-2 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
                               isActive
-                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-bold'
+                                ? 'bg-blue-600/10 text-blue-400 font-semibold'
                                 : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <Hash size={13} className="opacity-75 shrink-0" />
-                              <span className="text-xs font-medium truncate">{channel.rawName}</span>
+                              <Hash size={12} className={isActive ? 'text-blue-400 shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                              <span className="text-xs truncate">{channel.rawName}</span>
                             </div>
                             <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
                               {channel.membersCount}
@@ -547,10 +538,10 @@ export const Sidebar = ({
       </div>
 
       {/* ── Bottom Current User Bar ────────────────────────────────── */}
-      <div className="h-14 px-3 py-2 bg-[var(--bg-primary)] border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
+      <div className="h-13 px-3 bg-[var(--bg-primary)] border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
         <div
           onClick={onOpenSettings}
-          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer hover:opacity-85 transition-opacity"
+          className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
         >
           <Avatar
             name={currentUser?.name || 'User'}
@@ -559,7 +550,7 @@ export const Sidebar = ({
             status="online"
           />
           <div className="min-w-0">
-            <div className="text-xs font-bold text-[var(--text-primary)] truncate">
+            <div className="text-xs font-semibold text-[var(--text-primary)] truncate">
               {currentUser?.name || 'User'}
             </div>
             <div className="text-[10px] text-[var(--text-muted)] font-mono truncate">
@@ -568,22 +559,22 @@ export const Sidebar = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={onOpenSettings}
-            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-            title="Open Settings"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            title="Settings"
           >
-            <Settings size={16} />
+            <Settings size={15} />
           </button>
           <button
             type="button"
             onClick={onLogout}
-            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Sign Out"
           >
-            <LogOut size={16} />
+            <LogOut size={15} />
           </button>
         </div>
       </div>

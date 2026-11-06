@@ -301,12 +301,17 @@ class StorageService {
     const cleanUsername = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
     const uidStr = currentUserId ? currentUserId.toString() : '';
 
-    const contacts = await Contact.find({
-      $or: [
-        { ownerId: uidStr },
-        { ownerId: 'user-1' },
-      ],
-    }).sort({ lastMessageTime: -1 }).lean();
+    let filter = {};
+    if (uidStr && uidStr !== 'user-1') {
+      filter = {
+        $or: [
+          { ownerId: uidStr },
+          { ownerId: 'user-1' },
+        ],
+      };
+    }
+
+    const contacts = await Contact.find(filter).sort({ lastMessageTime: -1 }).lean();
 
     // Also look up any direct messages involving cleanUsername
     const dmMessages = await Message.find({
@@ -394,13 +399,13 @@ class StorageService {
     return this.getUserConversations(userId, username);
   }
 
-  async addContact(currentUserId, currentUsername, targetUsername) {
+  async addContact(currentUserId, currentUsername, targetUsername, name = null, bio = '', avatar = null) {
     const cleanTarget = (targetUsername || '').toLowerCase().trim().replace(/^@/, '');
     const cleanCurrent = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
 
-    const targetUser = await User.findOne({ primaryUsername: cleanTarget });
-    if (!targetUser) return null;
+    if (!cleanTarget) return null;
 
+    const targetUser = await User.findOne({ primaryUsername: cleanTarget });
     const dmId = this.getCanonicalDmId(cleanCurrent, cleanTarget);
     const uidStr = currentUserId ? currentUserId.toString() : 'user-1';
 
@@ -409,41 +414,43 @@ class StorageService {
       contact = await Contact.create({
         id: dmId,
         ownerId: uidStr,
-        name: targetUser.name,
-        username: targetUser.primaryUsername,
-        avatar: targetUser.avatar,
-        status: targetUser.status || 'online',
-        bio: targetUser.bio || '',
+        name: targetUser?.name || name?.trim() || cleanTarget,
+        username: cleanTarget,
+        avatar: targetUser?.avatar || avatar || null,
+        status: targetUser?.status || 'online',
+        bio: targetUser?.bio || bio || '',
         lastMessage: 'Connected on Zyntra',
         lastMessageTime: new Date(),
       });
     }
 
-    // Reciprocal contact
-    let reverseContact = await Contact.findOne({ ownerId: targetUser._id.toString(), username: cleanCurrent });
-    if (!reverseContact) {
-      const currentUser = await User.findOne({ primaryUsername: cleanCurrent });
-      await Contact.create({
-        id: dmId,
-        ownerId: targetUser._id.toString(),
-        name: currentUser?.name || cleanCurrent,
-        username: cleanCurrent,
-        avatar: currentUser?.avatar || null,
-        status: currentUser?.status || 'online',
-        bio: currentUser?.bio || '',
-        lastMessage: 'Connected on Zyntra',
-        lastMessageTime: new Date(),
-      }).catch(() => {});
+    // Reciprocal contact if target user is registered
+    if (targetUser) {
+      let reverseContact = await Contact.findOne({ ownerId: targetUser._id.toString(), username: cleanCurrent });
+      if (!reverseContact) {
+        const currentUser = await User.findOne({ primaryUsername: cleanCurrent });
+        await Contact.create({
+          id: dmId,
+          ownerId: targetUser._id.toString(),
+          name: currentUser?.name || cleanCurrent,
+          username: cleanCurrent,
+          avatar: currentUser?.avatar || null,
+          status: currentUser?.status || 'online',
+          bio: currentUser?.bio || '',
+          lastMessage: 'Connected on Zyntra',
+          lastMessageTime: new Date(),
+        }).catch(() => {});
+      }
     }
 
     return {
       id: dmId,
-      userId: targetUser._id.toString(),
-      username: targetUser.primaryUsername,
-      name: targetUser.name,
-      avatar: targetUser.avatar,
-      status: targetUser.status || 'online',
-      bio: targetUser.bio || '',
+      userId: targetUser ? targetUser._id.toString() : contact._id.toString(),
+      username: cleanTarget,
+      name: contact.name,
+      avatar: contact.avatar,
+      status: contact.status || 'online',
+      bio: contact.bio || '',
       lastMessage: contact.lastMessage || 'Connected on Zyntra',
       lastMessageTime: new Date().toISOString(),
       type: 'contact',

@@ -1,29 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  /* Default: Dark Theme (Sleek Obsidian) */
-  --bg-primary: #0a0d14;
-  --bg-secondary: #10141e;
-  --bg-tertiary: #161c2b;
-  --bg-hover: #1f273b;
-  --bg-active: #252f47;
+  /* Refined, Human-Crafted Neutral Dark Theme (Linear & Raycast Inspired) */
+  --bg-primary: #090a0f;
+  --bg-secondary: #0f1117;
+  --bg-tertiary: #161822;
+  --bg-hover: #1e2230;
+  --bg-active: #272d40;
   
   --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
   --border-focus: #3b82f6;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #f4f4f6;
+  --text-secondary: #9da4b4;
+  --text-muted: #646a7c;
 
   --accent: #3b82f6;
   --accent-hover: #2563eb;
-  --accent-subtle: rgba(59, 130, 246, 0.15);
+  --accent-subtle: rgba(59, 130, 246, 0.12);
 
   --bubble-sent: #2563eb;
   --bubble-sent-text: #ffffff;
-  --bubble-received: #161c2b;
-  --bubble-received-text: #f8fafc;
+  --bubble-received: #161822;
+  --bubble-received-text: #f4f4f6;
 
   --online: #10b981;
   --danger: #ef4444;
@@ -38,6 +39,7 @@
   --bg-active: #cbd5e1;
 
   --border: #e2e8f0;
+  --border-subtle: #f1f5f9;
   --border-focus: #2563eb;
 
   --text-primary: #0f172a;
@@ -46,7 +48,7 @@
 
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
-  --accent-subtle: rgba(37, 99, 235, 0.1);
+  --accent-subtle: rgba(37, 99, 235, 0.08);
 
   --bubble-sent: #2563eb;
   --bubble-sent-text: #ffffff;
@@ -69,6 +71,7 @@ html, body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 #root {
@@ -81,7 +84,7 @@ html, body {
   position: relative;
 }
 
-/* Touch & iOS Safari optimizations */
+/* Touch & tap optimizations */
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -90,27 +93,26 @@ button, a, input, textarea, select, [role="button"] {
   touch-action: manipulation;
 }
 
-/* Prevent iOS Safari auto-zoom on input focus */
 @media screen and (max-width: 768px) {
   input, textarea, select {
     font-size: 16px !important;
   }
 }
 
-/* Custom Scrollbars */
+/* Clean Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.25);
+  background: rgba(148, 163, 184, 0.2);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.45);
+  background: rgba(148, 163, 184, 0.35);
 }
 
 .custom-scrollbar {
@@ -118,32 +120,31 @@ button, a, input, textarea, select, [role="button"] {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ── Wallpaper Background Patterns ────────────────────────────── */
+/* Subtle, tasteful background options */
 .wallpaper-grid {
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
 [data-theme="light"] .wallpaper-grid {
   background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
 }
 
 .wallpaper-dots {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 [data-theme="light"] .wallpaper-dots {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
 }
 
 .wallpaper-aurora {
   background: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.12), transparent),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(139, 92, 246, 0.1), transparent),
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(59, 130, 246, 0.06), transparent),
     var(--bg-primary);
 }

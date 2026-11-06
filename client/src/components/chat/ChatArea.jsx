@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   ArrowLeft,
-  ShieldCheck,
   ChevronDown,
   MessageSquare,
   Search,
@@ -9,6 +8,7 @@ import {
   Video,
   Info,
   X,
+  Hash,
 } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import MessageBubble from './MessageBubble';
@@ -57,9 +57,8 @@ export const ChatArea = ({
 
   const { wallpaper, soundEnabled } = useThemeStore();
 
-  // Determine policy based on chat type
-  const workspace = chat?.type === 'channel' 
-    ? workspaces.find(w => w.name === chat.workspaceName) 
+  const workspace = chat?.type === 'channel'
+    ? workspaces.find((w) => w.name === chat.workspaceName)
     : null;
   const policy = workspace?.settings || { allowEmojis: true, allowAttachments: true };
 
@@ -125,45 +124,57 @@ export const ChatArea = ({
   if (!chat) {
     return (
       <div style={{ display: 'flex', flex: '1 1 0%', height: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', backgroundColor: 'var(--bg-primary)', textAlign: 'center', overflowY: 'auto' }}>
-        <div className="w-16 h-16 rounded-2xl bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center mb-4 shadow-sm">
-          <MessageSquare size={32} />
+        <div className="w-12 h-12 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] flex items-center justify-center mb-3">
+          <MessageSquare size={22} />
         </div>
-        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-          Welcome to Zyntra!
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-1">
+          Welcome to Zyntra
         </h2>
-        <p className="text-sm text-[var(--text-muted)] max-w-md leading-relaxed mb-8">
-          You can select a conversation from the sidebar, or hop directly into one of your Workspaces below.
+        <p className="text-xs text-[var(--text-muted)] max-w-sm leading-relaxed mb-6">
+          Select a conversation from the sidebar, or jump straight into a team workspace below.
         </p>
 
-        <div className="w-full max-w-2xl text-left mb-4">
-          <h3 className="text-sm font-bold text-[var(--text-secondary)] uppercase tracking-wider px-2 mb-3">Your Workspaces</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {workspaces.map(ws => (
-              <div 
-                key={ws.id} 
+        <div className="w-full max-w-xl text-left">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <h3 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+              Workspaces
+            </h3>
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {workspaces.length} active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {workspaces.map((ws) => (
+              <div
+                key={ws.id}
                 onClick={() => onSelectWorkspace ? onSelectWorkspace(ws) : onOpenWorkspaceModal?.()}
-                className="p-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl flex flex-col items-start hover:border-[var(--accent)] hover:shadow-md transition-all cursor-pointer group"
+                className="p-3.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col items-start hover:border-[var(--border-focus)] transition-colors cursor-pointer group"
               >
-                <div className="flex items-center gap-3 mb-2 w-full">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-blue-500 text-white font-bold text-sm flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                <div className="flex items-center gap-2.5 mb-1.5 w-full">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600/10 text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 border border-blue-500/20">
                     {ws.name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h4 className="text-sm font-bold text-[var(--text-primary)] m-0 truncate group-hover:text-[var(--accent)] transition-colors">{ws.name}</h4>
-                    <span className="text-[11px] text-[var(--text-muted)] font-mono">{ws.membersCount || ws.memberCount || 1} members · {ws.nodes?.length || 1} channels</span>
+                    <h4 className="text-xs font-semibold text-[var(--text-primary)] m-0 truncate group-hover:text-blue-400 transition-colors">
+                      {ws.name}
+                    </h4>
+                    <span className="text-[10px] text-[var(--text-muted)] font-mono">
+                      {ws.membersCount || ws.memberCount || 1} members · {ws.nodes?.length || 1} channels
+                    </span>
                   </div>
                 </div>
-                <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mt-1 mb-0">{ws.description || 'Click to open workspace and start chatting in channels.'}</p>
+                <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mt-0.5 mb-0">
+                  {ws.description || 'Open workspace channels to start messaging.'}
+                </p>
               </div>
             ))}
-            <button 
+
+            <button
               onClick={onOpenWorkspaceModal}
-              className="p-4 border-2 border-dashed border-[var(--border)] rounded-2xl flex flex-col items-center justify-center gap-2 hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] text-[var(--text-muted)] hover:text-[var(--accent)] transition-all cursor-pointer bg-transparent"
+              className="p-3.5 border border-dashed border-[var(--border)] rounded-xl flex items-center justify-center gap-2 hover:border-[var(--border-focus)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer bg-transparent"
             >
-              <div className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center shadow-sm pointer-events-none">
-                <span className="text-lg font-bold">+</span>
-              </div>
-              <span className="text-sm font-bold">Join or Create Workspace</span>
+              <span className="text-xs font-medium">+ Join or Create Workspace</span>
             </button>
           </div>
         </div>
@@ -186,39 +197,45 @@ export const ChatArea = ({
       {/* ── Main Chat Stream Column ─────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         {/* ── Chat Header ────────────────────────────────────────────── */}
-        <header className="h-14 min-h-[56px] px-3 sm:px-4 bg-[var(--bg-primary)] border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
+        <header className="h-13 min-h-[52px] px-3 sm:px-4 bg-[var(--bg-primary)] border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
           <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
             {/* Back button (Mobile only) */}
             <button
               type="button"
               onClick={onBack}
-              className="md:hidden p-2 -ml-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
+              className="md:hidden p-1.5 -ml-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
               title="Back to conversations"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
             </button>
 
-            {/* Conversation Avatar */}
-            <Avatar
-              name={chat.name}
-              src={chat.avatar}
-              size="md"
-              status={chat.status || (chat.type === 'channel' ? null : 'online')}
-            />
+            {/* Conversation Avatar / Channel Icon */}
+            {chat.type === 'channel' ? (
+              <div className="w-8 h-8 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center text-[var(--text-secondary)] shrink-0">
+                <Hash size={16} />
+              </div>
+            ) : (
+              <Avatar
+                name={chat.name}
+                src={chat.avatar}
+                size="sm"
+                status={chat.status || 'online'}
+              />
+            )}
 
             {/* Title & Status */}
             <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setInfoOpen(!infoOpen)}>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-[var(--text-primary)] truncate tracking-tight m-0">
+                <h2 className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] truncate tracking-tight m-0">
                   {chat.name}
                 </h2>
               </div>
-              <div className="text-[11px] text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
+              <div className="text-[10px] text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
                 {chat.membersCount ? (
-                  <span>{chat.membersCount} members</span>
+                  <span>{chat.membersCount} members · {chat.workspaceName || 'Channel'}</span>
                 ) : chat.status === 'online' ? (
                   <span className="text-[var(--online)] flex items-center gap-1 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--online)] inline-block" /> Active now
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--online)] inline-block" /> Online
                   </span>
                 ) : (
                   <span>Direct Message</span>
@@ -228,17 +245,17 @@ export const ChatArea = ({
           </div>
 
           {/* Action Toolbar on Right */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-0.5 shrink-0">
             {/* Search Input Popover */}
             {searchOpen ? (
-              <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-2.5 py-1 animate-fade-in mr-1">
-                <Search size={14} className="text-[var(--text-muted)]" />
+              <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-2 py-1 mr-1">
+                <Search size={13} className="text-[var(--text-muted)]" />
                 <input
                   type="text"
                   placeholder="Find in chat..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-28 sm:w-44 bg-transparent border-none outline-none text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                  className="w-28 sm:w-40 bg-transparent border-none outline-none text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                   autoFocus
                 />
                 <button
@@ -247,19 +264,19 @@ export const ChatArea = ({
                     setSearchOpen(false);
                     setSearchQuery('');
                   }}
-                  className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
+                  className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
                 >
-                  <X size={14} />
+                  <X size={13} />
                 </button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
                 title="Search Messages"
               >
-                <Search size={17} />
+                <Search size={16} />
               </button>
             )}
 
@@ -270,10 +287,10 @@ export const ChatArea = ({
                 setIsVideoCall(false);
                 setCallModalOpen(true);
               }}
-              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
               title="Voice Call"
             >
-              <Phone size={17} />
+              <Phone size={16} />
             </button>
 
             {/* Video Call */}
@@ -283,24 +300,24 @@ export const ChatArea = ({
                 setIsVideoCall(true);
                 setCallModalOpen(true);
               }}
-              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
               title="Video Call"
             >
-              <Video size={17} />
+              <Video size={16} />
             </button>
 
             {/* Toggle Info Drawer */}
             <button
               type="button"
               onClick={() => setInfoOpen(!infoOpen)}
-              className={`p-2 rounded-xl transition-colors cursor-pointer border-none flex items-center justify-center ${
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer border-none flex items-center justify-center ${
                 infoOpen
-                  ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
+                  ? 'bg-blue-600/10 text-blue-400'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] bg-transparent'
               }`}
               title="Conversation Details"
             >
-              <Info size={17} />
+              <Info size={16} />
             </button>
           </div>
         </header>
@@ -313,14 +330,14 @@ export const ChatArea = ({
         >
           {groupedMessages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 select-none my-auto">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--accent-subtle)] text-[var(--accent)] flex items-center justify-center mb-3">
-                💬
+              <div className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-muted)] flex items-center justify-center mb-2">
+                <MessageSquare size={18} />
               </div>
-              <div className="text-sm font-bold text-[var(--text-primary)] mb-1">
-                {searchQuery ? 'No matching messages' : 'Start the Conversation'}
+              <div className="text-xs font-semibold text-[var(--text-primary)] mb-0.5">
+                {searchQuery ? 'No matching messages' : 'No messages yet'}
               </div>
-              <p className="text-xs text-[var(--text-muted)] max-w-xs">
-                {searchQuery ? `No results found for "${searchQuery}"` : 'Say hello — start the conversation.'}
+              <p className="text-[11px] text-[var(--text-muted)] max-w-xs">
+                {searchQuery ? `No results found for "${searchQuery}"` : 'Send a message to start the conversation.'}
               </p>
             </div>
           ) : (
@@ -328,7 +345,7 @@ export const ChatArea = ({
               if (item.type === 'date') {
                 return (
                   <div key={item.id} className="flex items-center justify-center my-3 select-none">
-                    <span className="px-3 py-1 rounded-full text-[11px] font-semibold text-[var(--text-muted)] bg-[var(--bg-secondary)] border border-[var(--border)] shadow-xs">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium text-[var(--text-muted)] bg-[var(--bg-secondary)] border border-[var(--border)]">
                       {item.date}
                     </span>
                   </div>
@@ -359,8 +376,8 @@ export const ChatArea = ({
 
           {/* Real-time Typing indicator banner */}
           {typingUsers.length > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] italic px-2 py-1 mt-2 select-none animate-fade-in">
-              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+            <div className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] italic px-2 py-1 mt-1 select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
               <span>{typingUsers.join(', ')} is typing...</span>
             </div>
           )}
@@ -371,10 +388,10 @@ export const ChatArea = ({
           <button
             type="button"
             onClick={scrollToBottom}
-            className="absolute bottom-18 right-5 w-9 h-9 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform cursor-pointer border-none z-20"
+            className="absolute bottom-16 right-5 w-8 h-8 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-primary)] flex items-center justify-center shadow-md hover:bg-[var(--bg-hover)] transition-colors cursor-pointer z-20"
             title="Scroll to bottom"
           >
-            <ChevronDown size={18} />
+            <ChevronDown size={16} />
           </button>
         )}
 
@@ -391,10 +408,10 @@ export const ChatArea = ({
       {infoOpen && (
         <div className="fixed inset-0 z-50 md:relative md:inset-auto md:z-20 flex">
           <div
-            className="fixed inset-0 bg-black/60 md:hidden backdrop-blur-xs animate-fade-in"
+            className="fixed inset-0 bg-black/60 md:hidden backdrop-blur-xs"
             onClick={() => setInfoOpen(false)}
           />
-          <div className="relative w-full max-w-[340px] sm:max-w-sm md:w-80 h-full ml-auto z-10 animate-fade-in shadow-2xl">
+          <div className="relative w-full max-w-[320px] sm:max-w-xs md:w-80 h-full ml-auto z-10 shadow-xl">
             <GroupInfoPanel
               chat={chat}
               onClose={() => setInfoOpen(false)}

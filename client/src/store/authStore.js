@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../api/api';
 import socketService from '../api/socket';
+import { useChatStore } from './chatStore';
 
 const getInitialUser = () => {
   try {
@@ -142,10 +143,7 @@ export const useAuthStore = create((set, get) => ({
     localStorage.removeItem('zyntra_token');
     localStorage.removeItem('zyntra_user');
     socketService.disconnect();
-    
-    import('./chatStore').then(({ useChatStore }) => {
-      useChatStore.getState().resetStore?.();
-    });
+    useChatStore.getState().resetStore?.();
 
     set({
       user: null,
