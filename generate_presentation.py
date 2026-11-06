@@ -116,7 +116,7 @@ def create_deck():
     p.space_after = Pt(6)
 
     p = ptf.add_paragraph()
-    p.text = "Full-Stack Realtime Architecture with WebSockets, Turso LibSQL, and Multi-Tenant Workspaces"
+    p.text = "Full-Stack Realtime Architecture with WebSockets, MongoDB Atlas, and Multi-Tenant Workspaces"
     p.font.size = Pt(12)
     p.font.color.rgb = WHITE
 
@@ -171,7 +171,7 @@ def create_deck():
 
     outlines = [
         ("1. System Design & Architecture", "High-level client-server micro-architecture, WebSocket pipeline, and edge storage tier"),
-        ("2. Database / Data Design", "Turso LibSQL relational models: users, multi-tenant workspaces, channels, messages, and contacts"),
+        ("2. Database / Data Design", "MongoDB Atlas relational models: users, multi-tenant workspaces, channels, messages, and contacts"),
         ("3. Coding & Technical Implementation", "Controller-service pattern, REST APIs, Socket.io duplex event handling, and Zustand state store"),
         ("4. Module Development & Integration", "Authentication, workspace code system, login workspace popup, live calling suite, and mobile UI"),
         ("5. Work Progress & Weekly Report", "Milestone timeline, automated browser test suite (26/26 passed), and Render cloud deployment"),
@@ -215,7 +215,7 @@ def create_deck():
     points = [
         ("Client Tier (Single-Page App)", "Built with React 19, Vite 8, and Tailwind CSS 4. Uses Zustand for lightweight global reactive state and Framer Motion for responsive fluid transitions."),
         ("Gateway & Realtime Tier", "Node.js with Express 4 for RESTful endpoints. Socket.io 4 manages persistent full-duplex WebSocket connections with automatic fallback to HTTP long-polling."),
-        ("Edge Storage Tier (Turso / LibSQL)", "Cloud-native, SQLite-compatible edge database managed via @libsql/client. Provides distributed sub-millisecond query execution, zero cold starts, and resilience."),
+        ("Edge Storage Tier (MongoDB Atlas)", "Cloud-native, SQLite-compatible edge database managed via @libsql/client. Provides distributed sub-millisecond query execution, zero cold starts, and resilience."),
         ("Security & Transport Layer", "Stateless JSON Web Tokens (JWT) with Bearer headers, bcryptjs password hashing (salt rounds), and strict CORS authorization policies."),
     ]
 
@@ -246,7 +246,7 @@ def create_deck():
     events = [
         ("Connection & Handshake", "Client connects with JWT auth token. Server verifies token, maps socket.id to user._id, and marks user status 'online'."),
         ("Room Subscriptions ('join_room')", "Users automatically join workspace channel rooms (ws-channel-id) and private 1-on-1 DM rooms upon selection."),
-        ("Instant Message Broadcast ('send_message')", "Message is written to Turso DB and broadcasted simultaneously via io.to(roomId).emit('receive_message') in <50ms."),
+        ("Instant Message Broadcast ('send_message')", "Message is written to MongoDB Atlas and broadcasted simultaneously via io.to(roomId).emit('receive_message') in <50ms."),
         ("Typing Indicators ('user_typing')", "Debounced typing state broadcasts to room participants without persisting to DB, keeping latency negligible."),
         ("Live Reactions ('send_reaction')", "Real-time emoji reaction updates dispatched instantly to all active listeners in the conversation room."),
     ]
@@ -279,7 +279,7 @@ def create_deck():
     # SLIDE 5: 2. Database / Data Design
     # =========================================================================
     slide5 = prs.slides.add_slide(prs.slide_layouts[6])
-    add_header(slide5, "Turso Edge Database Schema Design", "2. Database / Data Design")
+    add_header(slide5, "MongoDB Atlas Document Database Schema Design", "2. Database / Data Design")
 
     tables = [
         ("users", ["_id (PK, TEXT)", "name, email (UNIQUE)", "primaryUsername (UNIQUE)", "password (bcrypt hash)", "avatar, bio, status ('online')", "contexts (JSON array)"]),
@@ -331,7 +331,7 @@ def create_deck():
     impl_blocks = [
         ("Backend MVC & Storage Layer", [
             "Controllers (auth, workspace, message, contact) manage HTTP request lifecycle.",
-            "storageService.js: Unified query engine using Turso libSQL client.",
+            "storageService.js: Unified query engine using MongoDB Atlas client.",
             "Centralized error handling middleware with JWT token verification guards."
         ]),
         ("Frontend State Management (Zustand)", [
@@ -456,8 +456,8 @@ def create_deck():
     add_header(slide9, "Project Timeline & Weekly Progress Report", "5. Work Progress & Weekly Report")
 
     weeks = [
-        ("Weeks 1 - 2: Architecture & Schema", "Requirements analysis, architecture design, tech stack selection (React + Node.js + Turso), and initial DB schema."),
-        ("Weeks 3 - 4: Core Backend & Real-Time Engine", "REST API development (Auth, Users, Contacts), Socket.io server integration, and Turso libSQL setup."),
+        ("Weeks 1 - 2: Architecture & Schema", "Requirements analysis, architecture design, tech stack selection (React + Node.js + MongoDB Atlas), and initial DB schema."),
+        ("Weeks 3 - 4: Core Backend & Real-Time Engine", "REST API development (Auth, Users, Contacts), Socket.io server integration, and MongoDB Atlas setup."),
         ("Weeks 5 - 6: Frontend UI & State Architecture", "React 19 SPA design, Zustand stores (authStore, chatStore), message composer, and emoji picker."),
         ("Weeks 7 - 8: Workspace System & Calling Suite", "Multi-tenant workspace engine, 6-char invite codes, login workspace popup, voice & video modals."),
         ("Weeks 9 - 10: Testing, Mobile Tuning & Cloud Deploy", "Puppeteer browser automated testing (26/26 passed), mobile responsiveness, and Render deployment."),
