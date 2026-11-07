@@ -127,8 +127,7 @@ export const ChatArea = ({
   if (!chat) {
     return (
       <div style={{ display: 'flex', flex: '1 1 0%', height: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', backgroundColor: 'var(--bg-primary)', textAlign: 'center', overflowY: 'auto' }}>
-        <BrandLogo variant="icon" size="xl" className="mb-4" />
-        <BrandLogo variant="lockup" size="lg" className="mb-2" />
+        <BrandLogo variant="lockup" size="xl" className="mb-3" />
         <p className="text-xs font-body text-[var(--text-muted)] max-w-sm leading-relaxed mb-6">
           Select a room or contact from the sidebar, or jump straight into a team workspace below.
         </p>
