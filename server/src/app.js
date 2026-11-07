@@ -61,7 +61,8 @@ app.use(
         !origin ||
         allowedOrigins.includes(origin) ||
         origin.startsWith('http://localhost:') ||
-        origin.startsWith('http://127.0.0.1:')
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.endsWith('.onrender.com')
       ) {
         callback(null, true);
       } else {
@@ -108,13 +109,15 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/upload', uploadRoutes);
 
 // Serve React Frontend in Production
-app.use(
-  express.static(path.join(__dirname, '../../client/dist'), {
-    dotfiles: 'ignore',
-  })
-);
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath, { dotfiles: 'ignore' }));
+
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
+  res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+    if (err && !res.headersSent) {
+      res.status(404).json({ message: 'Resource not found' });
+    }
+  });
 });
 
 // Error Handler Middleware

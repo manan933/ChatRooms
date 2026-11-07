@@ -36,7 +36,8 @@ const io = new Server(server, {
         !origin ||
         allowedOrigins.includes(origin) ||
         origin.startsWith('http://localhost:') ||
-        origin.startsWith('http://127.0.0.1:')
+        origin.startsWith('http://127.0.0.1:') ||
+        origin.endsWith('.onrender.com')
       ) {
         callback(null, true);
       } else {

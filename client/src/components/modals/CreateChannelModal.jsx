@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Hash, Folder, Loader2 } from '../ui/Icons';
 import Modal from '../ui/Modal';
+import BrandLogo from '../ui/BrandLogo';
 
 export const CreateChannelModal = ({ isOpen, onClose, activeWorkspace, onAddChannel }) => {
   const [channelName, setChannelName] = useState('');
@@ -20,7 +21,16 @@ export const CreateChannelModal = ({ isOpen, onClose, activeWorkspace, onAddChan
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`New Channel in ${activeWorkspace?.name || 'Workspace'}`}>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <BrandLogo variant="icon" size="sm" />
+          <span>New Channel in {activeWorkspace?.name || 'Workspace'}</span>
+        </div>
+      }
+    >
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
         <div>
           <label className="text-[11px] font-bold text-[var(--text-secondary)] font-heading block mb-1">

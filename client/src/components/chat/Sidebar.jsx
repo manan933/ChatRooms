@@ -20,6 +20,7 @@ import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
 import CreateChannelModal from '../modals/CreateChannelModal';
 import { ChatListSkeleton } from '../ui/Skeleton';
+import BrandLogo from '../ui/BrandLogo';
 
 const formatTime = (iso) => {
   if (!iso) return '';
@@ -159,13 +160,8 @@ export const Sidebar = ({
     <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden' }}>
       {/* ── Top Brand Header (ChatRooms in Lakki Reddy) ───────────────── */}
       <div className="h-13 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center text-[var(--text-primary)] font-brand text-sm shadow-xs">
-            C
-          </div>
-          <span className="font-brand text-lg tracking-wide text-[var(--text-primary)]">
-            ChatRooms
-          </span>
+        <div className="flex items-center">
+          <BrandLogo variant="lockup" size="md" />
         </div>
 
         <div className="flex items-center gap-0.5">

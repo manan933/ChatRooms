@@ -41,9 +41,9 @@ export const Modal = ({ isOpen, onClose, title, children, size = 'md', maxWidth 
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)] shrink-0">
-          <h2 className="text-sm font-heading font-bold text-[var(--text-primary)] m-0">
+          <div className="text-sm font-heading font-bold text-[var(--text-primary)] m-0 flex items-center gap-2">
             {title}
-          </h2>
+          </div>
           <button
             type="button"
             onClick={onClose}

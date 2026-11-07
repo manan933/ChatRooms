@@ -1,23 +1,24 @@
 {
-  "name": "zyntra-chat-application",
+  "name": "chatrooms-application",
   "version": "1.0.0",
   "private": true,
-  "description": "Zyntra - Next-generation Contextual Chat Application (MERN Stack)",
+  "description": "ChatRooms - Modern, secure, high-performance messaging platform (MERN Stack)",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "client": "npm run dev --prefix client",
     "server": "npm run dev --prefix server",
-    "start": "npm start --prefix server",
+    "start": "node server/src/server.js",
     "seed": "npm run seed --prefix server",
     "test": "npm test --prefix server",
-    "build": "npm run build --prefix client",
+    "postinstall": "npm install --prefix server && npm install --prefix client --include=dev",
+    "build": "npm install --prefix server && npm install --prefix client --include=dev && npm run build --prefix client",
     "build:client": "npm run build --prefix client",
     "install:all": "npm install --prefix server && npm install --prefix client"
   },
   "keywords": [
     "mern",
     "socket.io",
-    "chat",
+    "chatrooms",
     "mongodb",
     "express",
     "react"

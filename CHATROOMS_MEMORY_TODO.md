@@ -6,6 +6,8 @@
 > **Body, Subtitle & Message Font:** `Alegreya` (messages, subtitles, inputs, UI captions)  
 > **Design Theme 1 (Vibrant Light):** Skyblue `#0593C6` + White `#FCFFFF` + Hot Pink `#D83995`  
 > **Design Theme 2 (Midnight Dark):** Midnight Black `#02070A` + Electric Blue `#0297DE` + Cantaloupe Orange `#FC734D`  
+> **Official App Logo & Favicons:** Installed from `c:\Users\Manan Patel\Desktop\ChatRooms REPORT\favicon_io` and brand mark image (`android-chrome-192x192.png`, `android-chrome-512x512.png`, `apple-touch-icon.png`, `favicon-32x32.png`, `favicon-16x16.png`, `favicon.ico`, `site.webmanifest`, `chatrooms-logo.png`). Integrated across `index.html`, `AuthPage.jsx`, `Sidebar.jsx`, `ChatArea.jsx`, `NotFoundPage.jsx`.  
+> **Active MongoDB Cluster:** `cluster0.qnemdhp.mongodb.net` / Database: `chatrooms_db` (User: `chatrooms_admin`). Verified 100% operational with DNS fallback.  
 > **Strict Aesthetic Constraints:** Zero emojis in UI, zero `lucide-react` imports, no gradient hero text, no 3-icon box rows, no subtitle/badge clutter, no mock/fake data.
 
 ---
@@ -78,7 +80,8 @@
 4. **Comprehensive Full Multi-Layer Audit (`comprehensive-feature-audit.js`):**
    - **50 PASSED, 0 FAILED** (All 27 REST endpoints, 9 Socket.IO live events, direct MongoDB Atlas operations)
 5. **Direct MongoDB Atlas Health Check (`verify-database-health.js`):**
-   - 7 Collections verified: `users`, `workspaces`, `workspacenodes`, `messages`, `contacts`, `personalgroups`, `__test_ping`
+   - Active Cluster: `cluster0.qnemdhp.mongodb.net` / Database: `chatrooms_db`
+   - Verified Collections: `users`, `workspaces`, `workspacenodes`, `messages`, `contacts`, `personalgroups`
    - All bcrypt hashes validated ($2b$10$)
    - 100% operational
 6. **Frontend Vite Build (`npm run build --prefix client`):**

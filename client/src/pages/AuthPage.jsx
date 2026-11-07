@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Eye, EyeOff, Loader2, ArrowRight, Lock, CheckCircle2 } from '../components/ui/Icons';
 import useAuthStore from '../store/authStore';
 import LegalModal from '../components/modals/LegalModal';
+import BrandLogo from '../components/ui/BrandLogo';
 
 export const AuthPage = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -73,15 +74,8 @@ export const AuthPage = () => {
       <div className="hidden md:flex md:w-[48%] lg:w-[50%] h-full flex-col justify-between p-10 lg:p-14 bg-[var(--bg-secondary)] border-r border-[var(--border)] relative overflow-hidden shrink-0">
         {/* Brand Header */}
         <div>
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-xl bg-[var(--accent)] text-[var(--text-primary)] font-brand text-xl flex items-center justify-center shadow-sm">
-              C
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-brand tracking-wide text-[var(--text-primary)]">
-                ChatRooms
-              </span>
-            </div>
+          <div className="mb-10">
+            <BrandLogo variant="lockup" size="lg" />
           </div>
 
           <div className="space-y-3 max-w-md">
@@ -163,12 +157,7 @@ export const AuthPage = () => {
         <div className="w-full max-w-[420px] my-auto flex flex-col">
           {/* Mobile Brand Header */}
           <div className="md:hidden flex flex-col items-center text-center mb-6">
-            <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-[var(--text-primary)] font-brand text-2xl flex items-center justify-center shadow-sm mb-2">
-              C
-            </div>
-            <h1 className="text-2xl font-brand tracking-wide text-[var(--text-primary)] m-0">
-              ChatRooms
-            </h1>
+            <BrandLogo variant="lockup" size="lg" className="mb-2" />
             <p className="text-xs font-body text-[var(--text-muted)] mt-1">
               Fast, focused messaging for teams and direct chats.
             </p>

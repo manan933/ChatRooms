@@ -3,6 +3,7 @@ import { UserPlus, Users, Search, Loader2 } from '../ui/Icons';
 import Modal from '../ui/Modal';
 import Avatar from '../ui/Avatar';
 import api from '../../api/api';
+import BrandLogo from '../ui/BrandLogo';
 
 export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onStartDirectChat }) => {
   const [activeTab, setActiveTab] = useState('contact'); // 'contact' | 'group'
@@ -116,7 +117,16 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Start New Conversation">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <BrandLogo variant="icon" size="sm" />
+          <span>New Conversation</span>
+        </div>
+      }
+    >
       {/* Tabs */}
       <div className="flex items-center gap-2 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl mb-4 font-heading">
         <button

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, ShieldCheck } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import { playCallStartSound, playCallEndSound } from '../../utils/zyntraSound';
+import BrandLogo from '../ui/BrandLogo';
 
 export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
   const [micMuted, setMicMuted] = useState(false);
@@ -39,8 +40,8 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
         {/* Top Header */}
         <div className="w-full flex items-center justify-between mb-8 z-10">
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-heading font-bold">
-            <ShieldCheck size={12} />
-            <span>Encrypted Direct Call (Beta)</span>
+            <BrandLogo variant="icon" size="sm" className="w-3.5 h-3.5" />
+            <span>ChatRooms Encrypted Call</span>
           </div>
 
           <div className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] font-body text-xs font-semibold">

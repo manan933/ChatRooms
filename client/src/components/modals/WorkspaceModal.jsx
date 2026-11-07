@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from '../ui/Icons';
 import Modal from '../ui/Modal';
+import BrandLogo from '../ui/BrandLogo';
 
 export const WorkspaceModal = ({
   isOpen,
@@ -97,7 +98,16 @@ export const WorkspaceModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Workspaces Management">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <BrandLogo variant="icon" size="sm" />
+          <span>Workspaces Management</span>
+        </div>
+      }
+    >
       <div className="flex flex-col gap-4 font-heading">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl">

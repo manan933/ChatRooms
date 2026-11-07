@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
 import Modal from '../ui/Modal';
 import { Check } from '../ui/Icons';
+import BrandLogo from '../ui/BrandLogo';
 
 export const LegalModal = ({ isOpen, onClose, initialTab = 'privacy' }) => {
   const [activeTab, setActiveTab] = useState(initialTab); // 'privacy' | 'terms' | 'data'
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Legal, Privacy & Consent" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <BrandLogo variant="icon" size="sm" />
+          <span>Legal, Privacy & Consent</span>
+        </div>
+      }
+      size="lg"
+    >
       <div className="flex flex-col gap-4 max-h-[70vh] overflow-hidden">
         {/* Navigation Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shrink-0">

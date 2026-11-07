@@ -17,6 +17,7 @@ import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
 import useChatStore from '../../store/chatStore';
 import api from '../../api/api';
+import BrandLogo from '../ui/BrandLogo';
 import {
   playSentSound,
   playReceivedSound,
@@ -122,7 +123,17 @@ export const SettingsModal = ({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="ChatRooms Settings" size="lg">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2">
+          <BrandLogo variant="icon" size="sm" />
+          <span>Settings</span>
+        </div>
+      }
+      size="lg"
+    >
       <div className="flex flex-col md:flex-row gap-5 min-h-[440px] font-heading">
         {/* ── Left Sidebar Navigation ────────────────────────────────── */}
         <div className="w-full md:w-48 shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-[var(--border)] pr-0 md:pr-4">
@@ -155,6 +166,11 @@ export const SettingsModal = ({
               </button>
             );
           })}
+
+          <div className="mt-auto pt-4 hidden md:flex flex-col items-center border-t border-[var(--border)]">
+            <BrandLogo variant="lockup" size="sm" className="opacity-90" />
+            <span className="text-[10px] font-body text-[var(--text-muted)] mt-1">v2.0 · ChatRooms</span>
+          </div>
         </div>
 
         {/* ── Right Content Panel ────────────────────────────────────── */}

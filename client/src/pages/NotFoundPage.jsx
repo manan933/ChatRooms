@@ -1,9 +1,11 @@
 import React from 'react';
+import BrandLogo from '../components/ui/BrandLogo';
 
 export const NotFoundPage = ({ onReturnHome }) => {
   return (
     <div className="w-full h-full min-h-screen flex flex-col items-center justify-center p-6 bg-[var(--bg-primary)] text-[var(--text-primary)] text-center select-none">
-      <div className="w-16 h-16 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center mb-4 text-[var(--accent)] font-bold text-2xl font-brand">
+      <BrandLogo variant="lockup" size="lg" className="mb-6" />
+      <div className="w-16 h-16 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center mb-4 text-[var(--accent)] font-bold text-2xl font-heading">
         404
       </div>
       <h1 className="text-2xl sm:text-3xl font-heading mb-2 text-[var(--text-primary)]">

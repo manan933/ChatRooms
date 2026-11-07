@@ -18,6 +18,7 @@ import CallModal from '../modals/CallModal';
 import { MessageFeedSkeleton } from '../ui/Skeleton';
 import useThemeStore from '../../store/themeStore';
 import { playSentSound, playReactionSound } from '../../utils/zyntraSound';
+import BrandLogo from '../ui/BrandLogo';
 
 const formatDate = (iso) => {
   if (!iso) return '';
@@ -126,12 +127,8 @@ export const ChatArea = ({
   if (!chat) {
     return (
       <div style={{ display: 'flex', flex: '1 1 0%', height: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', backgroundColor: 'var(--bg-primary)', textAlign: 'center', overflowY: 'auto' }}>
-        <div className="w-12 h-12 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--accent)] flex items-center justify-center mb-3">
-          <MessageSquare size={22} />
-        </div>
-        <h2 className="text-xl font-brand text-[var(--text-primary)] mb-1">
-          Welcome to ChatRooms
-        </h2>
+        <BrandLogo variant="icon" size="xl" className="mb-4" />
+        <BrandLogo variant="lockup" size="lg" className="mb-2" />
         <p className="text-xs font-body text-[var(--text-muted)] max-w-sm leading-relaxed mb-6">
           Select a room or contact from the sidebar, or jump straight into a team workspace below.
         </p>
