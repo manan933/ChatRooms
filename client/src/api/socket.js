@@ -1,39 +1,53 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = '';
+const SOCKET_URL = typeof window !== 'undefined' ? window.location.origin : '';
 
 class SocketService {
   constructor() {
     this.socket = null;
-    this.currentRoom = null;
+    this.joinedRooms = new Set();
   }
 
   connect() {
-    if (this.socket && this.socket.connected) return this.socket;
-
     const token = localStorage.getItem('chatrooms_token') || localStorage.getItem('zyntra_token');
+
+    if (this.socket) {
+      this.socket.auth = { token };
+      if (!this.socket.connected) {
+        this.socket.connect();
+      }
+      return this.socket;
+    }
 
     this.socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
+      upgrade: true,
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 2000,
+      timeout: 10000,
       auth: { token },
     });
 
     this.socket.on('connect', () => {
       console.log('[Socket] Connected with ID:', this.socket.id);
-      if (this.currentRoom) {
-        this.socket.emit('join_room', this.currentRoom);
-      }
+      // Re-join all active rooms on reconnect
+      this.joinedRooms.forEach((roomId) => {
+        this.socket.emit('join_room', roomId);
+      });
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] Disconnected:', reason);
+      if (reason === 'io server disconnect') {
+        // the disconnection was initiated by the server, reconnect manually
+        this.socket.connect();
+      }
     });
 
     this.socket.on('connect_error', (err) => {
-      console.warn('[Socket] Connection error:', err.message);
+      console.warn('[Socket] Connection warning:', err.message);
     });
 
     return this.socket;
@@ -44,31 +58,32 @@ class SocketService {
       this.socket.disconnect();
       this.socket = null;
     }
-    this.currentRoom = null;
+    this.joinedRooms.clear();
   }
 
   joinRoom(roomId) {
     if (!roomId) return;
-    if (this.currentRoom && this.currentRoom !== roomId) {
-      this.leaveRoom(this.currentRoom);
-    }
-    this.currentRoom = roomId;
+    this.joinedRooms.add(roomId);
     if (this.socket && this.socket.connected) {
       this.socket.emit('join_room', roomId);
+    } else {
+      this.connect();
     }
   }
 
   leaveRoom(roomId) {
+    if (!roomId) return;
+    this.joinedRooms.delete(roomId);
     if (this.socket && this.socket.connected) {
       this.socket.emit('leave_room', roomId);
-    }
-    if (this.currentRoom === roomId) {
-      this.currentRoom = null;
     }
   }
 
   sendMessage(data) {
-    if (this.socket && this.socket.connected) {
+    if (!this.socket || !this.socket.connected) {
+      this.connect();
+    }
+    if (this.socket) {
       this.socket.emit('send_message', data);
     }
   }

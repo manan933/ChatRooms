@@ -55,6 +55,19 @@ export const useChatStore = create((set, get) => ({
         isLoadingChats: false,
       });
 
+      // Auto-subscribe to all active contact and channel rooms for instant real-time message delivery
+      rawContacts.forEach((c) => {
+        if (c.id) socketService.joinRoom(c.id);
+      });
+      rawGroups.forEach((g) => {
+        if (g.id) socketService.joinRoom(g.id);
+      });
+      rawWorkspaces.forEach((ws) => {
+        (ws.nodes || []).forEach((node) => {
+          if (node.id) socketService.joinRoom(node.id);
+        });
+      });
+
       // Keep active chat in sync
       const current = get().activeChat;
       if (current) {
@@ -76,7 +89,6 @@ export const useChatStore = create((set, get) => ({
     const prev = get().activeChat;
     if (prev?.id === chat.id) return;
 
-    if (prev?.id) socketService.leaveRoom(prev.id);
     socketService.joinRoom(chat.id);
 
     set({ activeChat: chat });
@@ -84,8 +96,6 @@ export const useChatStore = create((set, get) => ({
   },
 
   closeChat: () => {
-    const prev = get().activeChat;
-    if (prev?.id) socketService.leaveRoom(prev.id);
     set({ activeChat: null });
   },
 

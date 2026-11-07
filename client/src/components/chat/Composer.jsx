@@ -309,7 +309,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           disabled={!hasContent || isUploading}
           className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
             hasContent && !isUploading
-              ? 'bg-[var(--accent)] text-[var(--text-primary)] hover:bg-[var(--accent-hover)] cursor-pointer shadow-md active:scale-95'
+              ? 'bg-[var(--accent-highlight)] text-white hover:bg-[var(--accent-highlight-hover,#ea580c)] cursor-pointer shadow-md active:scale-95'
               : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
           }`}
           title="Send Message"

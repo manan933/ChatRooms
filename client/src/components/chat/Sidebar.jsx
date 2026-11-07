@@ -375,7 +375,7 @@ export const Sidebar = ({
                       onClick={() => onSelectChat(item)}
                       className={`w-full p-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer border-none text-left ${
                         isActive
-                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
+                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)] border-l-3 border-[var(--accent-highlight)] pl-2.5'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
@@ -417,7 +417,7 @@ export const Sidebar = ({
                       onClick={() => onSelectChat(item)}
                       className={`w-full p-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer border-none text-left ${
                         isActive
-                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)]'
+                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)] border-l-3 border-[var(--accent-highlight)] pl-2.5'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
@@ -470,7 +470,7 @@ export const Sidebar = ({
                   onClick={() => onSelectChat(channel)}
                   className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
                     isActive
-                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold border-l-3 border-[var(--accent-highlight)] pl-2'
                       : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
@@ -516,7 +516,7 @@ export const Sidebar = ({
                             onClick={() => onSelectChat(channel)}
                             className={`w-full px-2 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
                               isActive
-                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
+                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold border-l-3 border-[var(--accent-highlight)] pl-1.5'
                                 : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                           >

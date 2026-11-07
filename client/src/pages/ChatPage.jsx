@@ -7,6 +7,7 @@ import SettingsModal from '../components/modals/SettingsModal';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
+import { playReceivedSound } from '../utils/zyntraSound';
 
 export const ChatPage = () => {
   const { user, logout, updateProfile, promptWorkspaceOnLogin, setPromptWorkspaceOnLogin } = useAuthStore();
@@ -53,7 +54,12 @@ export const ChatPage = () => {
   useEffect(() => {
     loadChats();
 
-    const handleReceive = (msg) => receiveMessage(msg);
+    const handleReceive = (msg) => {
+      receiveMessage(msg);
+      if (msg && msg.senderId !== user?.id && msg.senderId !== user?._id) {
+        playReceivedSound();
+      }
+    };
     const handleReaction = (msg) => updateReaction(msg);
     const handleTyping = ({ roomId, userName, isTyping }) => setTyping(roomId, userName, isTyping);
 

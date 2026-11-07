@@ -50,6 +50,7 @@ const io = new Server(server, {
 });
 
 // Socket.io initialization
+app.set('io', io);
 setupChatSocket(io);
 
 const PORT = process.env.PORT || 5000;

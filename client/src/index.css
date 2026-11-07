@@ -20,6 +20,8 @@
   --accent-hover: #0284C2;
   --accent-subtle: rgba(2, 151, 222, 0.12);
   --accent-highlight: #FC734D; /* Cantaloupe Orange */
+  --accent-highlight-hover: #E95E36;
+  --accent-highlight-subtle: rgba(252, 115, 77, 0.16);
 
   --bubble-sent: #0297DE;
   --bubble-sent-text: #FCFFFF;
@@ -51,6 +53,8 @@
   --accent-hover: #0479A3;
   --accent-subtle: rgba(5, 147, 198, 0.12);
   --accent-highlight: #D83995; /* Hot Pink */
+  --accent-highlight-hover: #C02680;
+  --accent-highlight-subtle: rgba(216, 57, 149, 0.16);
 
   --bubble-sent: #0593C6;
   --bubble-sent-text: #FCFFFF;

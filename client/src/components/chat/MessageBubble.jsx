@@ -283,7 +283,7 @@ export const MessageBubble = ({
                   onClick={() => onReaction?.(id, r.emoji)}
                   className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-transform hover:scale-105 cursor-pointer ${
                     hasReacted
-                      ? 'bg-[var(--accent-subtle)] border-[var(--accent)] text-[var(--accent)]'
+                      ? 'bg-[var(--accent-highlight)]/15 border-[var(--accent-highlight)]/50 text-[var(--accent-highlight)] font-bold'
                       : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-secondary)]'
                   }`}
                 >

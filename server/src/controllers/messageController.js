@@ -64,6 +64,19 @@ export const sendMessage = async (req, res, next) => {
       timestamp: timestamp || new Date().toISOString(),
     });
 
+    // Realtime broadcast via Socket.io if available
+    const io = req.app?.get('io');
+    if (io) {
+      io.to(chatId).emit('receive_message', saved);
+      if (chatId.startsWith('dm_')) {
+        const parts = chatId.replace('dm_', '').split('_');
+        if (parts.length === 2) {
+          io.to(`user_${parts[0].toLowerCase()}`).emit('receive_message', saved);
+          io.to(`user_${parts[1].toLowerCase()}`).emit('receive_message', saved);
+        }
+      }
+    }
+
     return res.status(201).json({
       success: true,
       data: saved,
