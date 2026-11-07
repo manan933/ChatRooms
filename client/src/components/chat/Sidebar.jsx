@@ -12,15 +12,14 @@ import {
   Hash,
   ChevronDown,
   ChevronRight,
-  Folder,
-  FolderOpen,
   Copy,
   Check,
   Megaphone,
-} from 'lucide-react';
+} from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
 import CreateChannelModal from '../modals/CreateChannelModal';
+import { ChatListSkeleton } from '../ui/Skeleton';
 
 const formatTime = (iso) => {
   if (!iso) return '';
@@ -39,6 +38,7 @@ export const Sidebar = ({
   contacts = [],
   groups = [],
   workspaces = [],
+  isLoadingChats = false,
   activeChat,
   currentUser,
   selectedWorkspace,
@@ -157,14 +157,14 @@ export const Sidebar = ({
 
   return (
     <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden' }}>
-      {/* ── Top Brand Header ────────────────────────────────────────── */}
+      {/* ── Top Brand Header (ChatRooms in Lakki Reddy) ───────────────── */}
       <div className="h-13 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-            Z
+          <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center text-[var(--text-primary)] font-brand text-sm shadow-xs">
+            C
           </div>
-          <span className="font-bold text-sm tracking-tight text-[var(--text-primary)]">
-            Zyntra
+          <span className="font-brand text-lg tracking-wide text-[var(--text-primary)]">
+            ChatRooms
           </span>
         </div>
 
@@ -174,6 +174,7 @@ export const Sidebar = ({
             onClick={toggleTheme}
             className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title={theme === 'dark' ? 'Switch to Light mode' : 'Switch to Dark mode'}
+            aria-label="Toggle theme"
           >
             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
@@ -182,6 +183,7 @@ export const Sidebar = ({
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Settings"
+            aria-label="Settings"
           >
             <Settings size={15} />
           </button>
@@ -189,19 +191,19 @@ export const Sidebar = ({
       </div>
 
       {/* ── Tabs (Direct vs Workplace) ─────────────────────────────── */}
-      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1 shrink-0 select-none">
+      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1 shrink-0 select-none font-heading">
         <button
           type="button"
           onClick={() => setActiveTab('direct')}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'direct'
-              ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-semibold shadow-xs'
+              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
           <Users size={13} />
           <span>Chats</span>
-          <span className="ml-0.5 text-[10px] text-[var(--text-muted)] font-mono">
+          <span className="ml-0.5 text-[10px] opacity-80">
             {directList.length}
           </span>
         </button>
@@ -209,15 +211,15 @@ export const Sidebar = ({
         <button
           type="button"
           onClick={() => setActiveTab('workplace')}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-medium transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'workplace'
-              ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] font-semibold shadow-xs'
+              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
           <Building2 size={13} />
           <span>Workplaces</span>
-          <span className="ml-0.5 text-[10px] text-[var(--text-muted)] font-mono">
+          <span className="ml-0.5 text-[10px] opacity-80">
             {workspaces.length}
           </span>
         </button>
@@ -225,13 +227,13 @@ export const Sidebar = ({
 
       {/* ── Workplace Switcher Header (When in Workplaces Tab) ──────── */}
       {activeTab === 'workplace' && currentWorkspace && (
-        <div className="px-3 py-1.5 shrink-0 select-none relative">
+        <div className="px-3 py-1.5 shrink-0 select-none relative font-heading">
           <div
             onClick={() => setWorkspaceDropdownOpen(!workspaceDropdownOpen)}
             className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between cursor-pointer hover:border-[var(--border-focus)] transition-colors"
           >
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-blue-600/10 text-blue-400 font-bold text-xs flex items-center justify-center shrink-0 border border-blue-500/20">
+              <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--border-subtle)]">
                 {currentWorkspace.name.charAt(0)}
               </div>
               <div className="min-w-0">
@@ -239,7 +241,7 @@ export const Sidebar = ({
                   <span>{currentWorkspace.name}</span>
                   <ChevronDown size={12} className="text-[var(--text-muted)] shrink-0" />
                 </div>
-                <div className="text-[10px] text-[var(--text-muted)] truncate font-mono">
+                <div className="text-[10px] text-[var(--text-muted)] truncate">
                   Code: {currentWorkspace.joinCode || 'WS-001'}
                 </div>
               </div>
@@ -250,15 +252,16 @@ export const Sidebar = ({
               onClick={(e) => handleCopyCode(e, currentWorkspace.joinCode || 'WS-001')}
               className="p-1 rounded-md bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border border-[var(--border)] cursor-pointer"
               title="Copy Workplace Code"
+              aria-label="Copy code"
             >
-              {copiedWsCode ? <Check size={11} className="text-emerald-500" /> : <Copy size={11} />}
+              {copiedWsCode ? <Check size={11} className="text-[var(--accent)]" /> : <Copy size={11} />}
             </button>
           </div>
 
           {/* Switcher Dropdown */}
           {workspaceDropdownOpen && (
             <div className="absolute top-full left-3 right-3 mt-1 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-xl z-30 space-y-0.5">
-              <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--text-muted)] px-2 py-1 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1 block">
                 Workspaces
               </span>
               {workspaces.map((ws, idx) => (
@@ -271,23 +274,23 @@ export const Sidebar = ({
                   }}
                   className={`w-full p-2 rounded-lg text-left flex items-center justify-between cursor-pointer border-none transition-colors ${
                     activeWorkspaceIndex === idx
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-[var(--accent)] text-[var(--text-primary)]'
                       : 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <span className="text-xs font-medium truncate">{ws.name}</span>
-                  <span className="text-[10px] opacity-75 font-mono">{ws.nodes?.length || 1} channels</span>
+                  <span className="text-xs font-semibold truncate">{ws.name}</span>
+                  <span className="text-[10px] opacity-80">{ws.nodes?.length || 1} channels</span>
                 </button>
               ))}
 
-              <div className="pt-1 border-t border-[var(--border)]">
+              <div className="pt-1 border-t border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => {
                     setWorkspaceDropdownOpen(false);
                     onOpenWorkspaceModal?.();
                   }}
-                  className="w-full py-1.5 px-2 bg-transparent hover:bg-[var(--bg-hover)] text-blue-400 text-xs font-medium rounded-lg cursor-pointer border-none flex items-center justify-center gap-1"
+                  className="w-full py-1.5 px-2 bg-transparent hover:bg-[var(--bg-hover)] text-[var(--accent)] text-xs font-semibold rounded-lg cursor-pointer border-none flex items-center justify-center gap-1"
                 >
                   <Plus size={12} />
                   <span>Join or Create Workspace</span>
@@ -307,18 +310,18 @@ export const Sidebar = ({
             placeholder={activeTab === 'direct' ? 'Search conversations...' : 'Search channels...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 transition-colors"
+            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-xs font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors"
           />
         </div>
       </div>
 
       {/* ── Action Buttons ──────────────────────────────────────────── */}
-      <div className="px-3 py-1.5 flex items-center gap-2 shrink-0">
+      <div className="px-3 py-1.5 flex items-center gap-2 shrink-0 font-heading">
         {activeTab === 'direct' ? (
           <button
             type="button"
             onClick={onOpenNewChat}
-            className="w-full py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
+            className="w-full py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
           >
             <MessageSquarePlus size={13} />
             <span>New Chat</span>
@@ -328,7 +331,7 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={() => setCreateChannelModalOpen(true)}
-              className="flex-1 py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
+              className="flex-1 py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
             >
               <Hash size={13} />
               <span>Create Channel</span>
@@ -336,8 +339,9 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={onOpenWorkspaceModal}
-              className="py-1.5 px-2.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg text-xs font-medium transition-colors flex items-center justify-center cursor-pointer"
+              className="py-1.5 px-2.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg text-xs font-bold transition-colors flex items-center justify-center cursor-pointer"
               title="Add or Join Workplace"
+              aria-label="Add workplace"
             >
               <Plus size={13} />
             </button>
@@ -347,18 +351,20 @@ export const Sidebar = ({
 
       {/* ── Conversation List Feed ─────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5">
-        {activeTab === 'direct' ? (
+        {isLoadingChats ? (
+          <ChatListSkeleton count={6} />
+        ) : activeTab === 'direct' ? (
           directList.length === 0 ? (
-            <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs">
-              <p className="font-medium mb-1 text-[var(--text-secondary)]">No conversations found</p>
+            <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs font-body">
+              <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No conversations found</p>
               <p>Click &ldquo;New Chat&rdquo; to start a conversation.</p>
             </div>
           ) : (
             <>
               {directList.filter((i) => i.type === 'contact').length > 0 && (
-                <div className="pt-2 pb-1 px-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
-                    Direct Messages
+                <div className="pt-2 pb-1 px-2 font-heading">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Direct Rooms
                   </span>
                 </div>
               )}
@@ -380,17 +386,17 @@ export const Sidebar = ({
                       <Avatar name={item.name} src={item.avatar} size="sm" status={item.status || 'online'} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs truncate font-medium text-[var(--text-primary)]">
+                          <span className="text-xs truncate font-heading font-semibold text-[var(--text-primary)]">
                             {item.name}
                           </span>
                           {item.lastMessageTime && (
-                            <span className="text-[10px] text-[var(--text-muted)] shrink-0 font-normal">
+                            <span className="text-[10px] font-body text-[var(--text-muted)] shrink-0 font-normal">
                               {formatTime(item.lastMessageTime)}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-[var(--text-muted)] truncate m-0 leading-tight">
-                          {item.lastMessage || 'Connected on Zyntra'}
+                        <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
+                          {item.lastMessage || 'Connected on ChatRooms'}
                         </p>
                       </div>
                     </button>
@@ -398,8 +404,8 @@ export const Sidebar = ({
                 })}
 
               {directList.filter((i) => i.type === 'group').length > 0 && (
-                <div className="pt-3 pb-1 px-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                <div className="pt-3 pb-1 px-2 font-heading">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     Groups
                   </span>
                 </div>
@@ -422,16 +428,16 @@ export const Sidebar = ({
                       <Avatar name={item.name} src={item.avatar} size="sm" status={null} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs truncate font-medium text-[var(--text-primary)]">
+                          <span className="text-xs truncate font-heading font-semibold text-[var(--text-primary)]">
                             {item.name}
                           </span>
                           {item.lastMessageTime && (
-                            <span className="text-[10px] text-[var(--text-muted)] shrink-0 font-normal">
+                            <span className="text-[10px] font-body text-[var(--text-muted)] shrink-0 font-normal">
                               {formatTime(item.lastMessageTime)}
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-[var(--text-muted)] truncate m-0 leading-tight">
+                        <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
                           {item.lastMessage || 'Group created'}
                         </p>
                       </div>
@@ -441,23 +447,23 @@ export const Sidebar = ({
             </>
           )
         ) : workspaces.length === 0 ? (
-          <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs">
-            <div className="w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-muted)] flex items-center justify-center mx-auto mb-2">
+          <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs font-body">
+            <div className="w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] text-[var(--accent)] flex items-center justify-center mx-auto mb-2">
               <Building2 size={16} />
             </div>
-            <p className="font-semibold mb-1 text-[var(--text-primary)]">No Workspaces</p>
+            <p className="font-heading font-semibold mb-1 text-[var(--text-primary)]">No Workspaces</p>
             <p className="mb-3 text-[var(--text-muted)]">Join an existing workspace or create one.</p>
             <button
               type="button"
               onClick={onOpenWorkspaceModal}
-              className="py-1.5 px-3 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg border-none cursor-pointer"
+              className="py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-xs font-heading font-bold rounded-lg border-none cursor-pointer"
             >
               Open Workspace Menu
             </button>
           </div>
         ) : (
           /* ── WORKPLACES CHANNELS TREE ────────────────────────────── */
-          <div className="space-y-1 select-none pt-1">
+          <div className="space-y-1 select-none pt-1 font-heading">
             {/* Root Channels */}
             {groupedWorkspaceChannels.root.map((channel) => {
               const isActive = activeChat?.id === channel.id;
@@ -468,19 +474,19 @@ export const Sidebar = ({
                   onClick={() => onSelectChat(channel)}
                   className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
                     isActive
-                      ? 'bg-blue-600/10 text-blue-400 font-semibold'
+                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
                       : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {channel.isAnnouncement ? (
-                      <Megaphone size={13} className="text-amber-400 shrink-0" />
+                      <Megaphone size={13} className="text-[var(--accent-highlight)] shrink-0" />
                     ) : (
-                      <Hash size={13} className={isActive ? 'text-blue-400 shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                      <Hash size={13} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
                     )}
                     <span className="text-xs truncate">{channel.rawName}</span>
                   </div>
-                  <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
+                  <span className="text-[10px] text-[var(--text-muted)] shrink-0">
                     {channel.membersCount}
                   </span>
                 </button>
@@ -494,13 +500,13 @@ export const Sidebar = ({
                 <div key={folderName} className="space-y-0.5">
                   <div
                     onClick={() => toggleFolder(folderName)}
-                    className="flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+                    className="flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-1.5 truncate">
                       {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                       <span className="truncate uppercase tracking-wider">{folderName}</span>
                     </div>
-                    <span className="font-mono text-[9px] opacity-75">{folderChannels.length}</span>
+                    <span className="text-[9px] opacity-80">{folderChannels.length}</span>
                   </div>
 
                   {isExpanded && (
@@ -514,15 +520,15 @@ export const Sidebar = ({
                             onClick={() => onSelectChat(channel)}
                             className={`w-full px-2 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
                               isActive
-                                ? 'bg-blue-600/10 text-blue-400 font-semibold'
+                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold'
                                 : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <Hash size={12} className={isActive ? 'text-blue-400 shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                              <Hash size={12} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
                               <span className="text-xs truncate">{channel.rawName}</span>
                             </div>
-                            <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
+                            <span className="text-[10px] text-[var(--text-muted)] shrink-0">
                               {channel.membersCount}
                             </span>
                           </button>
@@ -549,11 +555,11 @@ export const Sidebar = ({
             size="sm"
             status="online"
           />
-          <div className="min-w-0">
+          <div className="min-w-0 font-heading">
             <div className="text-xs font-semibold text-[var(--text-primary)] truncate">
               {currentUser?.name || 'User'}
             </div>
-            <div className="text-[10px] text-[var(--text-muted)] font-mono truncate">
+            <div className="text-[10px] text-[var(--text-muted)] truncate">
               @{currentUser?.primaryUsername || 'user'}
             </div>
           </div>
@@ -565,14 +571,16 @@ export const Sidebar = ({
             onClick={onOpenSettings}
             className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Settings"
+            aria-label="Settings"
           >
             <Settings size={15} />
           </button>
           <button
             type="button"
             onClick={onLogout}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Sign Out"
+            aria-label="Sign Out"
           >
             <LogOut size={15} />
           </button>

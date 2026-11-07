@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, ShieldCheck, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Monitor, ShieldCheck } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import { playCallStartSound, playCallEndSound } from '../../utils/zyntraSound';
 
@@ -34,16 +34,16 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs select-none">
       <div className="w-full max-w-lg bg-[var(--bg-primary)] border border-[var(--border)] rounded-2xl p-6 shadow-2xl flex flex-col items-center relative overflow-hidden">
         {/* Top Header */}
         <div className="w-full flex items-center justify-between mb-8 z-10">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-heading font-bold">
             <ShieldCheck size={12} />
-            <span>Encrypted Call</span>
+            <span>Encrypted Direct Call (Beta)</span>
           </div>
 
-          <div className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] font-mono text-xs font-semibold">
+          <div className="px-3 py-1 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] font-body text-xs font-semibold">
             {formatDuration(duration)}
           </div>
         </div>
@@ -53,10 +53,10 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
           {!cameraOff ? (
             <div className="w-full h-56 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] relative overflow-hidden flex items-center justify-center">
               <Avatar name={chat.name} src={chat.avatar} size="lg" />
-              <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[11px] font-semibold">
+              <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-xs text-white text-[11px] font-heading font-semibold">
                 {chat.name} · 1080p
               </div>
-              <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">
+              <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-heading font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
               </div>
             </div>
@@ -65,8 +65,8 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
               <div className="mb-4">
                 <Avatar name={chat.name} src={chat.avatar} size="xl" />
               </div>
-              <h3 className="text-lg font-bold text-[var(--text-primary)] m-0">{chat.name}</h3>
-              <p className="text-xs text-[var(--text-muted)] mt-1 m-0">Voice connection active</p>
+              <h3 className="text-lg font-bold font-heading text-[var(--text-primary)] m-0">{chat.name}</h3>
+              <p className="text-xs font-body text-[var(--text-muted)] mt-1 m-0">Voice connection active · ChatRooms Call</p>
 
               {/* Audio Waveform Bars */}
               <div className="flex items-center gap-1.5 mt-6 h-8">
@@ -129,7 +129,7 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
           <button
             type="button"
             onClick={handleEndCall}
-            className="py-3 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold cursor-pointer transition-colors flex items-center gap-2 border-none"
+            className="py-3 px-5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-heading font-semibold cursor-pointer transition-colors flex items-center gap-2 border-none"
             title="End Call"
           >
             <PhoneOff size={18} />

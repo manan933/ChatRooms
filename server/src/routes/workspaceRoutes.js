@@ -9,18 +9,18 @@ import {
   joinGroupByCode,
   leaveParentGroup,
 } from '../controllers/workspaceController.js';
-import { optionalProtect } from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/', optionalProtect, getWorkspaces);
-router.get('/nodes', optionalProtect, getAllNodes);
-router.get('/:id/tree', optionalProtect, getWorkspaceTree);
-router.post('/', optionalProtect, createWorkspace);
-router.post('/:id/nodes', optionalProtect, createGroup);
-router.post('/:id/nodes/:nodeId/members', optionalProtect, addMembersToNode);
-router.post('/nodes/:nodeId/members', optionalProtect, addMembersToNode);
-router.post('/join', optionalProtect, joinGroupByCode);
-router.post('/leave-parent-group', optionalProtect, leaveParentGroup);
+router.get('/', protect, getWorkspaces);
+router.get('/nodes', protect, getAllNodes);
+router.get('/:id/tree', protect, getWorkspaceTree);
+router.post('/', protect, createWorkspace);
+router.post('/:id/nodes', protect, createGroup);
+router.post('/:id/nodes/:nodeId/members', protect, addMembersToNode);
+router.post('/nodes/:nodeId/members', protect, addMembersToNode);
+router.post('/join', protect, joinGroupByCode);
+router.post('/leave-parent-group', protect, leaveParentGroup);
 
 export default router;

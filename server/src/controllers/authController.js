@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import storageService from '../services/storageService.js';
+import User from '../models/User.js';
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026', {
@@ -15,24 +16,35 @@ const formatUserResponse = (user) => ({
   primaryUsername: user.primaryUsername,
   avatar: user.avatar || null,
   bio: user.bio || '',
+  phone: user.phone || (user.get ? user.get('phone') : null) || (user._doc ? user._doc.phone : null) || '',
   contexts: user.contexts || [],
   status: user.status || 'online',
 });
 
 export const register = async (req, res, next) => {
   try {
-    console.log('[Auth] Register attempt:', req.body.email);
-    const { name, email, primaryUsername, password, avatar, bio } = req.body || {};
+    console.log('[Auth] Register attempt:', req.body?.email);
+    const { name, email, primaryUsername, username, password, avatar, bio } = req.body || {};
+    const rawUsername = primaryUsername || username;
 
-    if (!name || !email || !primaryUsername || !password) {
+    if (
+      typeof name !== 'string' ||
+      typeof email !== 'string' ||
+      typeof rawUsername !== 'string' ||
+      typeof password !== 'string'
+    ) {
+      return res.status(400).json({ success: false, message: 'Invalid payload: fields must be strings.' });
+    }
+
+    if (!name.trim() || !email.trim() || !rawUsername.trim() || !password) {
       return res.status(400).json({ success: false, message: 'Please provide name, email, username, and password.' });
     }
 
-    if (password.length < 6) {
-      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long.' });
+    if (!password || password.trim().length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters long and contain non-whitespace characters.' });
     }
 
-    const cleanUsername = primaryUsername.replace(/^@/, '').toLowerCase().trim();
+    const cleanUsername = rawUsername.replace(/^@/, '').toLowerCase().trim();
     const cleanEmail = email.toLowerCase().trim();
 
     try {
@@ -56,8 +68,15 @@ export const register = async (req, res, next) => {
     } catch (err) {
       console.error('[Auth] Storage error during register:', err.message);
       // Determine if it's a unique constraint violation
+      const msg = (err.message || '').toLowerCase();
       let errorMsg = 'An error occurred during registration. Please try again.';
-      if (err.message.toLowerCase().includes('unique') || err.message.toLowerCase().includes('constraint')) {
+      if (
+        msg.includes('already exists') ||
+        msg.includes('duplicate') ||
+        msg.includes('unique') ||
+        msg.includes('constraint') ||
+        err.code === 11000
+      ) {
         errorMsg = 'An account with that email or username already exists.';
       }
       return res.status(400).json({ success: false, message: errorMsg });
@@ -71,9 +90,19 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   try {
     const { email, username, emailOrUsername, password } = req.body || {};
-    const rawIdentifier = email || emailOrUsername || username || '';
+    const rawIdentifier = (typeof email === 'string' && email.trim())
+      ? email
+      : (typeof emailOrUsername === 'string' && emailOrUsername.trim())
+        ? emailOrUsername
+        : (typeof username === 'string' && username.trim())
+          ? username
+          : (email || emailOrUsername || username || '');
 
-    if (!rawIdentifier || !password) {
+    if (typeof rawIdentifier !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ success: false, message: 'Invalid payload: credentials must be strings.' });
+    }
+
+    if (!rawIdentifier.trim() || !password) {
       return res.status(400).json({ success: false, message: 'Please provide an email or username and password' });
     }
 
@@ -125,7 +154,11 @@ export const updateProfile = async (req, res, next) => {
   try {
     const { name, bio, avatar, phone } = req.body;
     const userId = req.user._id || req.user.id;
-    const user = await storageService.updateUserProfile(userId, { name, bio, avatar, phone });
+    let user = await storageService.updateUserProfile(userId, { name, bio, avatar, phone });
+    if (phone !== undefined && userId) {
+      const updatedWithPhone = await User.findByIdAndUpdate(userId, { phone }, { new: true, strict: false });
+      if (updatedWithPhone) user = updatedWithPhone;
+    }
     res.status(200).json({ success: true, user: formatUserResponse(user || req.user) });
   } catch (error) {
     next(error);
@@ -143,6 +176,12 @@ export const addContext = async (req, res, next) => {
     const filtered = contexts.filter((c) => c.id !== id);
     filtered.push({ id, type, name, username });
     user.contexts = filtered;
+
+    const userId = user._id || user.id;
+    if (userId) {
+      await User.findByIdAndUpdate(userId, { contexts: filtered }, { new: true });
+    }
+
     res.status(200).json({ success: true, contexts: user.contexts });
   } catch (error) {
     next(error);

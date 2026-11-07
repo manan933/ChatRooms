@@ -17,6 +17,8 @@ export const ChatPage = () => {
     workspaces,
     messages,
     typingStatus,
+    isLoadingChats,
+    isLoadingMessages,
     loadChats,
     selectChat,
     closeChat,
@@ -42,7 +44,7 @@ export const ChatPage = () => {
 
   // Automatically show workspace selection popup on login
   useEffect(() => {
-    const prompted = sessionStorage.getItem('zyntra_workspace_prompted');
+    const prompted = sessionStorage.getItem('chatrooms_workspace_prompted');
     if (promptWorkspaceOnLogin || prompted !== 'true') {
       setWorkspaceModalOpen(true);
     }
@@ -69,7 +71,7 @@ export const ChatPage = () => {
   const handleSelectWorkspace = (workspace) => {
     if (!workspace) return;
     setSelectedWorkspace(workspace);
-    sessionStorage.setItem('zyntra_workspace_prompted', 'true');
+    sessionStorage.setItem('chatrooms_workspace_prompted', 'true');
     setPromptWorkspaceOnLogin?.(false);
 
     // If workspace has nodes, automatically open the first channel (e.g. general)
@@ -126,6 +128,7 @@ export const ChatPage = () => {
             activeChat={activeChat}
             currentUser={user}
             selectedWorkspace={selectedWorkspace}
+            isLoadingChats={isLoadingChats}
             onSelectChat={(chat) => selectChat(chat)}
             onOpenNewChat={() => setNewChatModalOpen(true)}
             onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
@@ -154,6 +157,7 @@ export const ChatPage = () => {
             currentUser={user}
             typingUsers={currentTypingUsers}
             workspaces={workspaces}
+            isLoadingMessages={isLoadingMessages}
             onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
             onSelectWorkspace={handleSelectWorkspace}
             onBack={closeChat}

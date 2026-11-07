@@ -1,6 +1,6 @@
 const API_BASE = '';
 
-const getToken = () => localStorage.getItem('zyntra_token');
+const getToken = () => localStorage.getItem('chatrooms_token') || localStorage.getItem('zyntra_token');
 
 export const getFileUrl = (url) => {
   if (!url) return '';

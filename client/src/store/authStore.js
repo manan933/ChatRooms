@@ -5,24 +5,28 @@ import { useChatStore } from './chatStore';
 
 const getInitialUser = () => {
   try {
-    const cached = localStorage.getItem('zyntra_user');
+    const cached = localStorage.getItem('chatrooms_user') || localStorage.getItem('zyntra_user');
     return cached ? JSON.parse(cached) : null;
   } catch {
     return null;
   }
 };
 
+const getStoredToken = () => {
+  return localStorage.getItem('chatrooms_token') || localStorage.getItem('zyntra_token') || null;
+};
+
 export const useAuthStore = create((set, get) => ({
   user: getInitialUser(),
-  token: localStorage.getItem('zyntra_token') || null,
-  isAuthenticated: Boolean(localStorage.getItem('zyntra_token') && getInitialUser()),
+  token: getStoredToken(),
+  isAuthenticated: Boolean(getStoredToken() && getInitialUser()),
   isLoading: false,
   error: null,
   promptWorkspaceOnLogin: false,
   setPromptWorkspaceOnLogin: (val) => set({ promptWorkspaceOnLogin: val }),
 
   initAuth: async () => {
-    const token = localStorage.getItem('zyntra_token');
+    const token = getStoredToken();
     if (!token) {
       set({ isAuthenticated: false, user: null, token: null, isLoading: false });
       return;
@@ -32,7 +36,7 @@ export const useAuthStore = create((set, get) => ({
       const res = await api.auth.me();
       if (res.ok && res.data) {
         const user = res.data.user || res.data;
-        localStorage.setItem('zyntra_user', JSON.stringify(user));
+        localStorage.setItem('chatrooms_user', JSON.stringify(user));
         set({ user, isAuthenticated: true, error: null });
         socketService.connect();
       } else if (res.status === 401 || !res.ok) {
@@ -55,8 +59,12 @@ export const useAuthStore = create((set, get) => ({
         const token = res.data.token;
         const user = res.data.user || res.data;
 
-        if (token) localStorage.setItem('zyntra_token', token);
-        if (user) localStorage.setItem('zyntra_user', JSON.stringify(user));
+        if (token) {
+          localStorage.setItem('chatrooms_token', token);
+        }
+        if (user) {
+          localStorage.setItem('chatrooms_user', JSON.stringify(user));
+        }
 
         set({
           user,
@@ -81,25 +89,31 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  register: async ({ name, email, password, primaryUsername }) => {
+  register: async ({ name, email, password, primaryUsername, username }) => {
     set({ isLoading: true, error: null });
-    const cleanUsername = primaryUsername.replace(/^@/, '').toLowerCase().trim();
-    const cleanEmail = email.toLowerCase().trim();
+    const targetUsername = primaryUsername || username || '';
+    const cleanUsername = targetUsername.replace(/^@/, '').toLowerCase().trim();
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
 
     try {
       const res = await api.auth.register({
-        name: name.trim(),
+        name: name ? name.trim() : '',
         email: cleanEmail,
         password,
         primaryUsername: cleanUsername,
+        username: cleanUsername,
       });
 
       if (res.ok && res.data) {
         const token = res.data.token;
         const user = res.data.user || res.data;
 
-        if (token) localStorage.setItem('zyntra_token', token);
-        if (user) localStorage.setItem('zyntra_user', JSON.stringify(user));
+        if (token) {
+          localStorage.setItem('chatrooms_token', token);
+        }
+        if (user) {
+          localStorage.setItem('chatrooms_user', JSON.stringify(user));
+        }
 
         set({
           user,
@@ -124,12 +138,12 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  updateProfile: async ({ name, avatar }) => {
+  updateProfile: async ({ name, bio, avatar, phone }) => {
     try {
-      const res = await api.auth.updateProfile({ name, avatar });
+      const res = await api.auth.updateProfile({ name, bio, avatar, phone });
       if (res.ok && res.data) {
         const updatedUser = res.data.user || res.data;
-        localStorage.setItem('zyntra_user', JSON.stringify(updatedUser));
+        localStorage.setItem('chatrooms_user', JSON.stringify(updatedUser));
         set({ user: updatedUser });
         return { success: true };
       }
@@ -140,6 +154,8 @@ export const useAuthStore = create((set, get) => ({
   },
 
   logout: () => {
+    localStorage.removeItem('chatrooms_token');
+    localStorage.removeItem('chatrooms_user');
     localStorage.removeItem('zyntra_token');
     localStorage.removeItem('zyntra_user');
     socketService.disconnect();
@@ -150,6 +166,7 @@ export const useAuthStore = create((set, get) => ({
       token: null,
       isAuthenticated: false,
       error: null,
+      promptWorkspaceOnLogin: false,
     });
   },
 

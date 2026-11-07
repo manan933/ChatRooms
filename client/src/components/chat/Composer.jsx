@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Paperclip, Image as ImageIcon, Smile, SendHorizontal, X, Loader2, FileText } from 'lucide-react';
+import { Paperclip, Image as ImageIcon, Smile, SendHorizontal, X, Loader2, FileText } from '../ui/Icons';
 import EmojiPicker from '../ui/EmojiPicker';
 import socketService from '../../api/socket';
 import api from '../../api/api';
@@ -13,7 +13,10 @@ const formatSize = (bytes) => {
 };
 
 export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
-  const [text, setText] = useState('');
+  // Autosave function (Item 3): initialize with draft from sessionStorage if present
+  const [text, setText] = useState(() => {
+    return chatId ? sessionStorage.getItem(`chatrooms_draft_${chatId}`) || '' : '';
+  });
   const [showEmoji, setShowEmoji] = useState(false);
   const [attachment, setAttachment] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -26,17 +29,32 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
 
   const currentChatIdRef = useRef(chatId);
 
-  // F20: Reset state on chat switch
-  // F21: Track current chatId for async callbacks
+  // Restore draft when chatId changes
   useEffect(() => {
-    setText('');
+    currentChatIdRef.current = chatId;
+    const savedDraft = chatId ? sessionStorage.getItem(`chatrooms_draft_${chatId}`) || '' : '';
+    setText(savedDraft);
     setAttachment(null);
     setShowEmoji(false);
     setIsUploading(false);
-    currentChatIdRef.current = chatId;
+
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+    }
   }, [chatId]);
 
-  // F19: Cleanup object URLs to prevent memory leak
+  // Autosave draft on text change (Item 3)
+  const saveDraft = (newText) => {
+    if (chatId) {
+      if (newText.trim()) {
+        sessionStorage.setItem(`chatrooms_draft_${chatId}`, newText);
+      } else {
+        sessionStorage.removeItem(`chatrooms_draft_${chatId}`);
+      }
+    }
+  };
+
+  // Cleanup object URLs
   useEffect(() => {
     return () => {
       if (attachment?.url?.startsWith('blob:')) {
@@ -45,7 +63,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
     };
   }, [attachment?.url]);
 
-  // F22: Cleanup typing timeout on unmount
+  // Cleanup typing timeout on unmount
   useEffect(() => {
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
@@ -78,7 +96,9 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   };
 
   const handleTextChange = (e) => {
-    setText(e.target.value);
+    const val = e.target.value;
+    setText(val);
+    saveDraft(val);
     handleTyping();
 
     // Auto-expand textarea
@@ -124,7 +144,6 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
         });
       }
     } catch {
-      // Keep local blob if upload endpoint fallback occurs
       setAttachment((prev) => (prev ? { ...prev, isUploading: false } : null));
     } finally {
       setIsUploading(false);
@@ -137,6 +156,9 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
     onSend?.(text.trim(), attachment);
     setText('');
     setAttachment(null);
+    if (chatId) {
+      sessionStorage.removeItem(`chatrooms_draft_${chatId}`);
+    }
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (chatId && currentUser) {
@@ -148,8 +170,11 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
     }
   };
 
-  const handleInsertEmoji = (emoji) => {
-    setText((prev) => prev + emoji);
+  const handleInsertReaction = (tag) => {
+    const formatted = `[${tag}] `;
+    const updated = text + formatted;
+    setText(updated);
+    saveDraft(updated);
     setShowEmoji(false);
     textareaRef.current?.focus();
   };
@@ -157,7 +182,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   const hasContent = Boolean(text.trim() || attachment);
 
   return (
-    <div className="relative px-3 sm:px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] bg-[var(--bg-primary)] border-t border-[var(--border)] shrink-0">
+    <div className="relative px-3 sm:px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] bg-[var(--bg-primary)] border-t border-[var(--border)] shrink-0 font-body">
       {/* Hidden file inputs */}
       <input
         type="file"
@@ -179,10 +204,10 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
         }}
       />
 
-      {/* Emoji Picker Popover */}
+      {/* Reaction Popover */}
       {showEmoji && (
         <div ref={emojiRef} className="absolute bottom-full left-2 sm:left-4 mb-2 z-50 max-w-[calc(100vw-24px)]">
-          <EmojiPicker onSelect={handleInsertEmoji} onClose={() => setShowEmoji(false)} />
+          <EmojiPicker onSelect={handleInsertReaction} onClose={() => setShowEmoji(false)} />
         </div>
       )}
 
@@ -193,7 +218,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
             {attachment.type === 'image' && attachment.url ? (
               <img
                 src={attachment.url}
-                alt="preview"
+                alt="Attachment preview"
                 className="w-10 h-10 rounded-lg object-cover border border-[var(--border)]"
               />
             ) : (
@@ -202,14 +227,14 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
               </div>
             )}
             <div className="min-w-0">
-              <div className="text-xs font-semibold truncate text-[var(--text-primary)]">
+              <div className="text-xs font-heading font-semibold truncate text-[var(--text-primary)]">
                 {attachment.name}
               </div>
               <div className="text-[10px] text-[var(--text-muted)] flex items-center gap-1.5">
                 <span>{attachment.size}</span>
                 {attachment.isUploading && (
                   <span className="text-[var(--accent)] flex items-center gap-1 font-semibold">
-                    <Loader2 size={10} className="animate-spin" /> Uploading...
+                    <Loader2 size={10} /> Uploading...
                   </span>
                 )}
               </div>
@@ -226,7 +251,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
       )}
 
       {/* Main Composer Pill Input Row */}
-      <div className="flex items-center gap-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl px-3 py-1.5 focus-within:border-[var(--accent)] transition-all">
+      <div className="flex items-center gap-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl px-3 py-1.5 focus-within:border-[var(--border-focus)] transition-all">
         {/* Left Action Buttons */}
         <div className="flex items-center gap-0.5 shrink-0">
           {policy?.allowAttachments !== false && (
@@ -235,7 +260,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-                title="Attach File"
+                title="Attach Document"
               >
                 <Paperclip size={18} />
               </button>
@@ -243,7 +268,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-                title="Upload Photo"
+                title="Upload Image"
               >
                 <ImageIcon size={18} />
               </button>
@@ -256,7 +281,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
               className={`p-1.5 rounded-lg transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center ${
                 showEmoji ? 'text-[var(--accent)] bg-[var(--accent-subtle)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
               }`}
-              title="Emoji"
+              title="Add Reaction"
             >
               <Smile size={18} />
             </button>
@@ -274,7 +299,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           enterKeyHint="send"
           autoCapitalize="sentences"
           autoComplete="on"
-          className="flex-1 bg-transparent border-none outline-none resize-none py-1.5 text-sm sm:text-[14px] text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[36px] max-h-[120px] leading-relaxed"
+          className="flex-1 bg-transparent border-none outline-none resize-none py-1.5 text-sm sm:text-[14px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[36px] max-h-[120px] leading-relaxed"
         />
 
         {/* Send Button */}
@@ -284,13 +309,13 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           disabled={!hasContent || isUploading}
           className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
             hasContent && !isUploading
-              ? 'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] cursor-pointer shadow-md active:scale-90'
+              ? 'bg-[var(--accent)] text-[var(--text-primary)] hover:bg-[var(--accent-hover)] cursor-pointer shadow-md active:scale-95'
               : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
           }`}
-          title="Send"
+          title="Send Message"
         >
           {isUploading ? (
-            <Loader2 size={16} className="animate-spin" />
+            <Loader2 size={16} />
           ) : (
             <SendHorizontal size={17} />
           )}

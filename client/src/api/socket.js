@@ -11,7 +11,7 @@ class SocketService {
   connect() {
     if (this.socket && this.socket.connected) return this.socket;
 
-    const token = localStorage.getItem('zyntra_token');
+    const token = localStorage.getItem('chatrooms_token') || localStorage.getItem('zyntra_token');
 
     this.socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],

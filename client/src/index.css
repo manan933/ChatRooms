@@ -1,59 +1,78 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
-  /* Refined, Human-Crafted Neutral Dark Theme (Linear & Raycast Inspired) */
-  --bg-primary: #090a0f;
-  --bg-secondary: #0f1117;
-  --bg-tertiary: #161822;
-  --bg-hover: #1e2230;
-  --bg-active: #272d40;
+  /* Theme 2: Midnight Dark (Default) */
+  --bg-primary: #02070A; /* Midnight Black */
+  --bg-secondary: #091118;
+  --bg-tertiary: #0F1A24;
+  --bg-hover: #162533;
+  --bg-active: #1E3244;
   
-  --border: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.04);
-  --border-focus: #3b82f6;
+  --border: rgba(2, 151, 222, 0.15);
+  --border-subtle: rgba(2, 151, 222, 0.08);
+  --border-focus: #0297DE; /* Electric Blue */
 
-  --text-primary: #f4f4f6;
-  --text-secondary: #9da4b4;
-  --text-muted: #646a7c;
+  --text-primary: #FCFFFF;
+  --text-secondary: #8EAAB8;
+  --text-muted: #526E7E;
 
-  --accent: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-subtle: rgba(59, 130, 246, 0.12);
+  --accent: #0297DE; /* Electric Blue */
+  --accent-hover: #0284C2;
+  --accent-subtle: rgba(2, 151, 222, 0.12);
+  --accent-highlight: #FC734D; /* Cantaloupe Orange */
 
-  --bubble-sent: #2563eb;
-  --bubble-sent-text: #ffffff;
-  --bubble-received: #161822;
-  --bubble-received-text: #f4f4f6;
+  --bubble-sent: #0297DE;
+  --bubble-sent-text: #FCFFFF;
+  --bubble-received: #0F1A24;
+  --bubble-received-text: #FCFFFF;
 
-  --online: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
+  --online: #0297DE;
+  --danger: #FC734D;
+  --warning: #FC734D;
 }
 
 [data-theme="light"] {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #f1f5f9;
-  --bg-hover: #e2e8f0;
-  --bg-active: #cbd5e1;
+  /* Theme 1: Skyblue Vibrant (Light) */
+  --bg-primary: #FCFFFF; /* Clean White */
+  --bg-secondary: #F0F8FA;
+  --bg-tertiary: #E4F2F6;
+  --bg-hover: #D5ECF2;
+  --bg-active: #C5E5EE;
 
-  --border: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --border-focus: #2563eb;
+  --border: rgba(5, 147, 198, 0.20);
+  --border-subtle: rgba(5, 147, 198, 0.10);
+  --border-focus: #0593C6; /* Skyblue */
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-primary: #02202C;
+  --text-secondary: #2A5769;
+  --text-muted: #5A8496;
 
-  --accent: #2563eb;
-  --accent-hover: #1d4ed8;
-  --accent-subtle: rgba(37, 99, 235, 0.08);
+  --accent: #0593C6; /* Skyblue */
+  --accent-hover: #0479A3;
+  --accent-subtle: rgba(5, 147, 198, 0.12);
+  --accent-highlight: #D83995; /* Hot Pink */
 
-  --bubble-sent: #2563eb;
-  --bubble-sent-text: #ffffff;
-  --bubble-received: #f1f5f9;
-  --bubble-received-text: #0f172a;
+  --bubble-sent: #0593C6;
+  --bubble-sent-text: #FCFFFF;
+  --bubble-received: #E4F2F6;
+  --bubble-received-text: #02202C;
+
+  --online: #0593C6;
+  --danger: #D83995;
+  --warning: #D83995;
+}
+
+/* Typography Classes */
+.font-brand {
+  font-family: 'Lakki Reddy', cursive !important;
+}
+
+.font-heading {
+  font-family: 'Karla', sans-serif !important;
+}
+
+.font-body {
+  font-family: 'Alegreya', serif !important;
 }
 
 /* Base reset */
@@ -67,11 +86,17 @@ html, body {
   overflow: hidden;
   overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Alegreya', serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Karla', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 #root {
@@ -99,7 +124,7 @@ button, a, input, textarea, select, [role="button"] {
   }
 }
 
-/* Clean Custom Scrollbars */
+/* Custom Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -108,11 +133,11 @@ button, a, input, textarea, select, [role="button"] {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.35);
+  background: rgba(148, 163, 184, 0.4);
 }
 
 .custom-scrollbar {
@@ -120,31 +145,23 @@ button, a, input, textarea, select, [role="button"] {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Subtle, tasteful background options */
-.wallpaper-grid {
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 32px 32px;
+/* Skeleton Loading Shimmer (Item 1) */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
-[data-theme="light"] .wallpaper-grid {
-  background-image: 
-    linear-gradient(to right, rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-}
-
-.wallpaper-dots {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-[data-theme="light"] .wallpaper-dots {
-  background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-}
-
-.wallpaper-aurora {
-  background: 
-    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(59, 130, 246, 0.06), transparent),
-    var(--bg-primary);
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 25%,
+    var(--bg-tertiary) 50%,
+    var(--bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite ease-in-out;
 }

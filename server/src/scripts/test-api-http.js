@@ -126,7 +126,7 @@ async function runHttpTests() {
 
   // 5. Workspaces API
   console.log('\n--- 5. Testing Workspaces Endpoints ---');
-  const wsRes = await get('/workspaces');
+  const wsRes = await get('/workspaces', token);
   check('GET /workspaces returns status 200', wsRes.status === 200);
   check('Workspaces list is array', Array.isArray(wsRes.data.data));
 
@@ -144,7 +144,7 @@ async function runHttpTests() {
   check('Workspace has rootNode and joinCode', Boolean(rootNode.joinCode));
 
   // Join by code
-  const joinRes = await post('/workspaces/join', { code: rootNode.joinCode });
+  const joinRes = await post('/workspaces/join', { code: rootNode.joinCode }, token);
   check('POST /workspaces/join with joinCode returns status 200', joinRes.status === 200);
 
   // 6. Messages API
@@ -161,7 +161,7 @@ async function runHttpTests() {
   check('POST /messages/:chatId returns status 201', sendMsgRes.status === 201);
   const sentMsgId = sendMsgRes.data.data.id;
 
-  const getMsgRes = await get(`/messages/${rootNode.id}`);
+  const getMsgRes = await get(`/messages/${rootNode.id}`, token);
   check('GET /messages/:chatId returns status 200', getMsgRes.status === 200);
   check(
     'Sent message exists in channel history',
@@ -181,7 +181,7 @@ async function runHttpTests() {
   );
   check('POST /contacts returns status 201', contactRes.status === 201);
 
-  const getContactsRes = await get('/contacts');
+  const getContactsRes = await get('/contacts', token);
   check('GET /contacts returns status 200', getContactsRes.status === 200);
   check(
     'Created contact exists in contacts array',

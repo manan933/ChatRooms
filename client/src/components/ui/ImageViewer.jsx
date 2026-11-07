@@ -1,39 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { X, Download, ZoomIn, ZoomOut } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { X, Download, ZoomIn, ZoomOut } from './Icons';
 import { getFileUrl } from '../../api/api';
 
 export const ImageViewer = ({ isOpen, onClose, src, title }) => {
-  const [zoomed, setZoomed] = useState(false);
+  const [scale, setScale] = React.useState(1);
 
   useEffect(() => {
-    if (!isOpen) {
-      setZoomed(false);
-      return;
-    }
-    const handleKey = (e) => {
-      if (e.key === 'Escape') onClose();
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose?.();
     };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+      setScale(1);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen || !src) return null;
 
   const fullUrl = getFileUrl(src);
 
-  const handleDownload = async (e) => {
-    e.stopPropagation();
+  const handleDownload = async () => {
     try {
-      const res = await fetch(fullUrl);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = title || 'photo.png';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
+      const response = await fetch(fullUrl);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = title || 'photo.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
     } catch {
       window.open(fullUrl, '_blank');
     }
@@ -41,63 +43,68 @@ export const ImageViewer = ({ isOpen, onClose, src, title }) => {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-between p-4 bg-black/85 backdrop-blur-sm select-none"
       onClick={onClose}
     >
-      {/* Top Floating Bar */}
+      {/* Top Bar */}
       <div
-        className="absolute top-4 left-4 right-4 flex items-center justify-between z-10 pointer-events-none"
+        className="w-full flex items-center justify-between py-2 px-4 z-10"
+        onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-white/90 text-xs sm:text-sm font-semibold truncate max-w-[60%] bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 pointer-events-auto">
+        <span className="text-xs font-heading font-semibold text-white/80 truncate max-w-sm">
           {title || 'Image Preview'}
         </span>
 
-        <div className="flex items-center gap-2 pointer-events-auto">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setZoomed(!zoomed);
-            }}
-            className="p-2 rounded-xl bg-black/50 hover:bg-black/70 text-white/90 hover:text-white border border-white/10 transition-colors cursor-pointer"
-            title={zoomed ? 'Zoom Out' : 'Zoom In'}
+            onClick={() => setScale((s) => Math.min(s + 0.25, 3))}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors border-none cursor-pointer"
+            title="Zoom In"
           >
-            {zoomed ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
+            <ZoomIn size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setScale((s) => Math.max(s - 0.25, 0.5))}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors border-none cursor-pointer"
+            title="Zoom Out"
+          >
+            <ZoomOut size={16} />
           </button>
           <button
             type="button"
             onClick={handleDownload}
-            className="p-2 rounded-xl bg-black/50 hover:bg-black/70 text-white/90 hover:text-white border border-white/10 transition-colors cursor-pointer"
-            title="Download"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors border-none cursor-pointer"
+            title="Download Image"
           >
             <Download size={16} />
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl bg-black/50 hover:bg-red-500/80 text-white/90 hover:text-white border border-white/10 transition-colors cursor-pointer"
-            title="Close"
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors border-none cursor-pointer"
+            title="Close Preview"
           >
             <X size={16} />
           </button>
         </div>
       </div>
 
-      {/* Image Preview Container */}
+      {/* Main Image Stage */}
       <div
-        className="max-w-full max-h-full flex items-center justify-center"
+        className="flex-1 flex items-center justify-center p-2 max-w-full max-h-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <img
           src={fullUrl}
-          alt={title || 'Preview'}
-          onClick={() => setZoomed(!zoomed)}
-          className={`rounded-xl object-contain transition-transform duration-200 cursor-pointer select-none shadow-2xl ${
-            zoomed ? 'scale-125' : 'scale-100'
-          }`}
-          style={{ maxHeight: '85vh', maxWidth: '90vw' }}
+          alt={title || 'Attachment Preview'}
+          style={{ transform: `scale(${scale})`, transition: 'transform 0.15s ease-out' }}
+          className="max-h-[82vh] max-w-[92vw] object-contain rounded-lg shadow-2xl"
         />
       </div>
+
+      <div className="h-6" />
     </div>
   );
 };

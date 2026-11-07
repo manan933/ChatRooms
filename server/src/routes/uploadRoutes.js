@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { optionalProtect } from '../middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,6 +71,7 @@ const handleUpload = (req, res) => {
         size: formatBytes(req.file.size),
         type,
         mimeType: mime,
+        uploadedBy: req.user?._id?.toString() || null,
       },
     });
   } catch (error) {
@@ -83,8 +85,8 @@ const handleUpload = (req, res) => {
 
 // @route   POST /api/upload & POST /api/upload/file
 // @desc    Upload single image or file attachment
-// @access  Public
-router.post('/', upload.single('file'), handleUpload);
-router.post('/file', upload.single('file'), handleUpload);
+// @access  Protected / Optional token
+router.post('/', optionalProtect, upload.single('file'), handleUpload);
+router.post('/file', optionalProtect, upload.single('file'), handleUpload);
 
-export default router;
+export default router;

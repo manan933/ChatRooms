@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Users, Search, Loader2 } from 'lucide-react';
+import { UserPlus, Users, Search, Loader2 } from '../ui/Icons';
 import Modal from '../ui/Modal';
 import Avatar from '../ui/Avatar';
 import api from '../../api/api';
@@ -118,7 +118,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Start New Conversation">
       {/* Tabs */}
-      <div className="flex items-center gap-2 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl mb-4 overflow-x-auto custom-scrollbar">
+      <div className="flex items-center gap-2 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl mb-4 font-heading">
         <button
           type="button"
           onClick={() => {
@@ -127,8 +127,8 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           }}
           className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'contact'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-xs'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
           }`}
         >
           <UserPlus size={14} />
@@ -143,8 +143,8 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           }}
           className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'group'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-xs'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
           }`}
         >
           <Users size={14} />
@@ -159,8 +159,8 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           }}
           className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'join_group'
-              ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] shadow-xs'
-              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
           }`}
         >
           <Search size={14} />
@@ -169,13 +169,13 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
       </div>
 
       {error && (
-        <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs mb-3">
+        <div className="p-2.5 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/25 text-[var(--danger)] text-xs mb-3 font-body">
           {error}
         </div>
       )}
 
       {activeTab === 'contact' ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 font-body">
           <div className="relative flex items-center">
             <Search size={15} className="absolute left-3 text-[var(--text-muted)]" />
             <input
@@ -183,7 +183,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
               placeholder="Search by name or @username..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              className="w-full pl-9 pr-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
               autoFocus
             />
           </div>
@@ -192,7 +192,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           <div className="max-h-60 overflow-y-auto custom-scrollbar flex flex-col gap-1">
             {isSearching ? (
               <div className="flex items-center justify-center py-8 text-xs text-[var(--text-muted)] gap-2">
-                <Loader2 size={16} className="animate-spin" /> Searching...
+                <Loader2 size={16} /> Searching...
               </div>
             ) : searchResults.length > 0 ? (
               searchResults.map((user) => (
@@ -202,11 +202,11 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Avatar name={user.name} src={user.avatar} size="sm" />
-                    <div className="min-w-0">
+                    <div className="min-w-0 font-heading">
                       <div className="text-xs font-bold text-[var(--text-primary)] truncate">
                         {user.name}
                       </div>
-                      <div className="text-[10px] text-[var(--text-muted)] font-mono">
+                      <div className="text-[10px] text-[var(--text-muted)]">
                         @{user.primaryUsername || user.username}
                       </div>
                     </div>
@@ -216,7 +216,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleSelectUser(user)}
-                    className="py-1 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg text-xs font-bold cursor-pointer border-none transition-colors"
+                    className="py-1 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-xs font-heading font-bold cursor-pointer border-none transition-colors"
                   >
                     Chat
                   </button>
@@ -234,7 +234,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           </div>
         </div>
       ) : activeTab === 'group' ? (
-        <form onSubmit={handleCreateGroup} className="flex flex-col gap-3">
+        <form onSubmit={handleCreateGroup} className="flex flex-col gap-3 font-heading">
           <div>
             <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">
               Group Name *
@@ -242,10 +242,10 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
             <input
               type="text"
               required
-              placeholder="e.g. Design Team or Family"
+              placeholder="e.g. Design Team or Project Room"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
               autoFocus
             />
           </div>
@@ -259,21 +259,21 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
               placeholder="What is this group about?"
               value={groupDesc}
               onChange={(e) => setGroupDesc(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)] resize-none"
+              className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] resize-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={!groupName.trim() || isSubmitting}
-            className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
+            className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
           >
-            {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
+            {isSubmitting ? <Loader2 size={14} /> : <Users size={14} />}
             <span>Create Group</span>
           </button>
         </form>
       ) : (
-        <form onSubmit={handleJoinGroup} className="flex flex-col gap-3">
+        <form onSubmit={handleJoinGroup} className="flex flex-col gap-3 font-heading">
           <div>
             <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">
               Group Invite Code or Friend's Handle *
@@ -284,7 +284,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
               placeholder="e.g. @priya_s or GRP-101"
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
-              className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--accent)]"
+              className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
               autoFocus
             />
           </div>
@@ -292,9 +292,9 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           <button
             type="submit"
             disabled={!joinCode.trim() || isSubmitting}
-            className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
+            className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
           >
-            {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
+            {isSubmitting ? <Loader2 size={14} /> : <Users size={14} />}
             <span>Join Group or Chat</span>
           </button>
         </form>

@@ -5,13 +5,13 @@ import {
   createPersonalGroup,
   searchUsers,
 } from '../controllers/contactController.js';
-import { optionalProtect } from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.get('/', optionalProtect, getContactsAndGroups);
-router.get('/search', optionalProtect, searchUsers);
-router.post('/', optionalProtect, createContact);
-router.post('/groups', optionalProtect, createPersonalGroup);
+router.get('/', protect, getContactsAndGroups);
+router.get('/search', protect, searchUsers);
+router.post('/', protect, createContact);
+router.post('/groups', protect, createPersonalGroup);
 
 export default router;

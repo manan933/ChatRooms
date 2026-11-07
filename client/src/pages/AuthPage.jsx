@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, ArrowRight, Shield, MessageSquare, Building2, Lock, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowRight, Lock, CheckCircle2 } from '../components/ui/Icons';
 import useAuthStore from '../store/authStore';
+import LegalModal from '../components/modals/LegalModal';
 
 export const AuthPage = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
 
   // Form fields
   const [name, setName] = useState('');
@@ -12,27 +14,55 @@ export const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
 
+  // Validation errors state (Smart form validation - Item 4)
+  const [validationErrors, setValidationErrors] = useState({});
+
   const { login, register, isLoading, error, clearError } = useAuthStore();
 
-  const handleFillDemo = () => {
-    setIsRegister(false);
-    clearError();
-    setEmail('soumya@zyntra.com');
-    setPassword('password123');
+  const validate = () => {
+    const errs = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const userRegex = /^[a-zA-Z0-9_]{3,20}$/;
+
+    if (isRegister) {
+      if (!name.trim()) errs.name = 'Full name is required';
+      if (!username.trim()) {
+        errs.username = 'Username is required';
+      } else if (!userRegex.test(username.replace(/^@/, '').trim())) {
+        errs.username = 'Username must be 3-20 letters, numbers, or underscores';
+      }
+    }
+
+    if (!email.trim()) {
+      errs.email = 'Email address is required';
+    } else if (isRegister && !emailRegex.test(email.trim())) {
+      errs.email = 'Please enter a valid email address';
+    }
+
+    if (!password) {
+      errs.password = 'Password is required';
+    } else if (password.trim().length < 6) {
+      errs.password = 'Password must be at least 6 characters';
+    }
+
+    setValidationErrors(errs);
+    return Object.keys(errs).length === 0;
   };
+
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
+
     if (isRegister) {
-      if (!name.trim() || !email.trim() || !password || !username.trim()) return;
       await register({
         name: name.trim(),
         email: email.trim(),
         password,
-        primaryUsername: username.trim(),
+        primaryUsername: username.replace(/^@/, '').trim(),
       });
     } else {
-      if (!email.trim() || !password) return;
       await login(email.trim(), password);
     }
   };
@@ -44,24 +74,22 @@ export const AuthPage = () => {
         {/* Brand Header */}
         <div>
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-bold text-base flex items-center justify-center shadow-sm">
-              Z
+            <div className="w-9 h-9 rounded-xl bg-[var(--accent)] text-[var(--text-primary)] font-brand text-xl flex items-center justify-center shadow-sm">
+              C
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xl font-bold tracking-tight text-[var(--text-primary)]">
-                Zyntra
-              </span>
-              <span className="text-xs px-2 py-0.5 rounded-md bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border)] font-medium">
-                Team Chat
+              <span className="text-2xl font-brand tracking-wide text-[var(--text-primary)]">
+                ChatRooms
               </span>
             </div>
           </div>
 
           <div className="space-y-3 max-w-md">
-            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-[var(--text-primary)] leading-tight">
+            {/* No gradient hero text - Item 30 */}
+            <h1 className="text-3xl lg:text-4xl font-heading font-bold tracking-tight text-[var(--text-primary)] leading-tight">
               Fast, focused messaging for teams and creators.
             </h1>
-            <p className="text-sm lg:text-base text-[var(--text-secondary)] leading-relaxed">
+            <p className="text-sm lg:text-base font-body text-[var(--text-secondary)] leading-relaxed">
               Organize projects into channels, send direct messages, and collaborate in real-time with zero friction.
             </p>
           </div>
@@ -73,64 +101,60 @@ export const AuthPage = () => {
             {/* Mock Channel Header */}
             <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
+                <span className="text-sm font-heading font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
                   <span className="text-[var(--text-muted)]">#</span> general
                 </span>
-                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded font-medium border border-emerald-500/20">
-                  Live
+                <span className="text-[10px] text-[var(--online)] bg-[var(--accent-subtle)] px-2 py-0.5 rounded font-heading font-semibold border border-[var(--border-subtle)]">
+                  Active
                 </span>
               </div>
-              <span className="text-xs text-[var(--text-muted)] font-medium">GIET University</span>
+              <span className="text-xs font-heading text-[var(--text-muted)]">Engineering</span>
             </div>
 
             {/* Mock Message 1 */}
             <div className="flex items-start gap-2.5 pt-1">
-              <div className="w-7 h-7 rounded-full bg-blue-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
-                SM
+              <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-[var(--text-primary)] text-[11px] font-heading font-bold flex items-center justify-center shrink-0">
+                SC
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">Soumya</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">10:42 AM</span>
+                  <span className="text-xs font-heading font-semibold text-[var(--text-primary)]">Sarah Chen</span>
+                  <span className="text-[10px] font-body text-[var(--text-muted)]">10:42 AM</span>
                 </div>
-                <div className="mt-1 text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border)] p-2 rounded-xl rounded-tl-sm leading-relaxed">
-                  Backend cluster is connected to MongoDB Atlas. Latency dropped to sub-20ms! 🚀
+                <div className="mt-1 text-xs font-body text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-2 rounded-xl rounded-tl-sm leading-relaxed">
+                  Database cluster connected and encrypted. Latency dropped to sub-20ms.
                 </div>
               </div>
             </div>
 
             {/* Mock Message 2 */}
             <div className="flex items-start gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-[var(--accent-highlight)] text-[var(--text-primary)] text-[11px] font-heading font-bold flex items-center justify-center shrink-0">
                 AP
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--text-primary)]">Aarav</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">10:43 AM</span>
+                  <span className="text-xs font-heading font-semibold text-[var(--text-primary)]">Alex Patel</span>
+                  <span className="text-[10px] font-body text-[var(--text-muted)]">10:43 AM</span>
                 </div>
-                <div className="mt-1 text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border)] p-2 rounded-xl rounded-tl-sm leading-relaxed">
-                  Tested real-time message sync across accounts. Everything works seamlessly.
+                <div className="mt-1 text-xs font-body text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-2 rounded-xl rounded-tl-sm leading-relaxed">
+                  Real-time message synchronization verified across all devices.
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Footer Features */}
-        <div className="grid grid-cols-3 gap-3 pt-6 border-t border-[var(--border)] max-w-md">
-          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
-            <CheckCircle2 size={15} className="text-emerald-500 shrink-0" />
-            <span>Multi-Tenant</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
-            <CheckCircle2 size={15} className="text-blue-500 shrink-0" />
-            <span>WebSockets</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)] font-medium">
-            <CheckCircle2 size={15} className="text-indigo-500 shrink-0" />
-            <span>MongoDB</span>
-          </div>
+        {/* Footer Legal & Consent Trigger (Item 27) */}
+        <div className="pt-4 border-t border-[var(--border-subtle)] max-w-md flex items-center justify-between text-xs font-body text-[var(--text-muted)]">
+          <span>Protected with bcrypt & JWT auth</span>
+          <button
+            type="button"
+            onClick={() => setLegalModalOpen(true)}
+            className="text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer text-xs font-heading font-semibold"
+          >
+            Privacy & Terms
+          </button>
         </div>
       </div>
 
@@ -139,25 +163,25 @@ export const AuthPage = () => {
         <div className="w-full max-w-[420px] my-auto flex flex-col">
           {/* Mobile Brand Header */}
           <div className="md:hidden flex flex-col items-center text-center mb-6">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-bold text-lg flex items-center justify-center shadow-sm mb-2">
-              Z
+            <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-[var(--text-primary)] font-brand text-2xl flex items-center justify-center shadow-sm mb-2">
+              C
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-[var(--text-primary)] m-0">
-              Zyntra
+            <h1 className="text-2xl font-brand tracking-wide text-[var(--text-primary)] m-0">
+              ChatRooms
             </h1>
-            <p className="text-xs text-[var(--text-muted)] mt-1">
-              Fast, focused messaging for teams.
+            <p className="text-xs font-body text-[var(--text-muted)] mt-1">
+              Fast, focused messaging for teams and direct chats.
             </p>
           </div>
 
           {/* Form Header */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] m-0">
-              {isRegister ? 'Create an account' : 'Sign in to Zyntra'}
+            <h2 className="text-2xl font-heading font-bold tracking-tight text-[var(--text-primary)] m-0">
+              {isRegister ? 'Create an account' : 'Sign in to ChatRooms'}
             </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 leading-relaxed">
+            <p className="text-xs sm:text-sm font-body text-[var(--text-secondary)] mt-1 leading-relaxed">
               {isRegister
-                ? 'Join to access team channels and direct messaging.'
+                ? 'Join to access channels and direct messaging.'
                 : 'Enter your account details below to continue.'}
             </p>
           </div>
@@ -169,10 +193,11 @@ export const AuthPage = () => {
               onClick={() => {
                 setIsRegister(false);
                 clearError();
+                setValidationErrors({});
               }}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer border-none ${
+              className={`flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer border-none ${
                 !isRegister
-                  ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] shadow-xs'
+                  ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
               }`}
             >
@@ -183,10 +208,11 @@ export const AuthPage = () => {
               onClick={() => {
                 setIsRegister(true);
                 clearError();
+                setValidationErrors({});
               }}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer border-none ${
+              className={`flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer border-none ${
                 isRegister
-                  ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] shadow-xs'
+                  ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
               }`}
             >
@@ -194,10 +220,10 @@ export const AuthPage = () => {
             </button>
           </div>
 
-          {/* Error Banner */}
+          {/* Server Error Banner */}
           {error && (
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs mb-4 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/25 text-[var(--danger)] text-xs mb-4 flex items-center gap-2 font-body">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)] shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -207,80 +233,109 @@ export const AuthPage = () => {
             {isRegister && (
               <>
                 <div>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">
+                  <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
                     Full Name
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="Alex Morgan"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full h-10 px-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 transition-colors"
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      if (validationErrors.name) setValidationErrors((p) => ({ ...p, name: null }));
+                    }}
+                    className={`w-full h-10 px-3 bg-[var(--bg-secondary)] border ${
+                      validationErrors.name ? 'border-[var(--danger)]' : 'border-[var(--border)]'
+                    } rounded-lg text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
                   />
+                  {validationErrors.name && (
+                    <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.name}</span>
+                  )}
                 </div>
 
                 <div>
-                  <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">
+                  <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
                     Username
                   </label>
                   <input
                     type="text"
-                    required
                     placeholder="alex"
                     value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full h-10 px-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg text-sm font-mono text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 transition-colors"
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      if (validationErrors.username) setValidationErrors((p) => ({ ...p, username: null }));
+                    }}
+                    className={`w-full h-10 px-3 bg-[var(--bg-secondary)] border ${
+                      validationErrors.username ? 'border-[var(--danger)]' : 'border-[var(--border)]'
+                    } rounded-lg text-sm font-heading text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
                   />
+                  {validationErrors.username && (
+                    <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.username}</span>
+                  )}
                 </div>
               </>
             )}
 
             <div>
-              <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">
+              <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
                 {isRegister ? 'Email address' : 'Email or username'}
               </label>
               <input
                 type={isRegister ? 'email' : 'text'}
-                required
-                placeholder={isRegister ? 'alex@example.com' : 'soumya@zyntra.com or username'}
+                placeholder={isRegister ? 'alex@example.com' : 'username or email'}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-10 px-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 transition-colors"
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (validationErrors.email) setValidationErrors((p) => ({ ...p, email: null }));
+                }}
+                className={`w-full h-10 px-3 bg-[var(--bg-secondary)] border ${
+                  validationErrors.email ? 'border-[var(--danger)]' : 'border-[var(--border)]'
+                } rounded-lg text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
               />
+              {validationErrors.email && (
+                <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.email}</span>
+              )}
             </div>
 
             <div>
-              <label className="text-xs font-medium text-[var(--text-secondary)] block mb-1">
+              <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
                 Password
               </label>
               <div className="relative flex items-center">
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  required
                   placeholder="••••••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-10 pl-3 pr-10 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-blue-500 transition-colors"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (validationErrors.password) setValidationErrors((p) => ({ ...p, password: null }));
+                  }}
+                  className={`w-full h-10 pl-3 pr-10 bg-[var(--bg-secondary)] border ${
+                    validationErrors.password ? 'border-[var(--danger)]' : 'border-[var(--border)]'
+                  } rounded-lg text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer border-none bg-transparent flex items-center justify-center p-1"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {validationErrors.password && (
+                <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.password}</span>
+              )}
             </div>
 
             {/* Primary Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-10 mt-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full h-10 mt-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-sm font-heading font-bold transition-colors cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
-                <Loader2 size={16} className="animate-spin" />
+                <Loader2 size={16} />
               ) : (
                 <>
                   <span>{isRegister ? 'Create Account' : 'Sign In'}</span>
@@ -290,28 +345,23 @@ export const AuthPage = () => {
             </button>
           </form>
 
-          {/* Quick Demo Credentials Helper */}
-          <div className="mt-5 p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
-            <div className="min-w-0 pr-2">
-              <div className="text-xs font-semibold text-[var(--text-primary)]">Demo Account</div>
-              <div className="text-[11px] text-[var(--text-muted)] font-mono truncate">soumya@zyntra.com / password123</div>
-            </div>
+          {/* Privacy & Legal Link on Mobile */}
+          <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] font-body text-[var(--text-muted)] text-center">
+            <Lock size={12} className="text-[var(--accent)] shrink-0" />
+            <span>Encrypted with JWT & bcrypt · </span>
             <button
               type="button"
-              onClick={handleFillDemo}
-              className="px-2.5 py-1 text-xs font-medium bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-blue-400 hover:text-blue-300 rounded-md border border-[var(--border)] cursor-pointer transition-colors shrink-0"
+              onClick={() => setLegalModalOpen(true)}
+              className="text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer text-[11px] font-heading font-semibold p-0"
             >
-              Auto-fill
+              Privacy & Terms
             </button>
-          </div>
-
-          {/* Security Reassurance */}
-          <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] text-[var(--text-muted)] text-center">
-            <Lock size={12} className="text-emerald-500 shrink-0" />
-            <span>Encrypted with JWT & bcrypt · Cloud data in MongoDB Atlas</span>
           </div>
         </div>
       </div>
+
+      {/* Legal & Consent Modal */}
+      <LegalModal isOpen={legalModalOpen} onClose={() => setLegalModalOpen(false)} />
     </div>
   );
 };

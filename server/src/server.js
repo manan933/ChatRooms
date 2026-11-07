@@ -16,10 +16,24 @@ import { setupChatSocket } from './sockets/chatSocket.js';
 
 const server = http.createServer(app);
 
-// Configure Socket.io with CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+// Configure Socket.io with locked down CORS (Item 12)
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Blocked by CORS policy: Origin not allowed'));
+      }
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
   },
@@ -42,7 +56,7 @@ const startServer = async () => {
 
   server.listen(PORT, () => {
     console.log(`=======================================================`);
-    console.log(`🚀 Zyntra Backend Server running on port ${PORT}`);
+    console.log(`🚀 ChatRooms Backend Server running on port ${PORT}`);
     console.log(`📡 Socket.io ready for realtime communication`);
     console.log(`🌐 Health check available at: http://localhost:${PORT}/api/health`);
     console.log(`=======================================================`);

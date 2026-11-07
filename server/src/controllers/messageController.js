@@ -2,7 +2,7 @@ import storageService from '../services/storageService.js';
 
 // @desc    Get all messages for a specific chat (channel, contact, or personal group)
 // @route   GET /api/messages/:chatId
-// @access  Public / Private
+// @access  Protected
 export const getMessagesByChat = async (req, res, next) => {
   try {
     const { chatId } = req.params;
@@ -24,7 +24,7 @@ export const getMessagesByChat = async (req, res, next) => {
 
 // @desc    Send a new message
 // @route   POST /api/messages/:chatId
-// @access  Public / Private
+// @access  Protected
 export const sendMessage = async (req, res, next) => {
   try {
     const { chatId } = req.params;
@@ -54,7 +54,7 @@ export const sendMessage = async (req, res, next) => {
       id: newId,
       chatId,
       chatType: chatType || 'direct',
-      senderId: req.user?._id || req.user?.id || senderId || 'user',
+      senderId: req.user?._id?.toString() || req.user?.id || senderId || 'user',
       senderName: req.user?.name || senderName || 'User',
       senderUsername: req.user?.primaryUsername || senderUsername || '',
       senderAvatar: req.user?.avatar || senderAvatar || null,
@@ -74,9 +74,9 @@ export const sendMessage = async (req, res, next) => {
   }
 };
 
-// @desc    Edit an existing message
+// @desc    Edit an existing message (Stops IDOR - Item 14)
 // @route   PUT /api/messages/:id
-// @access  Public / Private
+// @access  Protected
 export const editMessage = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -89,11 +89,25 @@ export const editMessage = async (req, res, next) => {
       });
     }
 
-    const updated = await storageService.editMessage(id, content);
-    if (!updated) {
+    const existingMsg = await storageService.findMessageById(id);
+    if (!existingMsg) {
       return res.status(404).json({ success: false, message: 'Message not found' });
     }
 
+    // Verify ownership to stop IDOR
+    const requesterId = req.user?._id?.toString() || req.user?.id?.toString();
+    const requesterUsername = req.user?.primaryUsername?.toLowerCase();
+    const senderId = existingMsg.senderId?.toString();
+    const senderUsername = existingMsg.senderUsername?.toLowerCase();
+
+    if (requesterId && senderId && senderId !== requesterId && senderUsername !== requesterUsername) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot edit another user\'s message',
+      });
+    }
+
+    const updated = await storageService.editMessage(id, content);
     return res.status(200).json({
       success: true,
       data: updated,
@@ -104,12 +118,30 @@ export const editMessage = async (req, res, next) => {
   }
 };
 
-// @desc    Delete a message
+// @desc    Delete a message (Stops IDOR - Item 14)
 // @route   DELETE /api/messages/:id
-// @access  Public / Private
+// @access  Protected
 export const deleteMessage = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    const existingMsg = await storageService.findMessageById(id);
+    if (!existingMsg) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+
+    // Verify ownership to stop IDOR
+    const requesterId = req.user?._id?.toString() || req.user?.id?.toString();
+    const requesterUsername = req.user?.primaryUsername?.toLowerCase();
+    const senderId = existingMsg.senderId?.toString();
+    const senderUsername = existingMsg.senderUsername?.toLowerCase();
+
+    if (requesterId && senderId && senderId !== requesterId && senderUsername !== requesterUsername) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You cannot delete another user\'s message',
+      });
+    }
 
     await storageService.deleteMessage(id);
     return res.status(200).json({
@@ -125,7 +157,7 @@ export const deleteMessage = async (req, res, next) => {
 
 // @desc    Add or increment reaction on a message
 // @route   POST /api/messages/:id/reactions
-// @access  Public / Private
+// @access  Protected
 export const addReaction = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -138,7 +170,7 @@ export const addReaction = async (req, res, next) => {
       });
     }
 
-    const uid = userId || req.user?._id || req.user?.id || 'user-1';
+    const uid = req.user?._id?.toString() || req.user?.id || userId || 'user-1';
     const updated = await storageService.addReaction(id, emoji, uid);
 
     return res.status(200).json({

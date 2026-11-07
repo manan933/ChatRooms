@@ -1,5 +1,5 @@
 // ========================================================
-// Zyntra Web Audio API Sound Synthesizer
+// ChatRooms Web Audio API Sound Synthesizer
 // Clean, low-latency synthesized UI sound effects
 // No external mp3 files required
 // ========================================================

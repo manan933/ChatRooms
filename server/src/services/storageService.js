@@ -248,6 +248,11 @@ class StorageService {
     };
   }
 
+  async findMessageById(messageId) {
+    if (!messageId) return null;
+    return await Message.findOne({ id: messageId }).lean();
+  }
+
   async editMessage(messageId, newContent) {
     const updated = await Message.findOneAndUpdate(
       { id: messageId },

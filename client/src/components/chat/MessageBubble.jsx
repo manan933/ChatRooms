@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { CheckCheck, Download, FileText, MoreVertical, SmilePlus, Pencil, Trash2, Copy, Check } from 'lucide-react';
+import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
 import { getFileUrl } from '../../api/api';
 
-const QUICK_EMOJIS = ['👍', '❤️', '🔥', '😂', '🎉', '🚀'];
+const QUICK_REACTIONS = ['+1', 'Heart', 'Flame', 'Agree', 'Star'];
 
 export const MessageBubble = ({
   message,
@@ -68,14 +68,14 @@ export const MessageBubble = ({
           isOwn ? 'items-end' : 'items-start'
         }`}
       >
-        {/* Sender Name and ID in group contexts */}
+        {/* Sender Name in group contexts */}
         {!isOwn && (senderName || message.senderUsername) && (
-          <div className="flex items-center gap-1.5 px-2 mb-0.5 select-none max-w-full">
+          <div className="flex items-center gap-1.5 px-2 mb-0.5 select-none max-w-full font-heading">
             <span className="text-[11px] font-bold text-[var(--accent)] truncate">
               {senderName}
             </span>
             {message.senderUsername && (
-              <span className="text-[9px] font-mono text-[var(--text-muted)] bg-[var(--bg-secondary)] px-1 py-0.5 rounded border border-[var(--border)] shrink-0" title="Sender Context ID">
+              <span className="text-[9px] text-[var(--text-muted)] truncate">
                 @{message.senderUsername}
               </span>
             )}
@@ -101,24 +101,24 @@ export const MessageBubble = ({
               <SmilePlus size={14} />
             </button>
 
-            {/* Quick Emoji Bar Popover */}
+            {/* Quick Reaction Popover */}
             {showEmojiPicker && (
               <div
                 className={`absolute bottom-full mb-1.5 ${
                   isOwn ? 'right-0' : 'left-0'
-                } flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full px-2 py-1 shadow-xl z-30`}
+                } flex items-center gap-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-full px-2 py-1 shadow-xl z-30 font-heading`}
               >
-                {QUICK_EMOJIS.map((emoji) => (
+                {QUICK_REACTIONS.map((tag) => (
                   <button
-                    key={emoji}
+                    key={tag}
                     type="button"
                     onClick={() => {
-                      onReaction?.(id, emoji);
+                      onReaction?.(id, tag);
                       setShowEmojiPicker(false);
                     }}
-                    className="w-7 h-7 flex items-center justify-center text-sm hover:scale-125 transition-transform cursor-pointer border-none bg-transparent"
+                    className="px-2 py-0.5 rounded-full text-[10px] font-bold text-[var(--text-primary)] hover:bg-[var(--accent)] transition-colors cursor-pointer border-none bg-transparent"
                   >
-                    {emoji}
+                    {tag}
                   </button>
                 ))}
               </div>
@@ -132,7 +132,7 @@ export const MessageBubble = ({
             className="p-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Copy Text"
           >
-            {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+            {copied ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} />}
           </button>
 
           {/* Own Message Actions: Edit & Delete */}
@@ -161,10 +161,9 @@ export const MessageBubble = ({
         {/* Message Bubble Body */}
         <div
           onClick={() => {
-            // Mobile tap anywhere on bubble to reveal action menu
             if (window.innerWidth < 768) setShowMenu((prev) => !prev);
           }}
-          className={`relative px-3.5 py-2 rounded-2xl text-[14px] leading-relaxed break-words shadow-xs transition-shadow ${
+          className={`relative px-3.5 py-2 rounded-2xl text-[14px] font-body leading-relaxed break-words shadow-xs transition-shadow ${
             isOwn
               ? 'bg-[var(--bubble-sent)] text-[var(--bubble-sent-text)] rounded-br-xs'
               : 'bg-[var(--bubble-received)] text-[var(--bubble-received-text)] border border-[var(--border)] rounded-bl-xs'
@@ -205,7 +204,7 @@ export const MessageBubble = ({
                   <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
                     <FileText size={16} />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 font-heading">
                     <div className="text-xs font-semibold truncate">{attachment.name}</div>
                     {attachment.size && (
                       <div className="text-[10px] opacity-75">{attachment.size}</div>
@@ -236,10 +235,10 @@ export const MessageBubble = ({
                   if (e.key === 'Enter') handleSaveEdit();
                   if (e.key === 'Escape') setIsEditing(false);
                 }}
-                className="w-full px-2.5 py-1 rounded-lg bg-white/20 text-white border border-white/30 outline-none text-xs"
+                className="w-full px-2.5 py-1 rounded-lg bg-white/20 text-white border border-white/30 outline-none text-xs font-body"
                 autoFocus
               />
-              <div className="flex items-center justify-end gap-1.5">
+              <div className="flex items-center justify-end gap-1.5 font-heading">
                 <button
                   type="button"
                   onClick={() => setIsEditing(false)}
@@ -262,8 +261,8 @@ export const MessageBubble = ({
 
           {/* Time & Read Status Indicator */}
           <div
-            className={`flex items-center justify-end gap-1 mt-1 text-[10px] select-none ${
-              isOwn ? 'text-white/75' : 'text-[var(--text-muted)]'
+            className={`flex items-center justify-end gap-1 mt-1 text-[10px] select-none font-body ${
+              isOwn ? 'text-white/80' : 'text-[var(--text-muted)]'
             }`}
           >
             {isEdited && <span className="italic">edited</span>}
@@ -274,7 +273,7 @@ export const MessageBubble = ({
 
         {/* Reaction Badges */}
         {reactions.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1 font-heading">
             {reactions.map((r, i) => {
               const hasReacted = r.users && r.users.includes(currentUserId);
               return (
@@ -282,7 +281,7 @@ export const MessageBubble = ({
                   key={i}
                   type="button"
                   onClick={() => onReaction?.(id, r.emoji)}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border transition-transform hover:scale-105 cursor-pointer ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-transform hover:scale-105 cursor-pointer ${
                     hasReacted
                       ? 'bg-[var(--accent-subtle)] border-[var(--accent)] text-[var(--accent)]'
                       : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-secondary)]'
