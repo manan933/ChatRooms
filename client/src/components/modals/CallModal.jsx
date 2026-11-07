@@ -40,7 +40,7 @@ export const CallModal = ({ isOpen, onClose, chat, isVideo = false }) => {
         {/* Top Header */}
         <div className="w-full flex items-center justify-between mb-8 z-10">
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-heading font-bold">
-            <BrandLogo variant="icon" size="sm" className="w-3.5 h-3.5" />
+            <BrandLogo variant="icon" size="sm" className="w-5 h-5" />
             <span>ChatRooms Encrypted Call</span>
           </div>
 
