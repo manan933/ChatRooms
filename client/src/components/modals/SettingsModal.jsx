@@ -11,6 +11,8 @@ import {
   Copy,
   Volume2,
   KeyRound,
+  Download,
+  Laptop,
 } from '../ui/Icons';
 import Modal from '../ui/Modal';
 import Avatar from '../ui/Avatar';
@@ -377,6 +379,46 @@ export const SettingsModal = ({
                     <div className="text-xs font-bold text-[var(--text-primary)]">Skyblue Vibrant</div>
                     <div className="text-[10px] font-body text-[var(--text-muted)]">Skyblue #0593C6 · White #FCFFFF · Hot Pink #D83995</div>
                   </button>
+                </div>
+              </div>
+
+              {/* Progressive Web App Status & Install Section */}
+              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
+                      <Laptop size={14} />
+                      <span>Progressive Web App (PWA)</span>
+                    </div>
+                    <div className="text-[11px] font-body text-[var(--text-muted)] mt-0.5">
+                      Install ChatRooms as a standalone app on desktop, iPhone, iPad, or Android phone.
+                    </div>
+                  </div>
+                  {window.matchMedia('(display-mode: standalone)').matches ? (
+                    <span className="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold flex items-center gap-1.5">
+                      <Check size={12} /> Installed
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.chatroomsInstallPrompt) {
+                          window.chatroomsInstallPrompt.prompt();
+                          await window.chatroomsInstallPrompt.userChoice;
+                        } else {
+                          alert('To install ChatRooms, tap your browser menu or share icon and select "Add to Home screen" or "Install App".');
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 border-none shadow-xs"
+                    >
+                      <Download size={13} />
+                      <span>Install App</span>
+                    </button>
+                  )}
+                </div>
+                <div className="text-[10px] font-body text-[var(--text-muted)] border-t border-[var(--border)] pt-2 flex items-center justify-between">
+                  <span>Offline Service Worker: Active (v1)</span>
+                  <span>Full screen · Hardware accelerated</span>
                 </div>
               </div>
             </div>

@@ -3,6 +3,7 @@ import useAuthStore from './store/authStore';
 import AuthPage from './pages/AuthPage';
 import ChatPage from './pages/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
+import InstallPwaPrompt from './components/ui/InstallPwaPrompt';
 
 // Permitted top-level application routes (Clean URLs, no hashes)
 const VALID_ROUTES = new Set(['', '/', '/chat', '/login', '/register', '/index.html']);
@@ -39,6 +40,7 @@ export function App() {
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <InstallPwaPrompt />
       {!isKnownRoute ? (
         <NotFoundPage onReturnHome={handleReturnHome} />
       ) : isAuthenticated ? (
