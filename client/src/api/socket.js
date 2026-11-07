@@ -6,6 +6,17 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.joinedRooms = new Set();
+    this.currentUser = null;
+  }
+
+  registerUser(user) {
+    if (!user) return;
+    this.currentUser = user;
+    const uid = user.id || user._id;
+    const uname = (user.primaryUsername || user.username || '').toLowerCase().replace(/^@/, '');
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('register_user', { userId: uid, username: uname });
+    }
   }
 
   connect() {
@@ -36,6 +47,9 @@ class SocketService {
       this.joinedRooms.forEach((roomId) => {
         this.socket.emit('join_room', roomId);
       });
+      if (this.currentUser) {
+        this.registerUser(this.currentUser);
+      }
     });
 
     this.socket.on('disconnect', (reason) => {

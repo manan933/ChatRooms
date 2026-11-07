@@ -6,6 +6,51 @@ import { Contact, PersonalGroup } from '../models/Contact.js';
 import Workspace from '../models/Workspace.js';
 import WorkspaceNode from '../models/WorkspaceNode.js';
 
+const SERVER_EMOJI_MAP = {
+  '[fire]': '🔥',
+  fire: '🔥',
+  flame: '🔥',
+  Flame: '🔥',
+  '[heart]': '❤️',
+  heart: '❤️',
+  Heart: '❤️',
+  love: '❤️',
+  '+1': '👍',
+  '[like]': '👍',
+  like: '👍',
+  Like: '👍',
+  '[star]': '⭐',
+  star: '⭐',
+  Star: '⭐',
+  '[agree]': '🤝',
+  agree: '🤝',
+  Agree: '🤝',
+  '[celebrate]': '🎉',
+  celebrate: '🎉',
+  Celebrate: '🎉',
+  '[laugh]': '😂',
+  laugh: '😂',
+  Laugh: '😂',
+  '[rocket]': '🚀',
+  rocket: '🚀',
+  Launch: '🚀',
+  launch: '🚀',
+  '[check]': '✅',
+  check: '✅',
+  Check: '✅',
+};
+
+const normalizeEmoji = (emoji) => {
+  if (!emoji) return '👍';
+  const clean = String(emoji).trim();
+  if (SERVER_EMOJI_MAP[clean]) return SERVER_EMOJI_MAP[clean];
+  const lower = clean.toLowerCase();
+  if (SERVER_EMOJI_MAP[lower]) return SERVER_EMOJI_MAP[lower];
+  const unbracketed = lower.replace(/^\[|\]$/g, '');
+  if (SERVER_EMOJI_MAP[unbracketed]) return SERVER_EMOJI_MAP[unbracketed];
+  return clean;
+};
+
 class StorageService {
   mapUser(userDoc) {
     if (!userDoc) return null;
@@ -160,7 +205,10 @@ class StorageService {
       ...m,
       id: m.id || m._id.toString(),
       attachment: m.attachment || null,
-      reactions: m.reactions || [],
+      reactions: (m.reactions || []).map((r) => ({
+        ...r,
+        emoji: normalizeEmoji(r.emoji),
+      })),
       isEdited: Boolean(m.isEdited),
       timestamp: m.timestamp ? new Date(m.timestamp).toISOString() : new Date().toISOString(),
     }));
@@ -278,8 +326,9 @@ class StorageService {
     if (!msg) return null;
 
     const uid = userId || 'user-1';
+    const cleanEmoji = normalizeEmoji(emoji);
     let reactions = msg.reactions || [];
-    let existing = reactions.find((r) => r.emoji === emoji);
+    let existing = reactions.find((r) => normalizeEmoji(r.emoji) === cleanEmoji);
 
     if (existing) {
       if (!existing.users.includes(uid)) {
@@ -288,16 +337,21 @@ class StorageService {
         existing.users = existing.users.filter((u) => u !== uid);
       }
       existing.count = existing.users.length;
+      existing.emoji = cleanEmoji;
     } else {
-      reactions.push({ emoji, count: 1, users: [uid] });
+      reactions.push({ emoji: cleanEmoji, count: 1, users: [uid] });
     }
 
-    msg.reactions = reactions.filter((r) => r.count > 0);
+    msg.reactions = reactions
+      .map((r) => ({ ...r, emoji: normalizeEmoji(r.emoji) }))
+      .filter((r) => r.count > 0);
+
     await msg.save();
 
     return {
       ...msg.toObject(),
       id: msg.id,
+      reactions: msg.reactions,
       timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
     };
   }

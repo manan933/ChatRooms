@@ -23,6 +23,7 @@ export const ChatPage = () => {
     isLoadingChats,
     isLoadingMessages,
     loadChats,
+    loadMessages,
     selectChat,
     closeChat,
     sendMessage,
@@ -56,6 +57,12 @@ export const ChatPage = () => {
   }, [promptWorkspaceOnLogin]);
 
   useEffect(() => {
+    if (user) {
+      socketService.registerUser(user);
+    }
+  }, [user]);
+
+  useEffect(() => {
     loadChats();
 
     const handleReceive = (msg) => {
@@ -66,6 +73,10 @@ export const ChatPage = () => {
     };
     const handleReaction = (msg) => updateReaction(msg);
     const handleTyping = ({ roomId, userName, isTyping }) => setTyping(roomId, userName, isTyping);
+
+    const handleConversationUpdate = () => {
+      loadChats();
+    };
 
     const handleIncomingCall = (callData) => {
       const myUsername = (user?.primaryUsername || '').toLowerCase().replace(/^@/, '');
@@ -81,19 +92,47 @@ export const ChatPage = () => {
     socketService.on('receive_message', handleReceive);
     socketService.on('update_reaction', handleReaction);
     socketService.on('user_typing', handleTyping);
+    socketService.on('contact_added', handleConversationUpdate);
+    socketService.on('new_conversation', handleConversationUpdate);
     socketService.on('call_incoming', handleIncomingCall);
     socketService.on('call_ended', handleCallEndedGlobal);
     socketService.on('call_rejected', handleCallEndedGlobal);
+
+    // Auto-sync on window focus & tab visibility
+    const handleFocusSync = () => {
+      loadChats();
+      if (activeChat?.id) {
+        loadMessages(activeChat.id);
+      }
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        handleFocusSync();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Background sync timer every 15s to guarantee 100% accuracy without manual refresh
+    const syncInterval = setInterval(() => {
+      loadChats();
+    }, 15000);
 
     return () => {
       socketService.off('receive_message', handleReceive);
       socketService.off('update_reaction', handleReaction);
       socketService.off('user_typing', handleTyping);
+      socketService.off('contact_added', handleConversationUpdate);
+      socketService.off('new_conversation', handleConversationUpdate);
       socketService.off('call_incoming', handleIncomingCall);
       socketService.off('call_ended', handleCallEndedGlobal);
       socketService.off('call_rejected', handleCallEndedGlobal);
+      window.removeEventListener('focus', handleFocusSync);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(syncInterval);
     };
-  }, [loadChats, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername]);
+  }, [loadChats, loadMessages, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername, activeChat?.id]);
 
   const handleAcceptIncomingCall = () => {
     if (!incomingCall) return;

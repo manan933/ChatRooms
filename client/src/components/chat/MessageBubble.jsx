@@ -3,8 +3,9 @@ import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check 
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
 import { getFileUrl } from '../../api/api';
+import { normalizeEmoji, renderContentWithEmojis } from '../../utils/emojiMap';
 
-const QUICK_REACTIONS = ['+1', 'Heart', 'Flame', 'Agree', 'Star'];
+const QUICK_REACTIONS = ['👍', '❤️', '🔥', '😂', '⭐', '🤝', '🎉'];
 
 export const MessageBubble = ({
   message,
@@ -106,19 +107,20 @@ export const MessageBubble = ({
               <div
                 className={`absolute bottom-full mb-1.5 ${
                   isOwn ? 'right-0' : 'left-0'
-                } flex items-center gap-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-full px-2 py-1 shadow-xl z-30 font-heading`}
+                } flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-full px-2.5 py-1 shadow-xl z-30 font-heading backdrop-blur-md animate-in fade-in zoom-in-95 duration-100`}
               >
-                {QUICK_REACTIONS.map((tag) => (
+                {QUICK_REACTIONS.map((emoji) => (
                   <button
-                    key={tag}
+                    key={emoji}
                     type="button"
                     onClick={() => {
-                      onReaction?.(id, tag);
+                      onReaction?.(id, normalizeEmoji(emoji));
                       setShowEmojiPicker(false);
                     }}
-                    className="px-2 py-0.5 rounded-full text-[10px] font-bold text-[var(--text-primary)] hover:bg-[var(--accent)] transition-colors cursor-pointer border-none bg-transparent"
+                    title={emoji}
+                    className="p-1 rounded-full text-sm leading-none hover:bg-[var(--bg-hover)] hover:scale-125 transition-transform cursor-pointer border-none bg-transparent flex items-center justify-center"
                   >
-                    {tag}
+                    {emoji}
                   </button>
                 ))}
               </div>
@@ -256,7 +258,7 @@ export const MessageBubble = ({
               </div>
             </div>
           ) : (
-            content && <div className="whitespace-pre-wrap">{content}</div>
+            content && <div className="whitespace-pre-wrap">{renderContentWithEmojis(content)}</div>
           )}
 
           {/* Time & Read Status Indicator */}
@@ -275,19 +277,21 @@ export const MessageBubble = ({
         {reactions.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1 font-heading">
             {reactions.map((r, i) => {
+              const displayEmoji = normalizeEmoji(r.emoji);
               const hasReacted = r.users && r.users.includes(currentUserId);
               return (
                 <button
                   key={i}
                   type="button"
-                  onClick={() => onReaction?.(id, r.emoji)}
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-transform hover:scale-105 cursor-pointer ${
+                  onClick={() => onReaction?.(id, displayEmoji)}
+                  title={`${displayEmoji} (${r.count})`}
+                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border transition-all hover:scale-105 active:scale-95 cursor-pointer ${
                     hasReacted
-                      ? 'bg-[var(--accent-highlight)]/15 border-[var(--accent-highlight)]/50 text-[var(--accent-highlight)] font-bold'
-                      : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-secondary)]'
+                      ? 'bg-[var(--accent-highlight)]/20 border-[var(--accent-highlight)] text-[var(--accent-highlight)] font-bold shadow-sm'
+                      : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--border-focus)]'
                   }`}
                 >
-                  <span>{r.emoji}</span>
+                  <span className="text-sm leading-none">{displayEmoji}</span>
                   <span className="text-[10px] font-bold">{r.count}</span>
                 </button>
               );

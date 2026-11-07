@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import api from '../api/api';
 import socketService from '../api/socket';
+import { normalizeEmoji } from '../utils/emojiMap';
 
 export const useChatStore = create((set, get) => ({
   activeChat: null,
@@ -190,6 +191,9 @@ export const useChatStore = create((set, get) => ({
     if (!message || !message.chatId) return;
     const chatId = message.chatId;
 
+    // Immediately join the room so subsequent updates flow seamlessly
+    socketService.joinRoom(chatId);
+
     set((state) => {
       const existing = state.messages[chatId] || [];
       if (existing.some((m) => m.id === message.id)) {
@@ -204,18 +208,27 @@ export const useChatStore = create((set, get) => ({
     });
 
     const preview = message.content || (message.attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment');
-    const hasChat = get().contacts.some(c => c.id === chatId) || get().groups.some(g => g.id === chatId);
+    const hasChat = get().contacts.some((c) => c.id === chatId) || get().groups.some((g) => g.id === chatId);
 
     if (!hasChat) {
+      // New conversation initiated by another user: immediately load chats into sidebar!
       get().loadChats();
     } else {
       set((state) => ({
-        contacts: state.contacts.map((c) =>
-          c.id === chatId ? { ...c, lastMessage: preview, lastMessageTime: message.timestamp || new Date().toISOString() } : c
-        ),
-        groups: state.groups.map((g) =>
-          g.id === chatId ? { ...g, lastMessage: preview, lastMessageTime: message.timestamp || new Date().toISOString() } : g
-        ),
+        contacts: state.contacts
+          .map((c) =>
+            c.id === chatId
+              ? { ...c, lastMessage: preview, lastMessageTime: message.timestamp || new Date().toISOString() }
+              : c
+          )
+          .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)),
+        groups: state.groups
+          .map((g) =>
+            g.id === chatId
+              ? { ...g, lastMessage: preview, lastMessageTime: message.timestamp || new Date().toISOString() }
+              : g
+          )
+          .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)),
       }));
     }
   },
@@ -223,6 +236,7 @@ export const useChatStore = create((set, get) => ({
   // Add / toggle reaction on message
   addReaction: async (chatId, messageId, emoji, userId) => {
     const uid = userId || 'user-1';
+    const cleanEmoji = normalizeEmoji(emoji);
 
     set((state) => {
       const list = state.messages[chatId] || [];
@@ -230,7 +244,7 @@ export const useChatStore = create((set, get) => ({
         if (msg.id !== messageId) return msg;
 
         const reactions = [...(msg.reactions || [])];
-        const existing = reactions.find((r) => r.emoji === emoji);
+        const existing = reactions.find((r) => normalizeEmoji(r.emoji) === cleanEmoji);
 
         if (existing) {
           const userHasReacted = existing.users && existing.users.includes(uid);
@@ -241,9 +255,10 @@ export const useChatStore = create((set, get) => ({
             existing.users = [...(existing.users || []), uid];
             existing.count = existing.users.length;
           }
+          existing.emoji = cleanEmoji;
         } else {
           reactions.push({
-            emoji,
+            emoji: cleanEmoji,
             count: 1,
             users: [uid],
           });
@@ -263,24 +278,42 @@ export const useChatStore = create((set, get) => ({
       };
     });
 
-    socketService.sendReaction({ messageId, emoji, userId: uid, chatId });
-    api.messages.reaction(messageId, emoji, uid).catch((e) => { console.error('ignored', e); });
+    socketService.sendReaction({ messageId, emoji: cleanEmoji, userId: uid, chatId });
+    api.messages.reaction(messageId, cleanEmoji, uid).catch((e) => { console.error('ignored', e); });
   },
 
-  updateReaction: (updatedMessage) => {
-    if (!updatedMessage || !updatedMessage.id) return;
-    const chatId = updatedMessage.chatId;
-    if (!chatId) return;
+  updateReaction: (payload) => {
+    if (!payload) return;
+    const msgId = payload.id || payload.messageId;
+    if (!msgId) return;
 
     set((state) => {
-      const list = state.messages[chatId] || [];
-      const updated = list.map((m) => (m.id === updatedMessage.id ? { ...m, reactions: updatedMessage.reactions } : m));
-      return {
-        messages: {
-          ...state.messages,
-          [chatId]: updated,
-        },
-      };
+      const updatedMessages = { ...state.messages };
+      let changed = false;
+
+      const targetChats = payload.chatId ? [payload.chatId] : Object.keys(updatedMessages);
+
+      targetChats.forEach((cId) => {
+        const list = updatedMessages[cId];
+        if (Array.isArray(list)) {
+          const index = list.findIndex((m) => m.id === msgId);
+          if (index !== -1) {
+            const oldMsg = list[index];
+            const newReactions = (payload.reactions || []).map((r) => ({
+              ...r,
+              emoji: normalizeEmoji(r.emoji),
+            }));
+            const updatedMsg = { ...oldMsg, reactions: newReactions };
+            const newList = [...list];
+            newList[index] = updatedMsg;
+            updatedMessages[cId] = newList;
+            changed = true;
+          }
+        }
+      });
+
+      if (!changed) return state;
+      return { messages: updatedMessages };
     });
   },
 

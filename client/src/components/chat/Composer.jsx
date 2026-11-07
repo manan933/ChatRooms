@@ -170,9 +170,8 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
     }
   };
 
-  const handleInsertReaction = (tag) => {
-    const formatted = `[${tag}] `;
-    const updated = text + formatted;
+  const handleInsertEmoji = (emoji) => {
+    const updated = (text ? text + ' ' : '') + emoji + ' ';
     setText(updated);
     saveDraft(updated);
     setShowEmoji(false);
@@ -207,7 +206,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
       {/* Reaction Popover */}
       {showEmoji && (
         <div ref={emojiRef} className="absolute bottom-full left-2 sm:left-4 mb-2 z-50 max-w-[calc(100vw-24px)]">
-          <EmojiPicker onSelect={handleInsertReaction} onClose={() => setShowEmoji(false)} />
+          <EmojiPicker onSelect={handleInsertEmoji} onClose={() => setShowEmoji(false)} />
         </div>
       )}
 

@@ -66,6 +66,30 @@ export const createContact = async (req, res, next) => {
       });
     }
 
+    // Real-time broadcast to both initiator and target users
+    const io = req.app.get('io');
+    if (io) {
+      const cleanTarget = targetUsername.toLowerCase().trim().replace(/^@/, '');
+      const cleanCurrent = currentUsername.toLowerCase().trim().replace(/^@/, '');
+      const dmId = storageService.getCanonicalDmId(cleanCurrent, cleanTarget);
+
+      const targetPayload = {
+        id: dmId,
+        username: cleanCurrent,
+        name: req.user?.name || cleanCurrent,
+        avatar: req.user?.avatar || null,
+        status: req.user?.status || 'online',
+        bio: req.user?.bio || '',
+        lastMessage: 'Connected on ChatRooms',
+        lastMessageTime: new Date().toISOString(),
+        type: 'contact',
+      };
+
+      io.to(`user_${cleanTarget}`).emit('contact_added', targetPayload);
+      io.to(`user_${cleanTarget}`).emit('new_conversation', targetPayload);
+      io.to(`user_${cleanCurrent}`).emit('contact_added', contact);
+    }
+
     return res.status(201).json({
       success: true,
       data: contact,

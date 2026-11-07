@@ -2,10 +2,14 @@ import jwt from 'jsonwebtoken';
 import storageService from '../services/storageService.js';
 import User from '../models/User.js';
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026', {
-    expiresIn: process.env.JWT_EXPIRE || '30d',
-  });
+const generateToken = (userOrId) => {
+  const id = (userOrId && typeof userOrId === 'object') ? (userOrId._id || userOrId.id) : userOrId;
+  const primaryUsername = (userOrId && typeof userOrId === 'object') ? (userOrId.primaryUsername || userOrId.username || '') : '';
+  return jwt.sign(
+    { id: id ? id.toString() : '', primaryUsername },
+    process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026',
+    { expiresIn: process.env.JWT_EXPIRE || '30d' }
+  );
 };
 
 const formatUserResponse = (user) => ({
@@ -58,7 +62,7 @@ export const register = async (req, res, next) => {
       });
 
       console.log('[Auth] Registration successful for:', cleanEmail);
-      const token = generateToken(user._id);
+      const token = generateToken(user);
       
       return res.status(201).json({
         success: true,
@@ -126,7 +130,7 @@ export const login = async (req, res, next) => {
     }
 
     console.log('[Auth] Login successful for:', cleanIdentifier);
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     
     return res.status(200).json({
       success: true,

@@ -2,14 +2,27 @@ import jwt from 'jsonwebtoken';
 import storageService from '../services/storageService.js';
 
 export const setupChatSocket = (io) => {
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) {
       return next(new Error('Authentication error: No token provided'));
     }
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026');
-      socket.user = decoded;
+      let user = null;
+      if (decoded.id) {
+        try {
+          user = await storageService.findUserById(decoded.id);
+        } catch {}
+      }
+      socket.user = {
+        id: user?._id?.toString() || user?.id || decoded.id,
+        _id: user?._id?.toString() || user?.id || decoded.id,
+        primaryUsername: user?.primaryUsername || decoded.primaryUsername || '',
+        username: user?.primaryUsername || decoded.primaryUsername || '',
+        name: user?.name || decoded.name || 'User',
+        avatar: user?.avatar || decoded.avatar || null,
+      };
       next();
     } catch {
       return next(new Error('Authentication error: Invalid token'));
@@ -17,7 +30,7 @@ export const setupChatSocket = (io) => {
   });
 
   io.on('connection', (socket) => {
-    const userId = socket.user?.id || socket.user?._id;
+    const userId = (socket.user?.id || socket.user?._id || '').toString();
     const username = (socket.user?.primaryUsername || socket.user?.username || '').toLowerCase().replace(/^@/, '');
 
     // Automatically join user's private inbox rooms for instant DM & alert delivery
@@ -29,6 +42,15 @@ export const setupChatSocket = (io) => {
     }
 
     console.log(`[Socket.io] Connected: ${socket.id} (user_${username || userId})`);
+
+    // Dynamic registration handler
+    socket.on('register_user', ({ userId: uId, username: uName }) => {
+      if (uId) socket.join(`user_${uId}`);
+      if (uName) {
+        const clean = uName.toLowerCase().replace(/^@/, '');
+        socket.join(`user_${clean}`);
+      }
+    });
 
     // Join a specific chat room (channel, DM, or personal group)
     socket.on('join_room', (roomId) => {
@@ -82,13 +104,15 @@ export const setupChatSocket = (io) => {
         // 1. INSTANT BROADCAST (sub-10ms): Deliver immediately to all room peers
         socket.to(chatId).emit('receive_message', messagePayload);
 
-        // 2. If Direct Message (DM), also deliver directly to recipient's personal user room
-        // so it arrives instantly even if they haven't selected this chat yet
+        // 2. If Direct Message (DM), deliver directly to BOTH participants' inbox rooms
+        // so it arrives instantly in the recipient's UI and sidebar without page refresh
         if (chatId.startsWith('dm_')) {
           const parts = chatId.replace('dm_', '').split('_');
           if (parts.length === 2) {
-            const recipientUname = parts[0].toLowerCase() === username ? parts[1].toLowerCase() : parts[0].toLowerCase();
-            io.to(`user_${recipientUname}`).emit('receive_message', messagePayload);
+            const u1 = parts[0].toLowerCase();
+            const u2 = parts[1].toLowerCase();
+            io.to(`user_${u1}`).emit('receive_message', messagePayload);
+            io.to(`user_${u2}`).emit('receive_message', messagePayload);
           }
         }
 
@@ -113,17 +137,29 @@ export const setupChatSocket = (io) => {
     });
 
     // Handle real-time reactions with instant broadcast
-    socket.on('send_reaction', ({ messageId, emoji, userId: uId, chatId }) => {
+    socket.on('send_reaction', async ({ messageId, emoji, userId: uId, chatId }) => {
       try {
         const uid = uId || userId || 'user-1';
-        if (chatId) {
-          // Immediately broadcast reaction to peers
-          socket.to(chatId).emit('update_reaction', { messageId, emoji, userId: uid });
+        const cleanEmoji = emoji ? String(emoji).trim() : '👍';
+
+        const updatedMsg = await storageService.addReaction(messageId, cleanEmoji, uid);
+        const reactionPayload = {
+          id: messageId,
+          messageId,
+          chatId: updatedMsg?.chatId || chatId,
+          reactions: updatedMsg?.reactions || [],
+        };
+
+        if (reactionPayload.chatId) {
+          io.to(reactionPayload.chatId).emit('update_reaction', reactionPayload);
+          if (reactionPayload.chatId.startsWith('dm_')) {
+            const parts = reactionPayload.chatId.replace('dm_', '').split('_');
+            if (parts.length === 2) {
+              io.to(`user_${parts[0].toLowerCase()}`).emit('update_reaction', reactionPayload);
+              io.to(`user_${parts[1].toLowerCase()}`).emit('update_reaction', reactionPayload);
+            }
+          }
         }
-        // Persist in background
-        storageService.addReaction(messageId, emoji, uid).catch((err) => {
-          console.error('[DB] Background addReaction error:', err.message);
-        });
       } catch (err) {
         console.error('[Socket.io] Error in send_reaction handler:', err.message);
       }
