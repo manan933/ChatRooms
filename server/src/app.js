@@ -44,8 +44,12 @@ app.use('/api', apiLimiter);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
+  'http://localhost:3000',
+  'http://localhost:4173',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:5174',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:4173',
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -53,10 +57,15 @@ app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (curl, test harnesses, native apps) or matching allowed list
-      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
+      if (
+        !origin ||
+        allowedOrigins.includes(origin) ||
+        origin.startsWith('http://localhost:') ||
+        origin.startsWith('http://127.0.0.1:')
+      ) {
         callback(null, true);
       } else {
-        callback(new Error('Blocked by CORS policy: Origin not allowed'));
+        callback(null, false);
       }
     },
     credentials: true,

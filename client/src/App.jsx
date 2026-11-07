@@ -5,7 +5,7 @@ import ChatPage from './pages/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Permitted top-level application routes (Clean URLs, no hashes)
-const VALID_ROUTES = new Set(['', '/', '/chat', '/login', '/register']);
+const VALID_ROUTES = new Set(['', '/', '/chat', '/login', '/register', '/index.html']);
 
 export function App() {
   const { isAuthenticated, initAuth } = useAuthStore();
