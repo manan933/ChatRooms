@@ -129,6 +129,75 @@ export const setupChatSocket = (io) => {
       }
     });
 
+    // ── WebRTC Voice & Video Call Signaling ──────────────────────────
+    socket.on('call_user', (data) => {
+      const { userToCall, signalData, isVideo, chatId } = data || {};
+      if (!userToCall) return;
+      const cleanTarget = String(userToCall).toLowerCase().replace(/^@/, '');
+      const callerInfo = {
+        from: username || userId,
+        callerId: userId,
+        callerUsername: username,
+        callerName: socket.user?.name || username || 'User',
+        callerAvatar: socket.user?.avatar || null,
+        signalData,
+        isVideo: Boolean(isVideo),
+        chatId,
+      };
+
+      io.to(`user_${cleanTarget}`).emit('call_incoming', callerInfo);
+      io.to(`user_${userToCall}`).emit('call_incoming', callerInfo);
+      if (chatId) {
+        socket.to(chatId).emit('call_incoming', callerInfo);
+      }
+    });
+
+    socket.on('answer_call', (data) => {
+      const { to, signalData } = data || {};
+      if (!to) return;
+      const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+      io.to(`user_${cleanTarget}`).emit('call_answered', {
+        from: username || userId,
+        signalData,
+      });
+      io.to(`user_${to}`).emit('call_answered', {
+        from: username || userId,
+        signalData,
+      });
+    });
+
+    socket.on('ice_candidate', (data) => {
+      const { to, candidate, chatId } = data || {};
+      if (to) {
+        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+        io.to(`user_${cleanTarget}`).emit('ice_candidate', { from: username || userId, candidate });
+        io.to(`user_${to}`).emit('ice_candidate', { from: username || userId, candidate });
+      }
+      if (chatId) {
+        socket.to(chatId).emit('ice_candidate', { from: username || userId, candidate });
+      }
+    });
+
+    socket.on('end_call', (data) => {
+      const { to, chatId } = data || {};
+      if (to) {
+        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+        io.to(`user_${cleanTarget}`).emit('call_ended', { from: username || userId });
+        io.to(`user_${to}`).emit('call_ended', { from: username || userId });
+      }
+      if (chatId) {
+        socket.to(chatId).emit('call_ended', { from: username || userId });
+      }
+    });
+
+    socket.on('reject_call', (data) => {
+      const { to } = data || {};
+      if (!to) return;
+      const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+      io.to(`user_${cleanTarget}`).emit('call_rejected', { from: username || userId });
+      io.to(`user_${to}`).emit('call_rejected', { from: username || userId });
+    });
+
     socket.on('disconnect', () => {
       // Disconnection handled cleanly
     });

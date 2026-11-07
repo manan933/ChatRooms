@@ -106,6 +106,40 @@ class SocketService {
     }
   }
 
+  // WebRTC Calling Signaling Helpers
+  callUser(data) {
+    if (!this.socket || !this.socket.connected) this.connect();
+    if (this.socket) {
+      this.socket.emit('call_user', data);
+    }
+  }
+
+  answerCall(data) {
+    if (!this.socket || !this.socket.connected) this.connect();
+    if (this.socket) {
+      this.socket.emit('answer_call', data);
+    }
+  }
+
+  sendIceCandidate(data) {
+    if (!this.socket || !this.socket.connected) this.connect();
+    if (this.socket) {
+      this.socket.emit('ice_candidate', data);
+    }
+  }
+
+  endCall(data) {
+    if (this.socket) {
+      this.socket.emit('end_call', data);
+    }
+  }
+
+  rejectCall(data) {
+    if (this.socket) {
+      this.socket.emit('reject_call', data);
+    }
+  }
+
   on(event, handler) {
     if (!this.socket) this.connect();
     this.socket.on(event, handler);

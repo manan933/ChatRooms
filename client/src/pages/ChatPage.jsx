@@ -4,6 +4,8 @@ import ChatArea from '../components/chat/ChatArea';
 import NewChatModal from '../components/modals/NewChatModal';
 import WorkspaceModal from '../components/modals/WorkspaceModal';
 import SettingsModal from '../components/modals/SettingsModal';
+import CallModal from '../components/modals/CallModal';
+import IncomingCallModal from '../components/modals/IncomingCallModal';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
@@ -42,6 +44,8 @@ export const ChatPage = () => {
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
+  const [incomingCall, setIncomingCall] = useState(null);
+  const [activeCallSession, setActiveCallSession] = useState(null);
 
   // Automatically show workspace selection popup on login
   useEffect(() => {
@@ -63,16 +67,57 @@ export const ChatPage = () => {
     const handleReaction = (msg) => updateReaction(msg);
     const handleTyping = ({ roomId, userName, isTyping }) => setTyping(roomId, userName, isTyping);
 
+    const handleIncomingCall = (callData) => {
+      const myUsername = (user?.primaryUsername || '').toLowerCase().replace(/^@/, '');
+      if (callData.from && (callData.from === myUsername || callData.from === user?.id)) return;
+      setIncomingCall(callData);
+    };
+
+    const handleCallEndedGlobal = () => {
+      setIncomingCall(null);
+      setActiveCallSession(null);
+    };
+
     socketService.on('receive_message', handleReceive);
     socketService.on('update_reaction', handleReaction);
     socketService.on('user_typing', handleTyping);
+    socketService.on('call_incoming', handleIncomingCall);
+    socketService.on('call_ended', handleCallEndedGlobal);
+    socketService.on('call_rejected', handleCallEndedGlobal);
 
     return () => {
       socketService.off('receive_message', handleReceive);
       socketService.off('update_reaction', handleReaction);
       socketService.off('user_typing', handleTyping);
+      socketService.off('call_incoming', handleIncomingCall);
+      socketService.off('call_ended', handleCallEndedGlobal);
+      socketService.off('call_rejected', handleCallEndedGlobal);
     };
-  }, [loadChats, receiveMessage, updateReaction, setTyping]);
+  }, [loadChats, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername]);
+
+  const handleAcceptIncomingCall = () => {
+    if (!incomingCall) return;
+    setActiveCallSession({
+      chat: {
+        name: incomingCall.callerName || 'Participant',
+        avatar: incomingCall.callerAvatar,
+        id: incomingCall.chatId || incomingCall.from,
+        username: incomingCall.callerUsername || incomingCall.from,
+      },
+      isVideo: incomingCall.isVideo,
+      isInitiator: false,
+      incomingSignal: incomingCall.signalData,
+      callerInfo: incomingCall,
+    });
+    setIncomingCall(null);
+  };
+
+  const handleDeclineIncomingCall = () => {
+    if (incomingCall) {
+      socketService.rejectCall({ to: incomingCall.from });
+      setIncomingCall(null);
+    }
+  };
 
   const handleSelectWorkspace = (workspace) => {
     if (!workspace) return;
@@ -212,6 +257,27 @@ export const ChatPage = () => {
         onUpdateProfile={updateProfile}
         onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
       />
+
+      {/* ── Incoming Call Prompt Modal ─────────────────────────────── */}
+      <IncomingCallModal
+        incomingCall={incomingCall}
+        onAccept={handleAcceptIncomingCall}
+        onDecline={handleDeclineIncomingCall}
+      />
+
+      {/* ── Active Callee WebRTC Session Modal ───────────────────────── */}
+      {activeCallSession && (
+        <CallModal
+          isOpen={Boolean(activeCallSession)}
+          onClose={() => setActiveCallSession(null)}
+          chat={activeCallSession.chat}
+          isVideo={activeCallSession.isVideo}
+          isInitiator={false}
+          incomingSignal={activeCallSession.incomingSignal}
+          callerInfo={activeCallSession.callerInfo}
+          currentUser={user}
+        />
+      )}
     </>
   );
 };

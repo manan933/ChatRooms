@@ -426,6 +426,8 @@ export const ChatArea = ({
         onClose={() => setCallModalOpen(false)}
         chat={chat}
         isVideo={isVideoCall}
+        isInitiator={true}
+        currentUser={currentUser}
       />
     </div>
   );
