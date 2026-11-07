@@ -51,6 +51,7 @@
 | 33 | **No Badges or Subtitles** | Eliminated redundant badges and subtitle clutter | ✅ Completed |
 | 34 | **No Lucide Icons** | `lucide-react` uninstalled; replaced with `Icons.jsx` bespoke inline SVG icon system | ✅ Completed |
 | 35 | **Consistent Spacing** | Enforced 4px/8px modular rhythm throughout CSS variables and Tailwind utility classes | ✅ Completed |
+| 36 | **Progressive Web App (PWA)** | Full PWA support: `site.webmanifest`, `manifest.json`, `sw.js` (offline shell, stale-while-revalidate), `InstallPwaPrompt.jsx` (native install prompt & offline status banner), and PWA controls in `SettingsModal.jsx` | ✅ Completed |
 
 ---
 
