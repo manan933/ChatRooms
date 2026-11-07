@@ -2,14 +2,14 @@ import React from 'react';
 import { getFileUrl } from '../../api/api';
 
 const gradients = [
-  'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-  'linear-gradient(135deg, #10b981 0%, #047857 100%)',
-  'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-  'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-  'linear-gradient(135deg, #06b6d4 0%, #0e7490 100%)',
-  'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
-  'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)',
+  'linear-gradient(135deg, #0297DE 0%, #FC734D 100%)', // Electric Blue to Cantaloupe Orange
+  'linear-gradient(135deg, #0593C6 0%, #D83995 100%)', // Sky Blue to Hot Pink
+  'linear-gradient(135deg, #FC734D 0%, #FF8A65 100%)', // Cantaloupe Orange Radiant
+  'linear-gradient(135deg, #D83995 0%, #F06292 100%)', // Hot Pink Luminous
+  'linear-gradient(135deg, #0297DE 0%, #00B4D8 100%)', // Electric Blue Deep
+  'linear-gradient(135deg, #0593C6 0%, #38BDF8 100%)', // Sky Blue Vivid
+  'linear-gradient(135deg, #D83995 0%, #8B5CF6 100%)', // Hot Pink to Violet
+  'linear-gradient(135deg, #FC734D 0%, #F59E0B 100%)', // Cantaloupe to Amber
 ];
 
 const getGradient = (name = '') => {

@@ -165,10 +165,10 @@ export const MessageBubble = ({
           onClick={() => {
             if (window.innerWidth < 768) setShowMenu((prev) => !prev);
           }}
-          className={`relative px-3.5 py-2 rounded-2xl text-[14px] font-body leading-relaxed break-words shadow-xs transition-shadow ${
+          className={`relative px-3.5 py-2 rounded-2xl text-[14px] font-body leading-relaxed break-words transition-all ${
             isOwn
-              ? 'bg-[var(--bubble-sent)] text-[var(--bubble-sent-text)] rounded-br-xs'
-              : 'bg-[var(--bubble-received)] text-[var(--bubble-received-text)] border border-[var(--border)] rounded-bl-xs'
+              ? 'bg-[var(--bubble-sent)] text-[var(--bubble-sent-text)] rounded-br-xs shadow-md shadow-[var(--accent)]/30'
+              : 'bg-[var(--bubble-received)] text-[var(--bubble-received-text)] border border-[var(--border)] rounded-bl-xs backdrop-blur-md shadow-xs'
           }`}
         >
           {/* Attachment Presentation */}

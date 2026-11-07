@@ -186,7 +186,7 @@ export const ChatPage = () => {
 
   return (
     <>
-      {/* ─── Main layout: fills parent fully ─────────────────────── */}
+      {/* ─── Main layout: fills parent fully with atmospheric aura ─── */}
       <div
         style={{
           display: 'flex',
@@ -196,9 +196,32 @@ export const ChatPage = () => {
           flex: '1 1 0%',
           minHeight: 0,
           overflow: 'hidden',
+          background: 'var(--bg-app-gradient)',
           backgroundColor: 'var(--bg-primary)',
+          position: 'relative',
         }}
       >
+        {/* Atmospheric Radiant Ambient Auras */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none"
+          aria-hidden="true"
+        >
+          {/* Top Beam Aura: Electric Blue (Dark) / Sky Blue (Light) */}
+          <div
+            className="absolute -top-[12%] left-1/2 -translate-x-1/2 w-[900px] h-[520px] rounded-full opacity-60 blur-3xl pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)',
+            }}
+          />
+          {/* Bottom Horizon Aura: Cantaloupe Orange (Dark) / Hot Pink (Light) */}
+          <div
+            className="absolute -bottom-[18%] left-1/2 -translate-x-1/2 w-[900px] h-[550px] rounded-full opacity-55 blur-3xl pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, var(--accent-highlight) 0%, transparent 70%)',
+            }}
+          />
+        </div>
+
         {/* ── Sidebar ──────────────────────────────────────────────── */}
         <div
           style={{
@@ -208,6 +231,8 @@ export const ChatPage = () => {
             flexShrink: 0,
             height: '100%',
             overflow: 'hidden',
+            position: 'relative',
+            zIndex: 10,
           }}
           className="md:!flex md:!w-[320px] lg:!w-[340px]"
         >
@@ -238,6 +263,8 @@ export const ChatPage = () => {
             minHeight: 0,
             height: '100%',
             overflow: 'hidden',
+            position: 'relative',
+            zIndex: 10,
           }}
           className="md:!flex"
         >

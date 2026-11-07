@@ -1,67 +1,115 @@
 @import "tailwindcss";
 
 :root {
-  /* Theme 2: Midnight Dark (Default) */
+  /* Theme 2 (Rank 1): Midnight Black + Electric Blue + Cantaloupe Orange */
   --bg-primary: #02070A; /* Midnight Black */
-  --bg-secondary: #091118;
-  --bg-tertiary: #0F1A24;
-  --bg-hover: #162533;
-  --bg-active: #1E3244;
+  --bg-secondary: rgba(6, 15, 23, 0.72);
+  --bg-tertiary: rgba(10, 22, 33, 0.80);
+  --bg-hover: rgba(18, 38, 56, 0.85);
+  --bg-active: rgba(26, 52, 76, 0.92);
+  --bg-glass: rgba(2, 7, 10, 0.72);
+  --bg-card: rgba(8, 18, 28, 0.68);
   
-  --border: rgba(2, 151, 222, 0.15);
-  --border-subtle: rgba(2, 151, 222, 0.08);
+  /* Luminous cosmic sunrise aurora matching Rank 1 FluxEdit picture:
+     - Electric Blue radiant light stream beaming down from top-center
+     - Cantaloupe Orange vibrant glowing horizon dome bursting up from bottom-center
+     - Atmospheric side glows for rich colorful depth
+  */
+  --bg-app-gradient: 
+    radial-gradient(ellipse 90% 55% at 50% -5%, rgba(2, 151, 222, 0.52) 0%, rgba(2, 151, 222, 0.16) 50%, transparent 80%),
+    radial-gradient(ellipse 85% 65% at 50% 105%, rgba(252, 115, 77, 0.48) 0%, rgba(252, 115, 77, 0.18) 45%, transparent 75%),
+    radial-gradient(circle 650px at 85% 40%, rgba(252, 115, 77, 0.20) 0%, transparent 60%),
+    radial-gradient(circle 650px at 15% 45%, rgba(2, 151, 222, 0.22) 0%, transparent 60%),
+    #02070A;
+
+  --border: rgba(2, 151, 222, 0.24);
+  --border-subtle: rgba(255, 255, 255, 0.08);
   --border-focus: #0297DE; /* Electric Blue */
+  --border-highlight: #FC734D; /* Cantaloupe Orange */
 
   --text-primary: #FCFFFF;
-  --text-secondary: #8EAAB8;
-  --text-muted: #526E7E;
+  --text-secondary: #A0C2D6;
+  --text-muted: #5B7D8F;
 
   --accent: #0297DE; /* Electric Blue */
   --accent-hover: #0284C2;
-  --accent-subtle: rgba(2, 151, 222, 0.12);
-  --accent-highlight: #FC734D; /* Cantaloupe Orange */
-  --accent-highlight-hover: #E95E36;
-  --accent-highlight-subtle: rgba(252, 115, 77, 0.16);
+  --accent-subtle: rgba(2, 151, 222, 0.18);
+  --accent-glow: 0 0 24px rgba(2, 151, 222, 0.55);
 
-  --bubble-sent: #0297DE;
+  --accent-highlight: #FC734D; /* Cantaloupe Orange */
+  --accent-highlight-hover: #FA5D30;
+  --accent-highlight-subtle: rgba(252, 115, 77, 0.22);
+  --highlight-glow: 0 0 24px rgba(252, 115, 77, 0.55);
+
+  --gradient-cta: linear-gradient(135deg, #FC734D 0%, #FF8A65 100%);
+  --gradient-accent: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%);
+  --gradient-hybrid: linear-gradient(135deg, #0297DE 0%, #FC734D 100%);
+
+  --bubble-sent: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%);
   --bubble-sent-text: #FCFFFF;
-  --bubble-received: #0F1A24;
+  --bubble-received: rgba(12, 25, 38, 0.75);
   --bubble-received-text: #FCFFFF;
 
   --online: #0297DE;
+  --badge-bg: #FC734D;
+  --badge-text: #FFFFFF;
   --danger: #FC734D;
   --warning: #FC734D;
 }
 
 [data-theme="light"] {
-  /* Theme 1: Skyblue Vibrant (Light) */
+  /* Theme 1 (Rank 5): Sky Blue + White + Hot Pink */
   --bg-primary: #FCFFFF; /* Clean White */
-  --bg-secondary: #F0F8FA;
-  --bg-tertiary: #E4F2F6;
-  --bg-hover: #D5ECF2;
-  --bg-active: #C5E5EE;
+  --bg-secondary: rgba(244, 250, 252, 0.75);
+  --bg-tertiary: rgba(232, 245, 249, 0.82);
+  --bg-hover: rgba(216, 239, 246, 0.88);
+  --bg-active: rgba(200, 233, 243, 0.94);
+  --bg-glass: rgba(252, 255, 255, 0.74);
+  --bg-card: rgba(255, 255, 255, 0.82);
 
-  --border: rgba(5, 147, 198, 0.20);
-  --border-subtle: rgba(5, 147, 198, 0.10);
-  --border-focus: #0593C6; /* Skyblue */
+  /* Ethereal daylight radiant atmospheric background matching Rank 5 Pelmatech picture:
+     - Sky Blue radiant daylight cascading from top-left
+     - Hot Pink luminous vibrant sunset radiant cloud blooming across center and bottom-right
+     - Center atmospheric glow
+  */
+  --bg-app-gradient: 
+    radial-gradient(ellipse 90% 60% at 15% -5%, rgba(5, 147, 198, 0.42) 0%, rgba(5, 147, 198, 0.14) 50%, transparent 80%),
+    radial-gradient(ellipse 85% 65% at 85% 105%, rgba(216, 57, 149, 0.40) 0%, rgba(216, 57, 149, 0.14) 50%, transparent 75%),
+    radial-gradient(circle 550px at 50% 50%, rgba(216, 57, 149, 0.16) 0%, transparent 65%),
+    radial-gradient(circle 600px at 80% 20%, rgba(5, 147, 198, 0.20) 0%, transparent 60%),
+    #FCFFFF;
+
+  --border: rgba(5, 147, 198, 0.25);
+  --border-subtle: rgba(5, 147, 198, 0.12);
+  --border-focus: #0593C6; /* Sky Blue */
+  --border-highlight: #D83995; /* Hot Pink */
 
   --text-primary: #02202C;
-  --text-secondary: #2A5769;
-  --text-muted: #5A8496;
+  --text-secondary: #1E4E62;
+  --text-muted: #537C8E;
 
-  --accent: #0593C6; /* Skyblue */
+  --accent: #0593C6; /* Sky Blue */
   --accent-hover: #0479A3;
-  --accent-subtle: rgba(5, 147, 198, 0.12);
+  --accent-subtle: rgba(5, 147, 198, 0.18);
+  --accent-glow: 0 0 24px rgba(5, 147, 198, 0.50);
+
   --accent-highlight: #D83995; /* Hot Pink */
   --accent-highlight-hover: #C02680;
-  --accent-highlight-subtle: rgba(216, 57, 149, 0.16);
+  --accent-highlight-subtle: rgba(216, 57, 149, 0.22);
+  --highlight-glow: 0 0 24px rgba(216, 57, 149, 0.50);
 
-  --bubble-sent: #0593C6;
+  --gradient-cta: linear-gradient(135deg, #D83995 0%, #E91E63 100%);
+  --gradient-accent: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%);
+  --gradient-hybrid: linear-gradient(135deg, #0593C6 0%, #D83995 100%);
+
+  --bubble-sent: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%);
   --bubble-sent-text: #FCFFFF;
-  --bubble-received: #E4F2F6;
+  --bubble-received: rgba(240, 248, 252, 0.85);
   --bubble-received-text: #02202C;
 
   --online: #0593C6;
+  --badge-bg: #D83995;
+  --badge-text: #FFFFFF;
   --danger: #D83995;
   --warning: #D83995;
 }
@@ -91,7 +139,9 @@ html, body {
   overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
   font-family: 'Alegreya', serif;
+  background: var(--bg-app-gradient);
   background-color: var(--bg-primary);
+  background-attachment: fixed;
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -168,4 +218,52 @@ button, a, input, textarea, select, [role="button"] {
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite ease-in-out;
+}
+
+/* Glassmorphism Panels matching FluxEdit & Pelmatech aesthetic */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border);
+}
+
+.glass-bubble-received {
+  background: var(--bubble-received);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+/* Radiant CTA button with atmospheric shadow */
+.btn-cta-vibrant {
+  background: var(--gradient-cta);
+  color: #ffffff !important;
+  font-family: 'Karla', sans-serif;
+  font-weight: 700;
+  box-shadow: 0 4px 18px rgba(252, 115, 77, 0.40);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+[data-theme="light"] .btn-cta-vibrant {
+  box-shadow: 0 4px 18px rgba(216, 57, 149, 0.40);
+}
+.btn-cta-vibrant:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+.btn-cta-vibrant:active {
+  transform: translateY(0);
+}
+
+/* Glow aura helpers */
+.glow-accent {
+  box-shadow: var(--accent-glow);
+}
+.glow-highlight {
+  box-shadow: var(--highlight-glow);
 }

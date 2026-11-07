@@ -126,13 +126,25 @@ export const ChatArea = ({
   // If no conversation is active (Workspace Dashboard)
   if (!chat) {
     return (
-      <div style={{ display: 'flex', flex: '1 1 0%', height: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', backgroundColor: 'var(--bg-primary)', textAlign: 'center', overflowY: 'auto' }}>
-        <BrandLogo variant="lockup" size="xl" className="mb-3" />
-        <p className="text-xs font-body text-[var(--text-muted)] max-w-sm leading-relaxed mb-6">
+      <div style={{ display: 'flex', flex: '1 1 0%', height: '100%', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', backgroundColor: 'transparent', textAlign: 'center', overflowY: 'auto' }} className="relative z-10 custom-scrollbar">
+        {/* Radiant Logo Halo */}
+        <div className="relative mb-3 flex items-center justify-center">
+          <div
+            className="absolute -inset-10 rounded-full blur-3xl opacity-40 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, var(--accent) 0%, var(--accent-highlight) 60%, transparent 80%)',
+            }}
+          />
+          <div className="relative z-10">
+            <BrandLogo variant="lockup" size="xl" />
+          </div>
+        </div>
+
+        <p className="text-xs font-body text-[var(--text-muted)] max-w-sm leading-relaxed mb-6 relative z-10">
           Select a room or contact from the sidebar, or jump straight into a team workspace below.
         </p>
 
-        <div className="w-full max-w-xl text-left">
+        <div className="w-full max-w-xl text-left relative z-10">
           <div className="flex items-center justify-between mb-2.5 px-1 font-heading">
             <h3 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">
               Workspaces
@@ -147,7 +159,7 @@ export const ChatArea = ({
               <div
                 key={ws.id}
                 onClick={() => onSelectWorkspace ? onSelectWorkspace(ws) : onOpenWorkspaceModal?.()}
-                className="p-3.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col items-start hover:border-[var(--border-focus)] transition-colors cursor-pointer group"
+                className="p-3.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl flex flex-col items-start hover:border-[var(--accent-highlight)] hover:shadow-lg hover:shadow-[var(--accent-highlight)]/20 transition-all cursor-pointer group backdrop-blur-md"
               >
                 <div className="flex items-center gap-2.5 mb-1.5 w-full">
                   <div className="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--border-subtle)]">
@@ -170,7 +182,7 @@ export const ChatArea = ({
 
             <button
               onClick={onOpenWorkspaceModal}
-              className="p-3.5 border border-dashed border-[var(--border)] rounded-xl flex items-center justify-center gap-2 hover:border-[var(--border-focus)] hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer bg-transparent font-heading"
+              className="p-3.5 border-2 border-dashed border-[var(--border)] rounded-2xl flex items-center justify-center gap-2 hover:border-[var(--accent-highlight)] hover:bg-[var(--accent-highlight-subtle)] hover:text-[var(--text-primary)] transition-all cursor-pointer bg-transparent font-heading"
             >
               <span className="text-xs font-semibold">+ Join or Create Workspace</span>
             </button>
@@ -183,11 +195,11 @@ export const ChatArea = ({
   const currentUserId = currentUser?.id || currentUser?._id;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'row', flex: '1 1 0%', height: '100%', minHeight: 0, overflow: 'hidden', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
+    <div style={{ display: 'flex', flexDirection: 'row', flex: '1 1 0%', height: '100%', minHeight: 0, overflow: 'hidden', backgroundColor: 'transparent', position: 'relative' }}>
       {/* ── Main Chat Stream Column ─────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         {/* ── Chat Header ────────────────────────────────────────────── */}
-        <header className="h-13 min-h-[52px] px-3 sm:px-4 bg-[var(--bg-primary)] border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
+        <header className="h-13 min-h-[52px] px-3 sm:px-4 glass-panel border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
           <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
             {/* Back button (Mobile only) */}
             <button
@@ -322,7 +334,7 @@ export const ChatArea = ({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 py-4 flex flex-col relative bg-[var(--bg-primary)] font-body"
+          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 py-4 flex flex-col relative bg-transparent font-body"
         >
           {isLoadingMessages ? (
             <MessageFeedSkeleton count={6} />

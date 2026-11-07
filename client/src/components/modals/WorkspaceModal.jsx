@@ -120,7 +120,7 @@ export const WorkspaceModal = ({
               }}
               className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
                 activeTab === 'select'
-                  ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+                  ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
               }`}
             >
@@ -137,7 +137,7 @@ export const WorkspaceModal = ({
             }}
             className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
               activeTab === 'join'
-                ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+                ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
             }`}
           >
@@ -153,7 +153,7 @@ export const WorkspaceModal = ({
             }}
             className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
               activeTab === 'create'
-                ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+                ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
             }`}
           >
@@ -260,7 +260,7 @@ export const WorkspaceModal = ({
             <button
               type="submit"
               disabled={!code.trim() || isSubmitting}
-              className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
+              className="btn-cta-vibrant w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
               {isSubmitting ? <Loader2 size={14} /> : <ArrowRight size={14} />}
               <span>Join Workspace</span>
@@ -302,7 +302,7 @@ export const WorkspaceModal = ({
             <button
               type="submit"
               disabled={!name.trim() || isSubmitting}
-              className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
+              className="btn-cta-vibrant w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
               {isSubmitting ? <Loader2 size={14} /> : <Plus size={14} />}
               <span>Create Workspace</span>

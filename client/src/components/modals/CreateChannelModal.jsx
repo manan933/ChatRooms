@@ -72,7 +72,7 @@ export const CreateChannelModal = ({ isOpen, onClose, activeWorkspace, onAddChan
         <button
           type="submit"
           disabled={!channelName.trim() || isSubmitting}
-          className="w-full mt-2 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs font-bold font-heading transition-all cursor-pointer border-none shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-50"
+          className="btn-cta-vibrant w-full mt-2 py-2.5 rounded-xl text-xs font-bold font-heading transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 disabled:opacity-50 active:scale-[0.98]"
         >
           {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Hash size={14} />}
           <span>Create Channel</span>

@@ -157,7 +157,7 @@ export const Sidebar = ({
   };
 
   return (
-    <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden' }}>
+    <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
       {/* ── Top Brand Header (ChatRooms in Lakki Reddy) ───────────────── */}
       <div className="h-13 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
         <div className="flex items-center">
@@ -187,19 +187,19 @@ export const Sidebar = ({
       </div>
 
       {/* ── Tabs (Direct vs Workplace) ─────────────────────────────── */}
-      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1 shrink-0 select-none font-heading">
+      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1.5 shrink-0 select-none font-heading">
         <button
           type="button"
           onClick={() => setActiveTab('direct')}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'direct'
-              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
           <Users size={13} />
           <span>Chats</span>
-          <span className="ml-0.5 text-[10px] opacity-80">
+          <span className={`ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'direct' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
             {directList.length}
           </span>
         </button>
@@ -207,15 +207,15 @@ export const Sidebar = ({
         <button
           type="button"
           onClick={() => setActiveTab('workplace')}
-          className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'workplace'
-              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
           <Building2 size={13} />
           <span>Workplaces</span>
-          <span className="ml-0.5 text-[10px] opacity-80">
+          <span className={`ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'workplace' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
             {workspaces.length}
           </span>
         </button>
@@ -226,7 +226,7 @@ export const Sidebar = ({
         <div className="px-3 py-1.5 shrink-0 select-none relative font-heading">
           <div
             onClick={() => setWorkspaceDropdownOpen(!workspaceDropdownOpen)}
-            className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between cursor-pointer hover:border-[var(--border-focus)] transition-colors"
+            className="p-2 rounded-xl bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] flex items-center justify-between cursor-pointer hover:border-[var(--border-focus)] transition-colors shadow-xs"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--border-subtle)]">
@@ -256,7 +256,7 @@ export const Sidebar = ({
 
           {/* Switcher Dropdown */}
           {workspaceDropdownOpen && (
-            <div className="absolute top-full left-3 right-3 mt-1 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl shadow-xl z-30 space-y-0.5">
+            <div className="absolute top-full left-3 right-3 mt-1 p-1 bg-[var(--bg-secondary)]/95 backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-xl z-30 space-y-0.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1 block">
                 Workspaces
               </span>
@@ -306,7 +306,7 @@ export const Sidebar = ({
             placeholder={activeTab === 'direct' ? 'Search conversations...' : 'Search channels...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-lg text-xs font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors"
+            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors shadow-xs"
           />
         </div>
       </div>
@@ -317,9 +317,9 @@ export const Sidebar = ({
           <button
             type="button"
             onClick={onOpenNewChat}
-            className="w-full py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
+            className="btn-cta-vibrant w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none active:scale-[0.98]"
           >
-            <MessageSquarePlus size={13} />
+            <MessageSquarePlus size={14} />
             <span>New Chat</span>
           </button>
         ) : (
@@ -327,19 +327,19 @@ export const Sidebar = ({
             <button
               type="button"
               onClick={() => setCreateChannelModalOpen(true)}
-              className="flex-1 py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-xs"
+              className="btn-cta-vibrant flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none active:scale-[0.98]"
             >
-              <Hash size={13} />
+              <Hash size={14} />
               <span>Create Channel</span>
             </button>
             <button
               type="button"
               onClick={onOpenWorkspaceModal}
-              className="py-1.5 px-2.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg text-xs font-bold transition-colors flex items-center justify-center cursor-pointer"
+              className="py-2 px-2.5 bg-[var(--bg-tertiary)]/70 hover:border-[var(--accent-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs font-bold transition-colors flex items-center justify-center cursor-pointer shadow-xs"
               title="Add or Join Workplace"
               aria-label="Add workplace"
             >
-              <Plus size={13} />
+              <Plus size={14} />
             </button>
           </div>
         )}
@@ -373,9 +373,9 @@ export const Sidebar = ({
                       key={item.id}
                       type="button"
                       onClick={() => onSelectChat(item)}
-                      className={`w-full p-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer border-none text-left ${
+                      className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer border-none text-left ${
                         isActive
-                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)] border-l-3 border-[var(--accent-highlight)] pl-2.5'
+                          ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
@@ -415,9 +415,9 @@ export const Sidebar = ({
                       key={item.id}
                       type="button"
                       onClick={() => onSelectChat(item)}
-                      className={`w-full p-2 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer border-none text-left ${
+                      className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer border-none text-left ${
                         isActive
-                          ? 'bg-[var(--accent-subtle)] text-[var(--text-primary)] border-l-3 border-[var(--accent-highlight)] pl-2.5'
+                          ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
@@ -514,9 +514,9 @@ export const Sidebar = ({
                             key={channel.id}
                             type="button"
                             onClick={() => onSelectChat(channel)}
-                            className={`w-full px-2 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
+                            className={`w-full px-2.5 py-1.5 rounded-xl flex items-center justify-between transition-all cursor-pointer border-none text-left ${
                               isActive
-                                ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold border-l-3 border-[var(--accent-highlight)] pl-1.5'
+                                ? 'bg-[var(--accent-highlight-subtle)] text-[var(--accent-highlight)] font-bold border-l-4 border-[var(--accent-highlight)] pl-2 shadow-xs'
                                 : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                             }`}
                           >
@@ -540,7 +540,7 @@ export const Sidebar = ({
       </div>
 
       {/* ── Bottom Current User Bar ────────────────────────────────── */}
-      <div className="h-13 px-3 bg-[var(--bg-primary)] border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
+      <div className="h-13 px-3 bg-[var(--bg-secondary)]/85 backdrop-blur-md border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
         <div
           onClick={onOpenSettings}
           className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity"

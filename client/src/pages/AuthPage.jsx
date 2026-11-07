@@ -69,9 +69,21 @@ export const AuthPage = () => {
   };
 
   return (
-    <div className="w-full h-full min-h-screen flex flex-col md:flex-row bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden select-none">
+    <div className="relative w-full h-full min-h-screen flex flex-col md:flex-row bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden select-none" style={{ background: 'var(--bg-app-gradient)' }}>
+      {/* Atmospheric Ambient Radiant Glows */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none" aria-hidden="true">
+        <div
+          className="absolute -top-[15%] left-1/4 w-[750px] h-[500px] rounded-full opacity-60 blur-3xl pointer-events-none"
+          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }}
+        />
+        <div
+          className="absolute -bottom-[20%] right-1/4 w-[850px] h-[550px] rounded-full opacity-55 blur-3xl pointer-events-none"
+          style={{ background: 'radial-gradient(circle, var(--accent-highlight) 0%, transparent 70%)' }}
+        />
+      </div>
+
       {/* ── Left Showcase Panel (Desktop / Tablet) ─────────────────── */}
-      <div className="hidden md:flex md:w-[48%] lg:w-[50%] h-full flex-col justify-between p-10 lg:p-14 bg-[var(--bg-secondary)] border-r border-[var(--border)] relative overflow-hidden shrink-0">
+      <div className="hidden md:flex md:w-[48%] lg:w-[50%] h-full flex-col justify-between p-10 lg:p-14 bg-[var(--bg-secondary)]/75 backdrop-blur-xl border-r border-[var(--border)] relative z-10 overflow-hidden shrink-0">
         {/* Brand Header */}
         <div>
           <div className="mb-10">
@@ -186,7 +198,7 @@ export const AuthPage = () => {
               }}
               className={`flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer border-none ${
                 !isRegister
-                  ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+                  ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
               }`}
             >
@@ -201,7 +213,7 @@ export const AuthPage = () => {
               }}
               className={`flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer border-none ${
                 isRegister
-                  ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+                  ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
               }`}
             >
@@ -321,7 +333,7 @@ export const AuthPage = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full h-10 mt-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-sm font-heading font-bold transition-colors cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50"
+              className="btn-cta-vibrant w-full h-11 mt-1 rounded-xl text-sm font-heading font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
             >
               {isLoading ? (
                 <Loader2 size={16} />

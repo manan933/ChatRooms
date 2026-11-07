@@ -128,7 +128,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
       }
     >
       {/* Tabs */}
-      <div className="flex items-center gap-2 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl mb-4 font-heading">
+      <div className="flex items-center gap-1.5 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl mb-4 font-heading">
         <button
           type="button"
           onClick={() => {
@@ -137,7 +137,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           }}
           className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'contact'
-              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
           }`}
         >
@@ -153,7 +153,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           }}
           className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'group'
-              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
           }`}
         >
@@ -169,7 +169,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           }}
           className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'join_group'
-              ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+              ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
           }`}
         >
@@ -226,7 +226,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => handleSelectUser(user)}
-                    className="py-1 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-xs font-heading font-bold cursor-pointer border-none transition-colors"
+                    className="btn-cta-vibrant py-1 px-3.5 rounded-lg text-xs font-heading font-bold cursor-pointer border-none transition-transform active:scale-95"
                   >
                     Chat
                   </button>
@@ -276,7 +276,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           <button
             type="submit"
             disabled={!groupName.trim() || isSubmitting}
-            className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
+            className="btn-cta-vibrant w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
             {isSubmitting ? <Loader2 size={14} /> : <Users size={14} />}
             <span>Create Group</span>
@@ -302,7 +302,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
           <button
             type="submit"
             disabled={!joinCode.trim() || isSubmitting}
-            className="w-full py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-sm disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5"
+            className="btn-cta-vibrant w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98]"
           >
             {isSubmitting ? <Loader2 size={14} /> : <Users size={14} />}
             <span>Join Group or Chat</span>

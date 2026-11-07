@@ -181,7 +181,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   const hasContent = Boolean(text.trim() || attachment);
 
   return (
-    <div className="relative px-3 sm:px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] bg-[var(--bg-primary)] border-t border-[var(--border)] shrink-0 font-body">
+    <div className="relative px-3 sm:px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] glass-panel border-t border-[var(--border)] shrink-0 font-body">
       {/* Hidden file inputs */}
       <input
         type="file"
@@ -250,7 +250,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
       )}
 
       {/* Main Composer Pill Input Row */}
-      <div className="flex items-center gap-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl px-3 py-1.5 focus-within:border-[var(--border-focus)] transition-all">
+      <div className="flex items-center gap-2 bg-[var(--bg-tertiary)]/75 backdrop-blur-md border border-[var(--border)] rounded-2xl px-3 py-1.5 focus-within:border-[var(--border-focus)] transition-all shadow-xs">
         {/* Left Action Buttons */}
         <div className="flex items-center gap-0.5 shrink-0">
           {policy?.allowAttachments !== false && (
@@ -308,7 +308,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           disabled={!hasContent || isUploading}
           className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
             hasContent && !isUploading
-              ? 'bg-[var(--accent-highlight)] text-white hover:bg-[var(--accent-highlight-hover,#ea580c)] cursor-pointer shadow-md active:scale-95'
+              ? 'btn-cta-vibrant cursor-pointer active:scale-95'
               : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
           }`}
           title="Send Message"
