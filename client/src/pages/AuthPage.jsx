@@ -150,58 +150,47 @@ export const AuthPage = () => {
               </span>
             </h1>
 
-            {/* Floating Glassmorphic Product Preview Card */}
-            <div className="relative max-w-lg hidden sm:block pt-2">
-              {/* Subtle ambient blur behind widget */}
-              <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-[var(--accent)]/20 via-[var(--accent-highlight)]/20 to-[var(--accent)]/10 blur-xl opacity-75 pointer-events-none" />
+            {/* ChatRooms Hero Brand Card (Replaces fake chat box) */}
+            <div className="relative max-w-lg pt-2 sm:pt-4">
+              {/* Subtle ambient blur behind brand showcase */}
+              <div className="absolute -inset-3 rounded-3xl bg-gradient-to-r from-[var(--accent)]/20 via-[var(--accent-highlight)]/20 to-[var(--accent)]/10 blur-2xl opacity-80 pointer-events-none" />
 
-              <div className="relative rounded-3xl bg-[var(--bg-glass)]/85 backdrop-blur-2xl border border-[var(--border)] p-5 shadow-2xl space-y-3.5">
-                {/* Live Channel Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--border)] flex items-center justify-center font-bold text-xs">
-                      #
-                    </div>
-                    <div>
-                      <div className="text-sm font-heading font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                        <span>general</span>
-                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                      </div>
-                      <div className="text-[11px] font-body text-[var(--text-muted)]">Engineering Core · 12 members</div>
-                    </div>
+              <div className="relative rounded-3xl bg-[var(--bg-glass)]/90 backdrop-blur-2xl border border-[var(--border)] p-6 sm:p-8 shadow-2xl flex flex-col gap-5">
+                <div className="flex items-center gap-4">
+                  <BrandLogo variant="icon" size="2xl" className="drop-shadow-lg" />
+                  <div className="flex flex-col">
+                    <span
+                      className="font-brand text-4xl sm:text-5xl tracking-wide text-[var(--text-primary)] leading-tight select-none"
+                      style={{ fontFamily: "'Lakki Reddy', cursive" }}
+                    >
+                      ChatRooms
+                    </span>
+                    <span className="text-xs sm:text-sm font-heading font-semibold text-[var(--accent)]">
+                      Private & Workspace Messaging
+                    </span>
                   </div>
                 </div>
 
-                {/* Mock Live Message Bubbles */}
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0297DE] to-[#0593C6] text-white text-xs font-heading font-bold flex items-center justify-center shrink-0 shadow-sm">
-                      SC
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 text-xs font-heading">
-                        <span className="font-bold text-[var(--text-primary)]">Sarah Chen</span>
-                        <span className="text-[10px] text-[var(--text-muted)] font-body">10:42 AM</span>
-                      </div>
-                      <div className="mt-1 p-3 rounded-2xl rounded-tl-sm bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs sm:text-[13px] font-body text-[var(--text-primary)] leading-relaxed shadow-xs">
-                        Database cluster connected. Latency dropped to sub-10ms across all websocket nodes! 🚀
-                      </div>
-                    </div>
-                  </div>
+                <p className="text-sm sm:text-base font-body text-[var(--text-secondary)] leading-relaxed m-0">
+                  Instant direct messaging, nested group channels, encrypted voice and video calls, and effortless cross-device sync.
+                </p>
 
-                  <div className="flex items-start gap-2.5 pl-6">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D83995] to-[#FC734D] text-white text-xs font-heading font-bold flex items-center justify-center shrink-0 shadow-sm">
-                      AP
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 text-xs font-heading">
-                        <span className="font-bold text-[var(--text-primary)]">Alex Patel</span>
-                        <span className="text-[10px] text-[var(--text-muted)] font-body">10:43 AM</span>
-                      </div>
-                      <div className="mt-1 p-3 rounded-2xl rounded-tl-sm bg-[var(--accent)] text-white text-xs sm:text-[13px] font-body leading-relaxed shadow-md shadow-[var(--accent)]/20">
-                        Read receipts and audio calls verified. Ready for deployment. 👍
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-[var(--border-subtle)] font-heading">
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Realtime Chat</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[var(--accent)] shrink-0" />
+                    <span className="text-xs font-bold text-[var(--text-primary)]">HD Video Calls</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[var(--accent-highlight)] shrink-0" />
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Nested Subgroups</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                    <span className="text-xs font-bold text-[var(--text-primary)]">Cross-Device Sync</span>
                   </div>
                 </div>
               </div>

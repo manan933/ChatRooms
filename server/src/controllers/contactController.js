@@ -113,7 +113,7 @@ export const createContact = async (req, res, next) => {
 // @access  Private
 export const createPersonalGroup = async (req, res, next) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, parentGroupId } = req.body;
 
     if (!name?.trim()) {
       return res.status(400).json({
@@ -123,7 +123,12 @@ export const createPersonalGroup = async (req, res, next) => {
     }
 
     const currentUserId = req.user?._id || req.user?.id;
-    const group = await storageService.createGroup(name.trim(), description?.trim() || '', currentUserId);
+    const group = await storageService.createGroup(
+      name.trim(),
+      description?.trim() || '',
+      currentUserId,
+      parentGroupId || null
+    );
 
     return res.status(201).json({
       success: true,

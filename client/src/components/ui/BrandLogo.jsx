@@ -24,6 +24,8 @@ export const BrandLogo = ({
     lg: 'w-13 h-13 sm:w-15 sm:h-15',
     xl: 'w-16 h-16 sm:w-20 sm:h-20',
     '2xl': 'w-22 h-22 sm:w-26 sm:h-26',
+    '3xl': 'w-28 h-28 sm:w-32 sm:h-32',
+    hero: 'w-24 h-24 sm:w-32 sm:h-32 md:w-36 md:h-36',
   };
 
   const textSizes = {
@@ -33,6 +35,8 @@ export const BrandLogo = ({
     lg: 'text-3xl sm:text-4xl font-normal',
     xl: 'text-4xl sm:text-5xl font-normal',
     '2xl': 'text-5xl sm:text-6xl font-normal',
+    '3xl': 'text-6xl sm:text-7xl font-normal',
+    hero: 'text-5xl sm:text-6xl md:text-7xl font-normal',
   };
 
   const iconSrc = isDark ? '/chatrooms-icon-white.png' : '/chatrooms-icon.png';

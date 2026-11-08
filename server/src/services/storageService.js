@@ -5,6 +5,7 @@ import Message from '../models/Message.js';
 import { Contact, PersonalGroup } from '../models/Contact.js';
 import Workspace from '../models/Workspace.js';
 import WorkspaceNode from '../models/WorkspaceNode.js';
+import Media from '../models/Media.js';
 
 const SERVER_EMOJI_MAP = {
   '[fire]': '🔥',
@@ -238,9 +239,9 @@ class StorageService {
     let finalAttachment = null;
     if (message.attachment) {
       const att = { ...message.attachment };
-      const name = att.name || '';
-      const url = att.url || '';
-      const mime = att.mimeType || '';
+      const name = att.name || 'image.jpg';
+      let url = att.url || att.dataUrl || '';
+      const mime = att.mimeType || 'image/jpeg';
       const isImg =
         att.type === 'image' ||
         mime.startsWith('image/') ||
@@ -251,6 +252,33 @@ class StorageService {
       if (isImg && !att.mimeType) {
         att.mimeType = 'image/jpeg';
       }
+
+      // If attachment has a base64 dataUrl, persist it directly to MongoDB Media collection!
+      if (typeof url === 'string' && url.startsWith('data:')) {
+        try {
+          const matches = url.match(/^data:([^;]+);base64,(.+)$/);
+          if (matches) {
+            const dataContentType = matches[1] || mime;
+            const buffer = Buffer.from(matches[2], 'base64');
+            const mediaDoc = await Media.create({
+              filename: name,
+              contentType: dataContentType,
+              data: buffer,
+              size: buffer.length,
+              uploadedBy: message.senderId || null,
+            });
+            if (mediaDoc?._id) {
+              url = `/api/upload/media/${mediaDoc._id}`;
+              att.url = url;
+              delete att.dataUrl;
+            }
+          }
+        } catch (mediaErr) {
+          console.warn('[Storage] Auto-persist base64 to Media skipped:', mediaErr.message);
+        }
+      }
+
+      att.url = url;
       finalAttachment = att;
     }
 
@@ -505,6 +533,7 @@ class StorageService {
       name: g.name,
       description: g.description || '',
       membersCount: g.membersCount || 1,
+      parentGroupId: g.parentGroupId || null,
       lastMessage: g.lastMessage || '',
       lastMessageTime: g.lastMessageTime ? new Date(g.lastMessageTime).toISOString() : new Date().toISOString(),
       type: 'group',
@@ -582,13 +611,14 @@ class StorageService {
     return this.addContact('user-1', 'user', username);
   }
 
-  async createGroup(name, description = '', userId = null) {
-    const id = `group-${Date.now()}`;
+  async createGroup(name, description = '', userId = null, parentGroupId = null) {
+    const id = parentGroupId ? `subgroup-${Date.now()}` : `group-${Date.now()}`;
     const group = await PersonalGroup.create({
       id,
       name: name.trim(),
       description: description.trim(),
       membersCount: 1,
+      parentGroupId: parentGroupId || null,
       lastMessage: '',
       lastMessageTime: new Date(),
       creatorId: userId ? userId.toString() : 'user-1',
@@ -598,6 +628,7 @@ class StorageService {
       name: group.name,
       description: group.description,
       membersCount: 1,
+      parentGroupId: group.parentGroupId || null,
       type: 'group',
     };
   }

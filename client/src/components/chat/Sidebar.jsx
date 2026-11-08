@@ -82,6 +82,7 @@ export const Sidebar = ({
     'Computer Science': true,
     Engineering: true,
   });
+  const [expandedGroups, setExpandedGroups] = useState({});
   const [copiedWsCode, setCopiedWsCode] = useState(false);
 
   const { theme, toggleTheme } = useThemeStore();
@@ -124,6 +125,40 @@ export const Sidebar = ({
         item.lastMessage?.toLowerCase().includes(q)
     );
   }, [contacts, groups, search]);
+
+  // Separate root groups and nested subgroups
+  const { rootGroups, subgroupsMap } = useMemo(() => {
+    const groupItems = directList.filter((i) => i.type === 'group');
+    const root = [];
+    const subMap = {};
+    const groupIds = new Set(groupItems.map((g) => g.id));
+
+    groupItems.forEach((g) => {
+      if (g.parentGroupId && groupIds.has(g.parentGroupId)) {
+        if (!subMap[g.parentGroupId]) subMap[g.parentGroupId] = [];
+        subMap[g.parentGroupId].push(g);
+      } else {
+        root.push(g);
+      }
+    });
+
+    return { rootGroups: root, subgroupsMap: subMap };
+  }, [directList]);
+
+  // Auto-expand parent group if activeChat is a subgroup
+  React.useEffect(() => {
+    if (activeChat?.parentGroupId) {
+      setExpandedGroups((prev) => ({ ...prev, [activeChat.parentGroupId]: true }));
+    }
+  }, [activeChat?.parentGroupId]);
+
+  const toggleGroupExpand = (groupId, e) => {
+    e?.stopPropagation();
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupId]: prev[groupId] === false ? true : false,
+    }));
+  };
 
   // Group workspace channels by folder
   const groupedWorkspaceChannels = useMemo(() => {
@@ -468,23 +503,24 @@ export const Sidebar = ({
                   );
                 })}
 
-              {directList.filter((i) => i.type === 'group').length > 0 && (
+              {rootGroups.length > 0 && (
                 <div className="pt-3 pb-1 px-2 font-heading">
                   <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    Groups
+                    Groups & Subgroups
                   </span>
                 </div>
               )}
-              {directList
-                .filter((i) => i.type === 'group')
-                .map((item) => {
-                  const isActive = activeChat?.id === item.id;
-                  const typers = typingStatus[item.id] || [];
-                  const isTyping = typers.length > 0;
+              {rootGroups.map((item) => {
+                const isActive = activeChat?.id === item.id;
+                const typers = typingStatus[item.id] || [];
+                const isTyping = typers.length > 0;
+                const subgroups = subgroupsMap[item.id] || [];
+                const hasSubgroups = subgroups.length > 0;
+                const isExpanded = expandedGroups[item.id] !== false;
 
-                  return (
+                return (
+                  <div key={item.id} className="flex flex-col">
                     <button
-                      key={item.id}
                       type="button"
                       onClick={() => onSelectChat(item)}
                       className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left ${
@@ -508,6 +544,16 @@ export const Sidebar = ({
                                 {formatTime(item.lastMessageTime)}
                               </span>
                             )}
+                            {hasSubgroups && (
+                              <button
+                                type="button"
+                                onClick={(e) => toggleGroupExpand(item.id, e)}
+                                className="p-1 rounded-md hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border-none bg-transparent cursor-pointer ml-1"
+                                title={isExpanded ? 'Collapse subgroups' : 'Expand subgroups'}
+                              >
+                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                              </button>
+                            )}
                           </div>
                         </div>
                         {isTyping ? (
@@ -515,14 +561,57 @@ export const Sidebar = ({
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <p className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate m-0 leading-normal">
-                            {item.lastMessage || 'Active group conversation'}
-                          </p>
+                          <div className="flex items-center justify-between text-[13px] sm:text-sm font-body text-[var(--text-muted)]">
+                            <p className="truncate m-0 leading-normal min-w-0 flex-1">
+                              {item.lastMessage || 'Active group conversation'}
+                            </p>
+                            {hasSubgroups && (
+                              <span className="text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] px-1.5 py-0.5 rounded-md shrink-0 ml-1">
+                                {subgroups.length} {subgroups.length === 1 ? 'subgroup' : 'subgroups'}
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </button>
-                  );
-                })}
+
+                    {/* Indented Subgroups List */}
+                    {hasSubgroups && isExpanded && (
+                      <div className="ml-6 pl-3 border-l-2 border-[var(--border)] flex flex-col gap-1 my-1">
+                        {subgroups.map((sub) => {
+                          const isSubActive = activeChat?.id === sub.id;
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              onClick={() => onSelectChat(sub)}
+                              className={`w-full p-2 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer border-none text-left ${
+                                isSubActive
+                                  ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2 shadow-xs'
+                                  : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
+                              }`}
+                            >
+                              <div className="w-6 h-6 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--border-subtle)] flex items-center justify-center font-bold text-xs shrink-0">
+                                #
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-xs sm:text-sm font-heading font-semibold text-[var(--text-primary)] truncate block">
+                                  {sub.name}
+                                </span>
+                                {sub.lastMessage && (
+                                  <span className="text-[11px] font-body text-[var(--text-muted)] truncate block">
+                                    {sub.lastMessage}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </>
           )
         ) : workspaces.length === 0 ? (

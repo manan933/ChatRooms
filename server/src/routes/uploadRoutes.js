@@ -125,10 +125,17 @@ router.get('/media/:id', async (req, res) => {
     if (mongoose.Types.ObjectId.isValid(id)) {
       const media = await Media.findById(id).lean();
       if (media && media.data) {
-        res.setHeader('Content-Type', media.contentType || 'application/octet-stream');
+        const rawBuffer = Buffer.isBuffer(media.data)
+          ? media.data
+          : media.data?.buffer
+            ? Buffer.from(media.data.buffer)
+            : Buffer.from(media.data);
+
+        res.setHeader('Content-Type', media.contentType || 'image/jpeg');
+        res.setHeader('Content-Length', rawBuffer.length);
         res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(media.filename)}"`);
-        return res.send(media.data);
+        return res.end(rawBuffer);
       }
     }
 

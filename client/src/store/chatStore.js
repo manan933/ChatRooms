@@ -596,8 +596,8 @@ export const useChatStore = create((set, get) => ({
     return { success: false, error: res.error || res.data?.message || 'Failed to add contact' };
   },
 
-  createGroup: async (name, description = '') => {
-    const res = await api.contacts.createGroup({ name, description });
+  createGroup: async (name, description = '', parentGroupId = null) => {
+    const res = await api.contacts.createGroup({ name, description, parentGroupId });
     if (res.ok && res.data) {
       await get().loadChats();
       return { success: true, group: res.data };
@@ -605,12 +605,14 @@ export const useChatStore = create((set, get) => ({
 
     // Local fallback creation
     const newGroup = {
-      id: `group-${Date.now()}`,
+      id: parentGroupId ? `subgroup-${Date.now()}` : `group-${Date.now()}`,
       name,
       description,
       membersCount: 1,
-      lastMessage: 'Group created',
+      parentGroupId: parentGroupId || null,
+      lastMessage: parentGroupId ? 'Subgroup created' : 'Group created',
       lastMessageTime: new Date().toISOString(),
+      type: 'group',
     };
     set((state) => ({
       groups: [newGroup, ...state.groups],

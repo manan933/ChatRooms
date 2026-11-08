@@ -81,6 +81,11 @@ const PersonalGroupSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    parentGroupId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     creatorId: {
       type: String,
       default: null,

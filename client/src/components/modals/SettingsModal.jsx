@@ -291,11 +291,11 @@ export const SettingsModal = ({
         {/* ── Left Sidebar Navigation ────────────────────────────────── */}
         <div className="w-full md:w-52 shrink-0 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-[var(--border)] pr-0 md:pr-4">
           {[
-            { id: 'profile', label: 'My Profile', icon: User },
-            { id: 'appearance', label: 'Appearance', icon: Palette },
-            { id: 'notifications', label: 'Notifications & Sound', icon: Bell },
+            { id: 'profile', label: 'Profile', icon: User },
+            { id: 'appearance', label: 'Theme', icon: Palette },
+            { id: 'notifications', label: 'Notifications', icon: Bell },
             { id: 'workplaces', label: 'Workplaces', icon: Building2 },
-            { id: 'account', label: 'Security & Login', icon: Lock },
+            { id: 'account', label: 'Security', icon: Lock },
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -353,8 +353,8 @@ export const SettingsModal = ({
           {/* ──────────────── TAB 1: PROFILE ──────────────────────────── */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
-              {/* Avatar Preview & Upload */}
-              <div className="flex items-center gap-4 p-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl">
+              {/* Elevated Profile Card */}
+              <div className="p-4 sm:p-5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl flex flex-col sm:flex-row items-center gap-4 sm:gap-5 shadow-sm">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -366,38 +366,66 @@ export const SettingsModal = ({
                   }}
                 />
 
-                <Avatar name={name || user?.name} src={avatarUrl} size="xl" />
+                <div className="relative group shrink-0">
+                  <Avatar name={name || user?.name} src={avatarUrl} size="xl" className="ring-2 ring-[var(--accent)]/30" />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white flex items-center justify-center border-2 border-[var(--bg-secondary)] shadow-md cursor-pointer transition-transform active:scale-95"
+                    title="Change picture"
+                  >
+                    {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                  </button>
+                </div>
 
-                <div className="flex flex-col gap-2 min-w-0 font-heading">
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0 text-center sm:text-left">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <h3 className="text-base sm:text-lg font-heading font-bold text-[var(--text-primary)] m-0 truncate">
+                      {name || user?.name || 'Your Name'}
+                    </h3>
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--accent-subtle)] border border-[var(--border)] text-xs font-semibold text-[var(--accent)]">
+                      <span>@{user?.primaryUsername || 'user'}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(`@${user?.primaryUsername || 'user'}`, 'username')}
+                        className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer p-0.5"
+                        title="Copy handle"
+                      >
+                        {copiedCode === 'username' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs font-body text-[var(--text-muted)] mt-1 truncate m-0">
+                    {bio || 'Communicating on ChatRooms.'}
+                  </p>
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isUploading}
-                      className="py-1.5 px-3.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-colors flex items-center gap-2 border-none shadow-sm"
+                      className="text-xs font-heading font-bold text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer p-0"
                     >
-                      {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                      <span>Upload Picture</span>
+                      Upload photo
                     </button>
                     {avatarUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setAvatarUrl('')}
-                        className="py-1.5 px-3 text-xs sm:text-sm text-red-400 hover:bg-red-500/10 rounded-xl bg-transparent border-none cursor-pointer font-semibold"
-                      >
-                        Remove
-                      </button>
+                      <>
+                        <span className="text-[var(--text-muted)] text-xs">·</span>
+                        <button
+                          type="button"
+                          onClick={() => setAvatarUrl('')}
+                          className="text-xs font-heading font-semibold text-red-400 hover:underline bg-transparent border-none cursor-pointer p-0"
+                        >
+                          Remove
+                        </button>
+                      </>
                     )}
                   </div>
-                  <span className="text-xs text-[var(--text-muted)] font-body">
-                    Visible across connected ChatRooms channels.
-                  </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-sm sm:text-base font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
+                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                     Display Name
                   </label>
                   <input
@@ -456,9 +484,14 @@ export const SettingsModal = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
-                    Email Address
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block">
+                      Email
+                    </label>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded-md">
+                      Verified
+                    </span>
+                  </div>
                   <input
                     type="email"
                     disabled
@@ -487,7 +520,7 @@ export const SettingsModal = ({
                 className="w-full mt-2 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-sm font-heading font-bold transition-all cursor-pointer border-none shadow-md flex items-center justify-center gap-2"
               >
                 {isSaving ? <Loader2 size={16} className="animate-spin" /> : null}
-                <span>Save Profile Changes</span>
+                <span>Save Profile</span>
               </button>
             </form>
           )}
@@ -497,7 +530,7 @@ export const SettingsModal = ({
             <div className="flex flex-col gap-5 font-heading">
               <div>
                 <label className="text-sm font-bold text-[var(--text-primary)] block mb-3">
-                  Color Theme (Exclusive Two Modes)
+                  Color Theme
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Theme 2: Midnight Dark */}
@@ -525,7 +558,7 @@ export const SettingsModal = ({
                     </div>
                     <div className="text-sm font-bold text-[var(--text-primary)]">Midnight Dark</div>
                     <div className="text-xs font-body text-[var(--text-muted)] mt-1">
-                      Midnight Black <code className="text-[#0297DE]">#02070A</code> · Electric Blue <code className="text-[#0297DE]">#0297DE</code> · Cantaloupe Orange <code className="text-[#FC734D]">#FC734D</code>
+                      Dark Mode · Deep Black & Electric Blue
                     </div>
                   </button>
 
@@ -554,7 +587,7 @@ export const SettingsModal = ({
                     </div>
                     <div className="text-sm font-bold text-[var(--text-primary)]">Skyblue Vibrant</div>
                     <div className="text-xs font-body text-[var(--text-muted)] mt-1">
-                      Sky Blue <code className="text-[#0593C6]">#0593C6</code> · White <code className="text-[var(--text-primary)]">#FCFFFF</code> · Hot Pink <code className="text-[#D83995]">#D83995</code>
+                      Light Mode · Sky Blue & Bright White
                     </div>
                   </button>
                 </div>
@@ -566,15 +599,15 @@ export const SettingsModal = ({
                   <div>
                     <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                       <Laptop size={16} className="text-[var(--accent)]" />
-                      <span>Progressive Web App (PWA)</span>
+                      <span>App Installation</span>
                     </div>
                     <div className="text-xs font-body text-[var(--text-muted)] mt-1">
-                      Install ChatRooms as a fast standalone app on Windows, Mac, Android, or iOS.
+                      Install ChatRooms directly on your phone or desktop.
                     </div>
                   </div>
                   {typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches ? (
                     <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-1.5 shrink-0">
-                      <Check size={14} /> Installed as App
+                      <Check size={14} /> Installed
                     </span>
                   ) : (
                     <button
@@ -587,10 +620,6 @@ export const SettingsModal = ({
                     </button>
                   )}
                 </div>
-                <div className="text-xs font-body text-[var(--text-muted)] border-t border-[var(--border)] pt-2.5 flex items-center justify-between">
-                  <span>Service Worker Cache: Active</span>
-                  <span>Hardware accelerated · Instant wakeup</span>
-                </div>
               </div>
             </div>
           )}
@@ -598,16 +627,16 @@ export const SettingsModal = ({
           {/* ──────────────── TAB 3: NOTIFICATIONS & PRIVACY ────────── */}
           {activeTab === 'notifications' && (
             <div className="flex flex-col gap-4 font-heading">
-              {/* Native System Push Notifications (Android & Windows WhatsApp Style) */}
+              {/* Native System Push Notifications */}
               <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                       <Bell size={16} className="text-[var(--accent)]" />
-                      <span>Realtime System Notifications (Android & Windows)</span>
+                      <span>System Notifications</span>
                     </div>
                     <div className="text-xs font-body text-[var(--text-muted)] mt-1 leading-relaxed">
-                      Receive heads-up banners, vibration, and audio rings just like WhatsApp on Android and Windows Action Center, even when ChatRooms is minimized.
+                      Instant alerts for messages and calls even when minimized.
                     </div>
                   </div>
                   <span
@@ -622,8 +651,8 @@ export const SettingsModal = ({
                     {notifPermission === 'granted'
                       ? '● Active'
                       : notifPermission === 'denied'
-                      ? '✕ Blocked in Browser'
-                      : '○ Needs Permission'}
+                      ? '✕ Blocked'
+                      : '○ Inactive'}
                   </span>
                 </div>
 
@@ -635,7 +664,7 @@ export const SettingsModal = ({
                       className="py-2 px-3.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs sm:text-sm font-bold border-none cursor-pointer flex items-center gap-2 shadow-sm transition-transform active:scale-95"
                     >
                       <Check size={14} />
-                      <span>Enable System Notifications</span>
+                      <span>Enable Alerts</span>
                     </button>
                   )}
                   <button
@@ -645,23 +674,20 @@ export const SettingsModal = ({
                     className="py-2 px-3.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs sm:text-sm font-semibold cursor-pointer flex items-center gap-2 transition-colors"
                   >
                     <SendHorizontal size={14} />
-                    <span>{testNotifSent ? 'Notification Sent!' : 'Send Test Notification'}</span>
+                    <span>{testNotifSent ? 'Sent!' : 'Test Alert'}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Synthesized Audio Effects */}
+              {/* Sound Effects */}
               <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                     <Volume2 size={16} className="text-[var(--accent)]" />
-                    <span>Synthesized Audio Effects</span>
-                    <span className="px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] text-[10px] font-bold">
-                      Web Audio
-                    </span>
+                    <span>Sound Effects</span>
                   </div>
                   <div className="text-xs font-body text-[var(--text-muted)] mt-1">
-                    Play gentle synthesized audio chimes for incoming messages and reactions
+                    Play sound on incoming messages and reactions
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -670,7 +696,7 @@ export const SettingsModal = ({
                     onClick={() => playReceivedSound()}
                     className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5"
                   >
-                    <Volume2 size={13} /> Test Sound
+                    <Volume2 size={13} /> Test
                   </button>
                   <input
                     type="checkbox"
@@ -710,17 +736,17 @@ export const SettingsModal = ({
                 </div>
               </div>
 
-              {/* ── Muted Conversations Manager ───────────────────────── */}
+              {/* ── Muted Chats Manager ───────────────────────── */}
               <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                     <BellOff size={16} className="text-[var(--accent-highlight)]" />
-                    <span>Muted Conversations ({mutedChats.length})</span>
+                    <span>Muted Chats ({mutedChats.length})</span>
                   </div>
                 </div>
                 {mutedChats.length === 0 ? (
                   <p className="text-xs font-body text-[var(--text-muted)] m-0 italic">
-                    No chats or channels are currently muted.
+                    No chats or channels are muted.
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar">
@@ -762,7 +788,7 @@ export const SettingsModal = ({
                 </div>
                 {blockedUsers.length === 0 ? (
                   <p className="text-xs font-body text-[var(--text-muted)] m-0 italic">
-                    You have not blocked any contacts.
+                    No blocked contacts.
                   </p>
                 ) : (
                   <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar">
@@ -794,9 +820,9 @@ export const SettingsModal = ({
             <div className="flex flex-col gap-4 font-heading">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-bold text-[var(--text-primary)]">Active Workplaces</div>
+                  <div className="text-sm font-bold text-[var(--text-primary)]">Workplaces</div>
                   <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">
-                    Teams and workspaces you are participating in
+                    Teams and channels you belong to
                   </div>
                 </div>
                 <button
@@ -855,7 +881,7 @@ export const SettingsModal = ({
               <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
                 <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <ShieldCheck size={18} className="text-emerald-400" />
-                  <span>Account Credentials & Session</span>
+                  <span>Account Details</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-body">
                   <div className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)]">
@@ -873,7 +899,7 @@ export const SettingsModal = ({
               <form onSubmit={handlePasswordSubmit} className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3.5">
                 <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                   <KeyRound size={16} className="text-[var(--accent)]" />
-                  <span>Update Account Password</span>
+                  <span>Change Password</span>
                 </div>
 
                 {passwordMsg && (
@@ -946,8 +972,8 @@ export const SettingsModal = ({
               {/* Logout Session Button */}
               <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
                 <div>
-                  <div className="text-sm font-bold text-[var(--text-primary)]">Log Out Session</div>
-                  <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">Sign out on this device</div>
+                  <div className="text-sm font-bold text-[var(--text-primary)]">Log Out</div>
+                  <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">Sign out from this device</div>
                 </div>
                 <button
                   type="button"

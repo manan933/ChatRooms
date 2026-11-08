@@ -36,7 +36,7 @@ const MessageSchema = new mongoose.Schema(
     },
     chatType: {
       type: String,
-      enum: ['direct', 'personal-group', 'workspace-node'],
+      enum: ['direct', 'personal-group', 'workspace-node', 'group', 'channel'],
       default: 'workspace-node',
     },
     senderId: {

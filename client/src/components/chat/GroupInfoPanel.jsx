@@ -12,6 +12,7 @@ import {
   UserPlus,
   Trash2,
   Loader2,
+  Plus,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useChatStore from '../../store/chatStore';
@@ -27,7 +28,16 @@ const ROLE_CONFIG = {
 
 export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   const [copied, setCopied] = useState(false);
-  const { toggleMuteChat, isChatMuted, blockUser, unblockUser, isUserBlocked } = useChatStore();
+  const {
+    toggleMuteChat,
+    isChatMuted,
+    blockUser,
+    unblockUser,
+    isUserBlocked,
+    groups = [],
+    createGroup,
+    setActiveChat,
+  } = useChatStore();
   const { user } = useAuthStore();
 
   const currentUserId = user?._id || user?.id;
@@ -39,6 +49,16 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
+
+  // Subgroup creation state
+  const [showCreateSubgroup, setShowCreateSubgroup] = useState(false);
+  const [subgroupName, setSubgroupName] = useState('');
+  const [subgroupDesc, setSubgroupDesc] = useState('');
+  const [creatingSubgroup, setCreatingSubgroup] = useState(false);
+  const [subgroupError, setSubgroupError] = useState(null);
+
+  const existingSubgroups = (groups || []).filter((g) => g.parentGroupId === chat?.id);
+  const parentGroup = chat?.parentGroupId ? (groups || []).find((g) => g.id === chat.parentGroupId) : null;
 
   useEffect(() => {
     if (chat) {
@@ -75,6 +95,29 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
       navigator.clipboard?.writeText(joinCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleCreateSubgroup = async (e) => {
+    e.preventDefault();
+    if (!subgroupName.trim()) return;
+    setCreatingSubgroup(true);
+    setSubgroupError(null);
+    try {
+      const res = await createGroup(subgroupName.trim(), subgroupDesc.trim(), chat.id);
+      if (res.success) {
+        setSubgroupName('');
+        setSubgroupDesc('');
+        setShowCreateSubgroup(false);
+        setActionSuccess(`Created subgroup #${res.group.name}`);
+        setTimeout(() => setActionSuccess(null), 3000);
+      } else {
+        setSubgroupError(res.error || 'Failed to create subgroup');
+      }
+    } catch {
+      setSubgroupError('Error connecting to server.');
+    } finally {
+      setCreatingSubgroup(false);
     }
   };
 
@@ -171,6 +214,121 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
           <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5 animate-fadeIn">
             <Check size={14} />
             <span>{actionSuccess}</span>
+          </div>
+        )}
+
+        {/* Parent Group Navigation (if this is a subgroup) */}
+        {parentGroup && (
+          <div className="p-3 rounded-2xl bg-[var(--accent-subtle)] border border-[var(--border)] flex items-center justify-between">
+            <div className="min-w-0 flex-1 mr-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] block">
+                Parent Group
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-[var(--text-primary)] truncate block">
+                {parentGroup.name}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveChat(parentGroup);
+                onClose();
+              }}
+              className="px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer transition-colors shadow-xs"
+            >
+              Open
+            </button>
+          </div>
+        )}
+
+        {/* ── Subgroups Section (for groups) ─────────────────────────── */}
+        {chat.type === 'group' && (
+          <div className="p-3.5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Hash size={15} className="text-[var(--accent)]" />
+                <span>Subgroups ({existingSubgroups.length})</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCreateSubgroup(!showCreateSubgroup);
+                  setSubgroupError(null);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer shadow-xs transition-colors"
+              >
+                <Plus size={12} />
+                <span>Add Subgroup</span>
+              </button>
+            </div>
+
+            {/* Inline Subgroup Creation Form */}
+            {showCreateSubgroup && (
+              <form onSubmit={handleCreateSubgroup} className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--accent)]/40 flex flex-col gap-2 animate-fadeIn">
+                <span className="text-xs font-bold text-[var(--text-primary)]">New Subgroup</span>
+                <input
+                  type="text"
+                  required
+                  placeholder="Subgroup name"
+                  value={subgroupName}
+                  onChange={(e) => setSubgroupName(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                  autoFocus
+                />
+                <input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={subgroupDesc}
+                  onChange={(e) => setSubgroupDesc(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                />
+                {subgroupError && <span className="text-[10px] text-red-400 font-body">{subgroupError}</span>}
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateSubgroup(false)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creatingSubgroup || !subgroupName.trim()}
+                    className="px-3 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {creatingSubgroup ? <Loader2 size={12} className="animate-spin" /> : <span>Create</span>}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {existingSubgroups.length === 0 ? (
+              <p className="text-xs font-body text-[var(--text-muted)] m-0 italic">
+                No nested subgroups yet.
+              </p>
+            ) : (
+              <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                {existingSubgroups.map((sub) => (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveChat(sub);
+                      onClose();
+                    }}
+                    className="w-full p-2 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border border-[var(--border)] flex items-center justify-between text-left cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-[var(--accent)]">#</span>
+                      <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                        {sub.name}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[var(--text-muted)] shrink-0">Open →</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

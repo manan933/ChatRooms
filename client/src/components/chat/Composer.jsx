@@ -185,7 +185,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   };
 
   const handleSend = () => {
-    if ((!text.trim() && !attachment) || isUploading) return;
+    if (!text.trim() && !attachment) return;
 
     // Ensure attachment never broadcasts an ephemeral blob: URL
     let safeAttachment = null;
@@ -200,7 +200,8 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
         : (attachment.dataUrl || attachment.url);
 
       safeAttachment = {
-        ...attachment,
+        name: attachment.name || (isImg ? 'Photo.jpg' : 'Attachment'),
+        size: attachment.size || '1 MB',
         type: isImg ? 'image' : (attachment.type || 'file'),
         mimeType: attachment.mimeType || (isImg ? 'image/jpeg' : 'application/octet-stream'),
         url: finalUrl,
@@ -210,6 +211,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
     onSend?.(text.trim(), safeAttachment);
     setText('');
     setAttachment(null);
+    setIsUploading(false);
     if (chatId) {
       sessionStorage.removeItem(`chatrooms_draft_${chatId}`);
     }
@@ -387,19 +389,15 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           <button
             type="button"
             onClick={handleSend}
-            disabled={!hasContent || isUploading}
+            disabled={!hasContent}
             className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
-              hasContent && !isUploading
+              hasContent
                 ? 'btn-cta-vibrant cursor-pointer active:scale-95'
                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
             }`}
             title="Send Message"
           >
-            {isUploading ? (
-              <Loader2 size={16} />
-            ) : (
-              <SendHorizontal size={19} />
-            )}
+            <SendHorizontal size={19} />
           </button>
         </div>
       </div>

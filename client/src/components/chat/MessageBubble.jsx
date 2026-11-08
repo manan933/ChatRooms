@@ -52,13 +52,14 @@ export const MessageBubble = ({
   const isImageAttachment = (att) => {
     if (!att) return false;
     if (att.type === 'image') return true;
-    if (att.mimeType && att.mimeType.startsWith('image/')) return true;
-    const nameOrUrl = `${att.name || ''} ${att.url || ''}`.toLowerCase();
-    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)($|\?|#)/i.test(nameOrUrl)) return true;
+    if (att.mimeType && att.mimeType.toLowerCase().startsWith('image/')) return true;
+    const nameOrUrl = `${att.name || ''} ${att.url || ''} ${att.dataUrl || ''}`.toLowerCase();
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif|heic|heif)($|\?|#)/i.test(nameOrUrl)) return true;
     if (typeof att.url === 'string' && (att.url.startsWith('data:image/') || att.url.includes('/api/upload/media/'))) {
       if (att.name && /\.(pdf|doc|docx|zip|rar|txt|csv|xls|xlsx)$/i.test(att.name)) return false;
       return true;
     }
+    if (typeof att.dataUrl === 'string' && att.dataUrl.startsWith('data:image/')) return true;
     return false;
   };
 
@@ -229,6 +230,11 @@ export const MessageBubble = ({
                       alt={attachment.name || 'Photo'}
                       className="w-full h-full object-cover hover:scale-102 transition-transform duration-200"
                       loading="lazy"
+                      onError={(e) => {
+                        if (attachment.dataUrl && e.target.src !== attachment.dataUrl) {
+                          e.target.src = attachment.dataUrl;
+                        }
+                      }}
                     />
                   </div>
                   <ImageViewer
