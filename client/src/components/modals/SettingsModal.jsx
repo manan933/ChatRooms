@@ -324,7 +324,15 @@ export const SettingsModal = ({
 
           <div className="mt-auto pt-4 hidden md:flex flex-col items-center border-t border-[var(--border)]">
             <BrandLogo variant="lockup" size="sm" className="opacity-90" />
-            <span className="text-[11px] font-body text-[var(--text-muted)] mt-1.5 font-medium">v2.0 · ChatRooms</span>
+            <span className="text-[11px] font-body text-[var(--text-muted)] mt-1.5 font-medium">
+              v2.0 ·{' '}
+              <span
+                className="font-brand font-normal text-xs text-[var(--text-primary)]"
+                style={{ fontFamily: "'Lakki Reddy', cursive" }}
+              >
+                ChatRooms
+              </span>
+            </span>
           </div>
         </div>
 

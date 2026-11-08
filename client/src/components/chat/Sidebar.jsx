@@ -435,7 +435,19 @@ export const Sidebar = ({
                           </p>
                         ) : (
                           <p className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate m-0 leading-normal">
-                            {item.lastMessage || (isContactOnline ? 'Active now' : 'Connected on ChatRooms')}
+                            {item.lastMessage || (
+                              isContactOnline ? 'Active now' : (
+                                <span>
+                                  Connected on{' '}
+                                  <span
+                                    className="font-brand font-normal text-[1.05em] text-[var(--text-secondary)]"
+                                    style={{ fontFamily: "'Lakki Reddy', cursive" }}
+                                  >
+                                    ChatRooms
+                                  </span>
+                                </span>
+                              )
+                            )}
                           </p>
                         )}
                       </div>

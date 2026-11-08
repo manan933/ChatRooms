@@ -291,7 +291,19 @@ export const AuthPage = () => {
                 {/* Form Header */}
                 <div className="mb-5">
                   <h2 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-[var(--text-primary)] m-0">
-                    {isRegister ? 'Join ChatRooms' : 'Welcome back'}
+                    {isRegister ? (
+                      <>
+                        Join{' '}
+                        <span
+                          className="font-brand font-normal text-3xl sm:text-4xl text-[var(--text-primary)]"
+                          style={{ fontFamily: "'Lakki Reddy', cursive" }}
+                        >
+                          ChatRooms
+                        </span>
+                      </>
+                    ) : (
+                      'Welcome back'
+                    )}
                   </h2>
                   <p className="text-xs sm:text-sm font-body text-[var(--text-secondary)] mt-1.5 leading-relaxed">
                     {isRegister
@@ -453,7 +465,15 @@ export const AuthPage = () => {
 
       {/* ── Page Footer ────────────────────────────────────────────── */}
       <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-body text-[var(--text-muted)] border-t border-[var(--border-subtle)]">
-        <div>ChatRooms v2.0 · Focused Real-time Communications</div>
+        <div>
+          <span
+            className="font-brand font-normal text-sm text-[var(--text-primary)]"
+            style={{ fontFamily: "'Lakki Reddy', cursive" }}
+          >
+            ChatRooms
+          </span>{' '}
+          v2.0 · Focused Real-time Communications
+        </div>
         <div className="flex items-center gap-4">
           <button
             type="button"

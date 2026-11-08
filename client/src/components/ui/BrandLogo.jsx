@@ -6,6 +6,7 @@ import useThemeStore from '../../store/themeStore';
  * Renders the horizontal lockup: [logo] ChatRooms (icon side-by-side with text),
  * or the standalone icon when variant="icon".
  * Automatically adapts between Theme 1 (Light: black text) and Theme 2 (Dark: white text).
+ * The word "ChatRooms" uses the 'Lakki Reddy' font as requested.
  */
 export const BrandLogo = ({
   variant = 'lockup',
@@ -26,12 +27,12 @@ export const BrandLogo = ({
   };
 
   const textSizes = {
-    xs: 'text-sm font-bold',
-    sm: 'text-base sm:text-lg font-bold',
-    md: 'text-xl sm:text-[23px] font-extrabold',
-    lg: 'text-2xl sm:text-3xl font-extrabold',
-    xl: 'text-3xl sm:text-4xl font-black',
-    '2xl': 'text-4xl sm:text-5xl font-black',
+    xs: 'text-base font-normal',
+    sm: 'text-lg sm:text-xl font-normal',
+    md: 'text-2xl sm:text-[26px] font-normal',
+    lg: 'text-3xl sm:text-4xl font-normal',
+    xl: 'text-4xl sm:text-5xl font-normal',
+    '2xl': 'text-5xl sm:text-6xl font-normal',
   };
 
   const iconSrc = isDark ? '/chatrooms-icon-white.png' : '/chatrooms-icon.png';
@@ -56,7 +57,8 @@ export const BrandLogo = ({
         draggable={false}
       />
       <span
-        className={`font-heading ${textSizes[size] || textSizes.md} tracking-tight text-[var(--text-primary)] leading-none select-none`}
+        className={`font-brand ${textSizes[size] || textSizes.md} tracking-wide text-[var(--text-primary)] leading-none select-none`}
+        style={{ fontFamily: "'Lakki Reddy', cursive" }}
       >
         ChatRooms
       </span>
