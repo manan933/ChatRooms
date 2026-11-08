@@ -57,6 +57,25 @@ export const Sidebar = ({
   const [activeWorkspaceIndex, setActiveWorkspaceIndex] = useState(0);
   const [workspaceDropdownOpen, setWorkspaceDropdownOpen] = useState(false);
   const [createChannelModalOpen, setCreateChannelModalOpen] = useState(false);
+
+  const handleOpenCreateChannel = () => {
+    window.history.pushState({ chatroomsModal: 'createChannel' }, '');
+    setCreateChannelModalOpen(true);
+  };
+  const handleCloseCreateChannel = () => {
+    if (window.history.state?.chatroomsModal === 'createChannel') {
+      window.history.back();
+    } else {
+      setCreateChannelModalOpen(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!createChannelModalOpen) return;
+    const handlePop = () => setCreateChannelModalOpen(false);
+    window.addEventListener('popstate', handlePop, { once: true });
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [createChannelModalOpen]);
   const [expandedFolders, setExpandedFolders] = useState({
     'Computer Science & Eng': true,
     'Computer Science / AI & ML': true,
@@ -329,7 +348,7 @@ export const Sidebar = ({
           <div className="flex items-center gap-1.5 w-full">
             <button
               type="button"
-              onClick={() => setCreateChannelModalOpen(true)}
+              onClick={handleOpenCreateChannel}
               className="btn-cta-vibrant flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none active:scale-[0.98]"
             >
               <Hash size={14} />
@@ -625,7 +644,7 @@ export const Sidebar = ({
       {/* ── Create Channel Modal ────────────────────────────────────── */}
       <CreateChannelModal
         isOpen={createChannelModalOpen}
-        onClose={() => setCreateChannelModalOpen(false)}
+        onClose={handleCloseCreateChannel}
         activeWorkspace={currentWorkspace}
         onAddChannel={onAddChannel}
       />

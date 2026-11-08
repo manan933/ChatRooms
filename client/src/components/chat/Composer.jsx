@@ -213,7 +213,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   const hasContent = Boolean(text.trim() || attachment);
 
   return (
-    <div className="relative px-3 sm:px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))] glass-panel border-t border-[var(--border)] shrink-0 font-body">
+    <div className="relative px-2.5 sm:px-4 py-2 sm:py-2.5 pb-[max(8px,env(safe-area-inset-bottom))] glass-panel border-t border-[var(--border)] shrink-0 font-body z-10">
       {/* Hidden file inputs */}
       <input
         type="file"
@@ -237,7 +237,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
 
       {/* Reaction Popover */}
       {showEmoji && (
-        <div ref={emojiRef} className="absolute bottom-full left-2 sm:left-4 mb-2 z-50 max-w-[calc(100vw-24px)]">
+        <div ref={emojiRef} className="absolute bottom-full left-1 sm:left-4 mb-2 z-50 max-w-[calc(100vw-16px)]">
           <EmojiPicker onSelect={handleInsertEmoji} onClose={() => setShowEmoji(false)} />
         </div>
       )}
@@ -281,16 +281,19 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
         </div>
       )}
 
-      {/* Main Composer Pill Input Row */}
-      <div className="flex items-center gap-2 bg-[var(--bg-tertiary)]/75 backdrop-blur-md border border-[var(--border)] rounded-2xl px-3 py-1.5 focus-within:border-[var(--border-focus)] transition-all shadow-xs">
+      {/* Main Composer Pill Input Row: Entire pill focuses textarea on click */}
+      <div
+        onClick={() => textareaRef.current?.focus()}
+        className="flex items-center gap-1.5 sm:gap-2 bg-[var(--bg-tertiary)]/75 backdrop-blur-md border border-[var(--border)] rounded-2xl px-2.5 sm:px-3 py-1.5 focus-within:border-[var(--border-focus)] transition-all shadow-xs cursor-text min-h-[46px]"
+      >
         {/* Left Action Buttons */}
-        <div className="flex items-center gap-0.5 shrink-0">
+        <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           {policy?.allowAttachments !== false && (
             <>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
                 title="Attach Document"
               >
                 <Paperclip size={18} />
@@ -298,7 +301,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
-                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
                 title="Upload Image"
               >
                 <ImageIcon size={18} />
@@ -310,7 +313,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
               ref={emojiButtonRef}
               type="button"
               onClick={() => setShowEmoji((prev) => !prev)}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center ${
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0 ${
                 showEmoji ? 'text-[var(--accent)] bg-[var(--accent-subtle)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
               }`}
               title={showEmoji ? 'Close Emoji Picker' : 'Insert Emojis'}
@@ -320,38 +323,45 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           )}
         </div>
 
-        {/* Textarea */}
+        {/* Textarea: min-w-0 ensures flex child never overflows or squishes to 0 */}
         <textarea
           ref={textareaRef}
           value={text}
           onChange={handleTextChange}
           onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setTimeout(() => {
+              textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 200);
+          }}
           placeholder="Type a message..."
           rows={1}
           enterKeyHint="send"
           autoCapitalize="sentences"
           autoComplete="on"
-          className="flex-1 bg-transparent border-none outline-none resize-none py-1.5 text-[15px] sm:text-[16px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[38px] max-h-[130px] leading-relaxed"
+          className="flex-1 min-w-0 bg-transparent border-none outline-none resize-none py-1.5 sm:py-2 text-[15px] sm:text-[16px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[38px] max-h-[130px] leading-relaxed cursor-text"
         />
 
         {/* Send Button */}
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={!hasContent || isUploading}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
-            hasContent && !isUploading
-              ? 'btn-cta-vibrant cursor-pointer active:scale-95'
-              : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
-          }`}
-          title="Send Message"
-        >
-          {isUploading ? (
-            <Loader2 size={16} />
-          ) : (
-            <SendHorizontal size={17} />
-          )}
-        </button>
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!hasContent || isUploading}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
+              hasContent && !isUploading
+                ? 'btn-cta-vibrant cursor-pointer active:scale-95'
+                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
+            }`}
+            title="Send Message"
+          >
+            {isUploading ? (
+              <Loader2 size={16} />
+            ) : (
+              <SendHorizontal size={17} />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

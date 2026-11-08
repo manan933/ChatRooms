@@ -69,6 +69,23 @@ export const ChatArea = ({
   const [callModalOpen, setCallModalOpen] = useState(false);
   const [isVideoCall, setIsVideoCall] = useState(false);
 
+  // Mobile Back button support for Group Info Drawer
+  const handleCloseInfo = () => {
+    if (window.history.state?.chatroomsDrawer === 'info') {
+      window.history.back();
+    } else {
+      setInfoOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!infoOpen) return;
+    window.history.pushState({ chatroomsDrawer: 'info' }, '');
+    const handlePop = () => setInfoOpen(false);
+    window.addEventListener('popstate', handlePop, { once: true });
+    return () => window.removeEventListener('popstate', handlePop);
+  }, [infoOpen]);
+
   const { soundEnabled } = useThemeStore();
   const { onlineUsers = [], isChatMuted, isUserBlocked, unblockUser } = useChatStore();
 
@@ -557,12 +574,12 @@ export const ChatArea = ({
         <div className="fixed inset-0 z-50 md:relative md:inset-auto md:z-20 flex">
           <div
             className="fixed inset-0 bg-black/60 md:hidden backdrop-blur-xs"
-            onClick={() => setInfoOpen(false)}
+            onClick={handleCloseInfo}
           />
           <div className="relative w-full max-w-[320px] sm:max-w-xs md:w-80 h-full ml-auto z-10 shadow-xl">
             <GroupInfoPanel
               chat={chat}
-              onClose={() => setInfoOpen(false)}
+              onClose={handleCloseInfo}
               onLeaveChat={onLeaveChat}
             />
           </div>

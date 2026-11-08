@@ -57,6 +57,117 @@ export const ChatPage = () => {
   const [activeCallSession, setActiveCallSession] = useState(null);
   const bufferedIceCandidatesRef = React.useRef([]);
 
+  // ── Mobile Hardware & Gesture Back Navigation ────────────────────
+  const activeChatRef = React.useRef(activeChat);
+  const modalsRef = React.useRef({
+    settings: false,
+    newChat: false,
+    workspace: false,
+    incomingCall: false,
+  });
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
+
+  useEffect(() => {
+    modalsRef.current = {
+      settings: settingsModalOpen,
+      newChat: newChatModalOpen,
+      workspace: workspaceModalOpen,
+      incomingCall: Boolean(incomingCall),
+    };
+  }, [settingsModalOpen, newChatModalOpen, workspaceModalOpen, incomingCall]);
+
+  const chatPushedRef = React.useRef(false);
+
+  // When activeChat is selected on mobile, push history state so pressing back returns to conversation list
+  useEffect(() => {
+    if (activeChat?.id) {
+      if (!chatPushedRef.current) {
+        window.history.pushState({ chatroomsView: 'chat', id: activeChat.id }, '');
+        chatPushedRef.current = true;
+      }
+    } else {
+      chatPushedRef.current = false;
+    }
+  }, [activeChat?.id]);
+
+  const handleOpenSettings = () => {
+    window.history.pushState({ chatroomsView: 'modal', name: 'settings' }, '');
+    setSettingsModalOpen(true);
+  };
+  const handleCloseSettings = () => {
+    if (window.history.state?.chatroomsView === 'modal') {
+      window.history.back();
+    } else {
+      setSettingsModalOpen(false);
+    }
+  };
+
+  const handleOpenNewChat = () => {
+    window.history.pushState({ chatroomsView: 'modal', name: 'newChat' }, '');
+    setNewChatModalOpen(true);
+  };
+  const handleCloseNewChat = () => {
+    if (window.history.state?.chatroomsView === 'modal') {
+      window.history.back();
+    } else {
+      setNewChatModalOpen(false);
+    }
+  };
+
+  const handleOpenWorkspace = () => {
+    window.history.pushState({ chatroomsView: 'modal', name: 'workspace' }, '');
+    setWorkspaceModalOpen(true);
+  };
+  const handleCloseWorkspace = () => {
+    if (window.history.state?.chatroomsView === 'modal') {
+      window.history.back();
+    } else {
+      setWorkspaceModalOpen(false);
+    }
+  };
+
+  const handleCloseChat = () => {
+    if (chatPushedRef.current && window.history.state?.chatroomsView === 'chat') {
+      window.history.back();
+    } else {
+      closeChat();
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      // 1. Close open modal first
+      if (modalsRef.current.settings) {
+        setSettingsModalOpen(false);
+        return;
+      }
+      if (modalsRef.current.newChat) {
+        setNewChatModalOpen(false);
+        return;
+      }
+      if (modalsRef.current.workspace) {
+        setWorkspaceModalOpen(false);
+        return;
+      }
+      if (modalsRef.current.incomingCall) {
+        setIncomingCall(null);
+        return;
+      }
+
+      // 2. Close active chat on mobile and return to chat list
+      if (activeChatRef.current) {
+        chatPushedRef.current = false;
+        closeChat();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [closeChat]);
+
   // Automatically show workspace selection popup on login
   useEffect(() => {
     const prompted = sessionStorage.getItem('chatrooms_workspace_prompted');
@@ -376,9 +487,9 @@ export const ChatPage = () => {
             selectedWorkspace={selectedWorkspace}
             isLoadingChats={isLoadingChats}
             onSelectChat={(chat) => selectChat(chat)}
-            onOpenNewChat={() => setNewChatModalOpen(true)}
-            onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
-            onOpenSettings={() => setSettingsModalOpen(true)}
+            onOpenNewChat={handleOpenNewChat}
+            onOpenWorkspaceModal={handleOpenWorkspace}
+            onOpenSettings={handleOpenSettings}
             onLogout={logout}
             onAddChannel={addChannelToWorkspace}
           />
@@ -406,9 +517,9 @@ export const ChatPage = () => {
             typingUsers={currentTypingUsers}
             workspaces={workspaces}
             isLoadingMessages={isLoadingMessages}
-            onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
+            onOpenWorkspaceModal={handleOpenWorkspace}
             onSelectWorkspace={handleSelectWorkspace}
-            onBack={closeChat}
+            onBack={handleCloseChat}
             onSend={(content, attachment) =>
               activeChat && sendMessage(activeChat.id, content, attachment, user)
             }
@@ -432,7 +543,7 @@ export const ChatPage = () => {
       {/* ── Modals ─────────────────────────────────────────────────── */}
       <NewChatModal
         isOpen={newChatModalOpen}
-        onClose={() => setNewChatModalOpen(false)}
+        onClose={handleCloseNewChat}
         onAddContact={addContact}
         onCreateGroup={createGroup}
         onStartDirectChat={(chat) => selectChat(chat)}
@@ -440,7 +551,7 @@ export const ChatPage = () => {
 
       <WorkspaceModal
         isOpen={workspaceModalOpen}
-        onClose={() => setWorkspaceModalOpen(false)}
+        onClose={handleCloseWorkspace}
         workspaces={workspaces}
         activeWorkspace={selectedWorkspace || workspaces[0]}
         onSelectWorkspace={handleSelectWorkspace}
