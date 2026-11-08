@@ -324,7 +324,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
       {/* Main Composer Pill Input Row: Entire pill focuses textarea on click */}
       <div
         onClick={() => textareaRef.current?.focus()}
-        className="flex items-center gap-1.5 sm:gap-2 bg-[var(--bg-tertiary)]/75 backdrop-blur-md border border-[var(--border)] rounded-2xl px-2.5 sm:px-3 py-1.5 focus-within:border-[var(--border-focus)] transition-all shadow-xs cursor-text min-h-[46px]"
+        className="flex items-center gap-2 sm:gap-2.5 bg-[var(--bg-tertiary)]/75 backdrop-blur-md border border-[var(--border)] rounded-2xl px-3 sm:px-3.5 py-2 focus-within:border-[var(--border-focus)] transition-all shadow-xs cursor-text min-h-[52px] sm:min-h-[56px]"
       >
         {/* Left Action Buttons */}
         <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -336,7 +336,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
                 className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
                 title="Attach Document"
               >
-                <Paperclip size={18} />
+                <Paperclip size={20} />
               </button>
               <button
                 type="button"
@@ -344,7 +344,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
                 className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
                 title="Upload Image"
               >
-                <ImageIcon size={18} />
+                <ImageIcon size={20} />
               </button>
             </>
           )}
@@ -358,7 +358,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
               }`}
               title={showEmoji ? 'Close Emoji Picker' : 'Insert Emojis'}
             >
-              <Smile size={18} />
+              <Smile size={20} />
             </button>
           )}
         </div>
@@ -379,7 +379,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           enterKeyHint="send"
           autoCapitalize="sentences"
           autoComplete="on"
-          className="flex-1 min-w-0 bg-transparent border-none outline-none resize-none py-1.5 sm:py-2 text-[15px] sm:text-[16px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[38px] max-h-[130px] leading-relaxed cursor-text"
+          className="flex-1 min-w-0 bg-transparent border-none outline-none resize-none py-1.5 sm:py-2 text-base sm:text-[18px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[42px] max-h-[140px] leading-relaxed cursor-text"
         />
 
         {/* Send Button */}
@@ -388,7 +388,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
             type="button"
             onClick={handleSend}
             disabled={!hasContent || isUploading}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border-none transition-all ${
               hasContent && !isUploading
                 ? 'btn-cta-vibrant cursor-pointer active:scale-95'
                 : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
@@ -398,7 +398,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
             {isUploading ? (
               <Loader2 size={16} />
             ) : (
-              <SendHorizontal size={17} />
+              <SendHorizontal size={19} />
             )}
           </button>
         </div>

@@ -137,7 +137,7 @@
 }
 
 html {
-  font-size: 16.5px;
+  font-size: 18px;
 }
 
 html, body {
@@ -147,8 +147,8 @@ html, body {
   overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
   font-family: 'Alegreya', serif;
-  font-size: 1.05rem;
-  line-height: 1.5;
+  font-size: 1.125rem;
+  line-height: 1.55;
   background: var(--bg-app-gradient);
   background-color: var(--bg-primary);
   background-attachment: fixed;

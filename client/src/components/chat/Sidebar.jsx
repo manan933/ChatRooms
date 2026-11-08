@@ -181,47 +181,47 @@ export const Sidebar = ({
   return (
     <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
       {/* ── Top Brand Header (ChatRooms Horizontal Lockup) ───────────── */}
-      <div className="h-14 sm:h-15 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
+      <div className="h-16 sm:h-17 px-4 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
         <div className="flex items-center">
-          <BrandLogo variant="lockup" size="md" className="h-10 sm:h-11 max-w-[210px]" />
+          <BrandLogo variant="lockup" size="md" />
         </div>
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title={theme === 'dark' ? 'Switch to Light mode' : 'Switch to Dark mode'}
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
           <button
             type="button"
             onClick={onOpenSettings}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Settings"
             aria-label="Settings"
           >
-            <Settings size={15} />
+            <Settings size={18} />
           </button>
         </div>
       </div>
 
       {/* ── Tabs (Direct vs Workplace) ─────────────────────────────── */}
-      <div className="px-3 pt-2.5 pb-1.5 flex items-center gap-1.5 shrink-0 select-none font-heading">
+      <div className="px-3.5 pt-3 pb-2 flex items-center gap-2 shrink-0 select-none font-heading">
         <button
           type="button"
           onClick={() => setActiveTab('direct')}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 px-3 rounded-xl text-sm sm:text-base font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2 ${
             activeTab === 'direct'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
-          <Users size={14} />
+          <Users size={16} />
           <span>Chats</span>
-          <span className={`ml-0.5 text-[11px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'direct' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
+          <span className={`ml-0.5 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === 'direct' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
             {directList.length}
           </span>
         </button>
@@ -229,15 +229,15 @@ export const Sidebar = ({
         <button
           type="button"
           onClick={() => setActiveTab('workplace')}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-2 px-3 rounded-xl text-sm sm:text-base font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2 ${
             activeTab === 'workplace'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
-          <Building2 size={14} />
+          <Building2 size={16} />
           <span>Workplaces</span>
-          <span className={`ml-0.5 text-[11px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'workplace' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
+          <span className={`ml-0.5 text-xs px-2 py-0.5 rounded-full font-bold ${activeTab === 'workplace' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
             {workspaces.length}
           </span>
         </button>
@@ -320,48 +320,48 @@ export const Sidebar = ({
       )}
 
       {/* ── Search Input ────────────────────────────────────────────── */}
-      <div className="px-3 py-1 shrink-0">
+      <div className="px-3.5 py-1.5 shrink-0">
         <div className="relative flex items-center">
-          <Search size={15} className="absolute left-2.5 text-[var(--text-muted)] pointer-events-none" />
+          <Search size={17} className="absolute left-3 text-[var(--text-muted)] pointer-events-none" />
           <input
             type="text"
             placeholder={activeTab === 'direct' ? 'Search conversations...' : 'Search channels...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] rounded-xl text-xs sm:text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors shadow-xs"
+            className="w-full pl-9 pr-3 py-2 bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] rounded-xl text-sm sm:text-base font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors shadow-xs"
           />
         </div>
       </div>
 
       {/* ── Action Buttons ──────────────────────────────────────────── */}
-      <div className="px-3 py-1.5 flex items-center gap-2 shrink-0 font-heading">
+      <div className="px-3.5 py-1.5 flex items-center gap-2 shrink-0 font-heading">
         {activeTab === 'direct' ? (
           <button
             type="button"
             onClick={onOpenNewChat}
-            className="btn-cta-vibrant w-full py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none active:scale-[0.98]"
+            className="btn-cta-vibrant w-full py-2.5 px-3.5 rounded-xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border-none active:scale-[0.98]"
           >
-            <MessageSquarePlus size={14} />
+            <MessageSquarePlus size={16} />
             <span>New Chat</span>
           </button>
         ) : (
-          <div className="flex items-center gap-1.5 w-full">
+          <div className="flex items-center gap-2 w-full">
             <button
               type="button"
               onClick={handleOpenCreateChannel}
-              className="btn-cta-vibrant flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none active:scale-[0.98]"
+              className="btn-cta-vibrant flex-1 py-2.5 px-3.5 rounded-xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border-none active:scale-[0.98]"
             >
-              <Hash size={14} />
+              <Hash size={16} />
               <span>Create Channel</span>
             </button>
             <button
               type="button"
               onClick={onOpenWorkspaceModal}
-              className="py-2 px-2.5 bg-[var(--bg-tertiary)]/70 hover:border-[var(--accent-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs font-bold transition-colors flex items-center justify-center cursor-pointer shadow-xs"
+              className="py-2.5 px-3 bg-[var(--bg-tertiary)]/70 hover:border-[var(--accent-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-sm font-bold transition-colors flex items-center justify-center cursor-pointer shadow-xs"
               title="Add or Join Workplace"
               aria-label="Add workplace"
             >
-              <Plus size={14} />
+              <Plus size={16} />
             </button>
           </div>
         )}
@@ -381,7 +381,7 @@ export const Sidebar = ({
             <>
               {directList.filter((i) => i.type === 'contact').length > 0 && (
                 <div className="pt-2 pb-1 px-2 font-heading">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     Direct Rooms
                   </span>
                 </div>
@@ -406,35 +406,35 @@ export const Sidebar = ({
                       key={item.id}
                       type="button"
                       onClick={() => onSelectChat(item)}
-                      className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer border-none text-left ${
+                      className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left ${
                         isActive
                           ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
-                      <Avatar name={item.name} src={item.avatar} size="sm" status={isContactOnline ? 'online' : 'offline'} />
+                      <Avatar name={item.name} src={item.avatar} size="md" status={isContactOnline ? 'online' : 'offline'} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs sm:text-sm truncate font-heading font-semibold text-[var(--text-primary)]">
+                          <span className="text-sm sm:text-base truncate font-heading font-bold text-[var(--text-primary)]">
                             {item.name}
                           </span>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isChatMuted?.(item.id) && (
-                              <BellOff size={11} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
+                              <BellOff size={13} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
                             )}
                             {item.lastMessageTime && (
-                              <span className="text-[11px] font-body text-[var(--text-muted)] font-normal">
+                              <span className="text-xs sm:text-[13px] font-body text-[var(--text-muted)] font-normal">
                                 {formatTime(item.lastMessageTime)}
                               </span>
                             )}
                           </div>
                         </div>
                         {isTyping ? (
-                          <p className="text-xs font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                          <p className="text-[13px] sm:text-sm font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <p className="text-xs font-body text-[var(--text-muted)] truncate m-0 leading-tight">
+                          <p className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate m-0 leading-normal">
                             {item.lastMessage || (isContactOnline ? 'Active now' : 'Connected on ChatRooms')}
                           </p>
                         )}
@@ -445,7 +445,7 @@ export const Sidebar = ({
 
               {directList.filter((i) => i.type === 'group').length > 0 && (
                 <div className="pt-3 pb-1 px-2 font-heading">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     Groups
                   </span>
                 </div>
@@ -462,36 +462,36 @@ export const Sidebar = ({
                       key={item.id}
                       type="button"
                       onClick={() => onSelectChat(item)}
-                      className={`w-full p-2.5 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer border-none text-left ${
+                      className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left ${
                         isActive
                           ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
-                      <Avatar name={item.name} src={item.avatar} size="sm" status={null} />
+                      <Avatar name={item.name} src={item.avatar} size="md" status={null} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs sm:text-sm truncate font-heading font-semibold text-[var(--text-primary)]">
+                          <span className="text-sm sm:text-base truncate font-heading font-bold text-[var(--text-primary)]">
                             {item.name}
                           </span>
                           <div className="flex items-center gap-1.5 shrink-0">
                             {isChatMuted?.(item.id) && (
-                              <BellOff size={11} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
+                              <BellOff size={13} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
                             )}
                             {item.lastMessageTime && (
-                              <span className="text-[11px] font-body text-[var(--text-muted)] font-normal">
+                              <span className="text-xs sm:text-[13px] font-body text-[var(--text-muted)] font-normal">
                                 {formatTime(item.lastMessageTime)}
                               </span>
                             )}
                           </div>
                         </div>
                         {isTyping ? (
-                          <p className="text-[11px] font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> {typers[0]} typing...
+                          <p className="text-[13px] sm:text-sm font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
-                            {item.lastMessage || 'Group created'}
+                          <p className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate m-0 leading-normal">
+                            {item.lastMessage || 'Active group conversation'}
                           </p>
                         )}
                       </div>
@@ -598,45 +598,45 @@ export const Sidebar = ({
       </div>
 
       {/* ── Bottom Current User Bar ────────────────────────────────── */}
-      <div className="h-13 px-3 bg-[var(--bg-secondary)]/85 backdrop-blur-md border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
+      <div className="h-16 px-3.5 bg-[var(--bg-secondary)]/85 backdrop-blur-md border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
         <div
           onClick={onOpenSettings}
-          className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity"
         >
           <Avatar
             name={currentUser?.name || 'User'}
             src={currentUser?.avatar}
-            size="sm"
+            size="md"
             status="online"
           />
           <div className="min-w-0 font-heading">
-            <div className="text-xs font-semibold text-[var(--text-primary)] truncate">
+            <div className="text-sm sm:text-base font-bold text-[var(--text-primary)] truncate">
               {currentUser?.name || 'User'}
             </div>
-            <div className="text-[10px] text-[var(--text-muted)] truncate">
+            <div className="text-xs sm:text-[13px] text-[var(--text-muted)] truncate">
               @{currentUser?.primaryUsername || 'user'}
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={onOpenSettings}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Settings"
             aria-label="Settings"
           >
-            <Settings size={15} />
+            <Settings size={18} />
           </button>
           <button
             type="button"
             onClick={onLogout}
-            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
             title="Sign Out"
             aria-label="Sign Out"
           >
-            <LogOut size={15} />
+            <LogOut size={18} />
           </button>
         </div>
       </div>

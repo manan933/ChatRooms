@@ -282,7 +282,7 @@ export const SettingsModal = ({
       title={
         <div className="flex items-center gap-2.5">
           <BrandLogo variant="icon" size="sm" />
-          <span className="font-heading font-bold text-base sm:text-lg">Settings</span>
+          <span className="font-heading font-bold text-lg sm:text-xl">Settings</span>
         </div>
       }
       size="lg"
@@ -310,13 +310,13 @@ export const SettingsModal = ({
                   setPasswordMsg(null);
                   setPasswordError(null);
                 }}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border-none text-left shrink-0 ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm sm:text-base font-bold transition-all cursor-pointer border-none text-left shrink-0 ${
                   isActive
                     ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white shadow-md'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] bg-transparent'
                 }`}
               >
-                <Icon size={16} className={isActive ? 'text-white' : 'text-[var(--accent)]'} />
+                <Icon size={18} className={isActive ? 'text-white' : 'text-[var(--accent)]'} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -358,7 +358,7 @@ export const SettingsModal = ({
                   }}
                 />
 
-                <Avatar name={name || user?.name} src={avatarUrl} size="lg" />
+                <Avatar name={name || user?.name} src={avatarUrl} size="xl" />
 
                 <div className="flex flex-col gap-2 min-w-0 font-heading">
                   <div className="flex items-center gap-2">
@@ -389,7 +389,7 @@ export const SettingsModal = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
+                  <label className="text-sm sm:text-base font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                     Display Name
                   </label>
                   <input

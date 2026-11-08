@@ -301,23 +301,23 @@ export const ChatArea = ({
       {/* ── Main Chat Stream Column ─────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         {/* ── Chat Header ────────────────────────────────────────────── */}
-        <header className="h-13 min-h-[52px] px-3 sm:px-4 glass-panel border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
+        <header className="h-16 sm:h-17 min-h-[58px] px-3.5 sm:px-5 glass-panel border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
+          <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
             {/* Back button (Mobile only) */}
             <button
               type="button"
               onClick={onBack}
-              className="md:hidden p-1.5 -ml-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
+              className="md:hidden p-2 -ml-1 rounded-xl text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
               title="Back to conversations"
               aria-label="Back to conversations"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={20} />
             </button>
 
             {/* Conversation Avatar / Channel Icon */}
             {chat.type === 'channel' ? (
-              <div className="w-8 h-8 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shrink-0 font-heading">
-                <Hash size={16} />
+              <div className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shrink-0 font-heading shadow-xs">
+                <Hash size={18} />
               </div>
             ) : (() => {
               const chatUid = (chat.userId || chat.id || '').toString().toLowerCase();
@@ -331,7 +331,7 @@ export const ChatArea = ({
                 <Avatar
                   name={chat.name}
                   src={chat.avatar}
-                  size="sm"
+                  size="md"
                   status={chat.type === 'group' ? null : (isChatOnline ? 'online' : 'offline')}
                 />
               );
@@ -340,16 +340,16 @@ export const ChatArea = ({
             {/* Title & Status */}
             <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setInfoOpen(!infoOpen)}>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-heading font-bold text-[var(--text-primary)] truncate tracking-tight m-0">
+                <h2 className="text-base sm:text-lg md:text-xl font-heading font-bold text-[var(--text-primary)] truncate tracking-tight m-0">
                   {chat.name}
                 </h2>
                 {isMuted && (
                   <span title="Notifications muted">
-                    <BellOff size={14} className="text-[var(--accent-highlight)] shrink-0" />
+                    <BellOff size={15} className="text-[var(--accent-highlight)] shrink-0" />
                   </span>
                 )}
               </div>
-              <div className="text-xs sm:text-[13px] font-body text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
+              <div className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
                 {typingUsers.length > 0 ? (
                   <span className="text-[var(--accent)] flex items-center gap-1 font-medium animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> {typingUsers.join(', ')} typing...
@@ -379,17 +379,17 @@ export const ChatArea = ({
           </div>
 
           {/* Action Toolbar on Right */}
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-1 shrink-0">
             {/* Search Input Popover */}
             {searchOpen ? (
-              <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg px-2 py-1 mr-1">
-                <Search size={13} className="text-[var(--text-muted)]" />
+              <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-2.5 py-1.5 mr-1">
+                <Search size={15} className="text-[var(--text-muted)]" />
                 <input
                   type="text"
                   placeholder="Find in chat..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-28 sm:w-40 bg-transparent border-none outline-none text-xs font-body text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                  className="w-32 sm:w-48 bg-transparent border-none outline-none text-xs sm:text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                   autoFocus
                 />
                 <button
@@ -401,18 +401,18 @@ export const ChatArea = ({
                   className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
                   aria-label="Clear search"
                 >
-                  <X size={13} />
+                  <X size={15} />
                 </button>
               </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setSearchOpen(true)}
-                className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
                 title="Search Messages"
                 aria-label="Search Messages"
               >
-                <Search size={16} />
+                <Search size={19} />
               </button>
             )}
 
@@ -425,11 +425,11 @@ export const ChatArea = ({
                     setIsVideoCall(false);
                     setCallModalOpen(true);
                   }}
-                  className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
                   title="Voice Call"
                   aria-label="Voice Call"
                 >
-                  <Phone size={16} />
+                  <Phone size={19} />
                 </button>
 
                 <button
@@ -438,11 +438,11 @@ export const ChatArea = ({
                     setIsVideoCall(true);
                     setCallModalOpen(true);
                   }}
-                  className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
                   title="Video Call"
                   aria-label="Video Call"
                 >
-                  <Video size={16} />
+                  <Video size={19} />
                 </button>
               </>
             )}
@@ -451,7 +451,7 @@ export const ChatArea = ({
             <button
               type="button"
               onClick={() => setInfoOpen(!infoOpen)}
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer border-none flex items-center justify-center ${
+              className={`p-2 rounded-xl transition-colors cursor-pointer border-none flex items-center justify-center ${
                 infoOpen
                   ? 'bg-[var(--accent-subtle)] text-[var(--accent)]'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] bg-transparent'
@@ -459,7 +459,7 @@ export const ChatArea = ({
               title="Room Details"
               aria-label="Room Details"
             >
-              <Info size={16} />
+              <Info size={19} />
             </button>
           </div>
         </header>

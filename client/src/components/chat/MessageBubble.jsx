@@ -85,11 +85,11 @@ export const MessageBubble = ({
         {/* Sender Name in group contexts */}
         {!isOwn && (senderName || message.senderUsername) && (
           <div className="flex items-center gap-1.5 px-2 mb-0.5 select-none max-w-full font-heading">
-            <span className="text-[11px] font-bold text-[var(--accent)] truncate">
+            <span className="text-xs sm:text-[13px] font-bold text-[var(--accent)] truncate">
               {senderName}
             </span>
             {message.senderUsername && (
-              <span className="text-[9px] text-[var(--text-muted)] truncate">
+              <span className="text-[11px] text-[var(--text-muted)] truncate">
                 @{message.senderUsername}
               </span>
             )}
@@ -183,7 +183,7 @@ export const MessageBubble = ({
             backgroundColor: isOwn ? 'var(--bubble-sent-bg)' : 'var(--bubble-received-bg)',
             color: isOwn ? '#FFFFFF' : 'var(--bubble-received-text)',
           }}
-          className={`relative px-3.5 py-2 rounded-2xl text-[15.5px] sm:text-[16px] font-body leading-relaxed break-words transition-all shadow-sm ${
+          className={`relative px-4 py-2.5 rounded-2xl text-[17px] sm:text-[18px] font-body leading-relaxed break-words transition-all shadow-sm ${
             isOwn
               ? 'bubble-sent rounded-br-xs'
               : 'bubble-received rounded-bl-xs'
@@ -333,7 +333,7 @@ export const MessageBubble = ({
 
           {/* Time & Read Status Indicator */}
           <div
-            className={`flex items-center justify-end gap-1 mt-1 text-[11px] sm:text-[12px] select-none font-body ${
+            className={`flex items-center justify-end gap-1.5 mt-1 text-xs sm:text-[13px] select-none font-body ${
               isOwn ? 'text-white/85' : 'text-[var(--text-muted)]'
             }`}
           >
@@ -341,9 +341,9 @@ export const MessageBubble = ({
             <span>{time}</span>
             {isOwn && (
               isRead ? (
-                <CheckCheck size={14} className="text-white/95 inline-block shrink-0" title="Seen" />
+                <CheckCheck size={16} className="text-white/95 inline-block shrink-0" title="Seen" />
               ) : (
-                <Check size={13} className="text-white/70 inline-block shrink-0" title="Sent (not seen yet)" />
+                <Check size={15} className="text-white/70 inline-block shrink-0" title="Sent (not seen yet)" />
               )
             )}
           </div>
@@ -367,8 +367,8 @@ export const MessageBubble = ({
                       : 'bg-[var(--bg-secondary)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--border-focus)]'
                   }`}
                 >
-                  <span className="text-sm leading-none">{displayEmoji}</span>
-                  <span className="text-[10px] font-bold">{r.count}</span>
+                  <span className="text-base leading-none">{displayEmoji}</span>
+                  <span className="text-xs font-bold">{r.count}</span>
                 </button>
               );
             })}
