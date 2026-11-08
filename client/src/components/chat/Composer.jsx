@@ -25,6 +25,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   const fileInputRef = useRef(null);
   const imageInputRef = useRef(null);
   const emojiRef = useRef(null);
+  const emojiButtonRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   const currentChatIdRef = useRef(chatId);
@@ -76,7 +77,12 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   // Close emoji picker when clicking outside
   useEffect(() => {
     const handleOutside = (e) => {
-      if (emojiRef.current && !emojiRef.current.contains(e.target)) {
+      if (
+        emojiRef.current &&
+        !emojiRef.current.contains(e.target) &&
+        emojiButtonRef.current &&
+        !emojiButtonRef.current.contains(e.target)
+      ) {
         setShowEmoji(false);
       }
     };
@@ -179,11 +185,29 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   };
 
   const handleInsertEmoji = (emoji) => {
-    const updated = (text ? text + ' ' : '') + emoji + ' ';
-    setText(updated);
-    saveDraft(updated);
-    setShowEmoji(false);
-    textareaRef.current?.focus();
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart ?? text.length;
+      const end = textarea.selectionEnd ?? text.length;
+      const newText = text.substring(0, start) + emoji + text.substring(end);
+      setText(newText);
+      saveDraft(newText);
+
+      // Keep cursor position right after the inserted emoji and focus back
+      setTimeout(() => {
+        if (textareaRef.current) {
+          const nextPos = start + emoji.length;
+          textareaRef.current.selectionStart = nextPos;
+          textareaRef.current.selectionEnd = nextPos;
+          textareaRef.current.focus();
+        }
+      }, 0);
+    } else {
+      const updated = (text || '') + emoji;
+      setText(updated);
+      saveDraft(updated);
+    }
+    // KEEP emoji picker open so user can insert multiple emojis in sequence!
   };
 
   const hasContent = Boolean(text.trim() || attachment);
@@ -283,12 +307,13 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           )}
           {policy?.allowEmojis !== false && (
             <button
+              ref={emojiButtonRef}
               type="button"
-              onClick={() => setShowEmoji(!showEmoji)}
+              onClick={() => setShowEmoji((prev) => !prev)}
               className={`p-1.5 rounded-lg transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center ${
                 showEmoji ? 'text-[var(--accent)] bg-[var(--accent-subtle)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
               }`}
-              title="Add Reaction"
+              title={showEmoji ? 'Close Emoji Picker' : 'Insert Emojis'}
             >
               <Smile size={18} />
             </button>
