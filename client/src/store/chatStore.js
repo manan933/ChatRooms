@@ -430,28 +430,32 @@ export const useChatStore = create((set, get) => ({
 
   // Add / toggle reaction on message
   addReaction: async (chatId, messageId, emoji, userId) => {
-    const uid = userId || 'user-1';
+    const uid = String(userId || 'user-1');
     const cleanEmoji = normalizeEmoji(emoji);
+    let action = 'add';
 
     set((state) => {
       const list = state.messages[chatId] || [];
       const updated = list.map((msg) => {
-        if (msg.id !== messageId) return msg;
+        if (msg.id !== messageId && msg._id !== messageId) return msg;
 
         const reactions = [...(msg.reactions || [])];
         const existing = reactions.find((r) => normalizeEmoji(r.emoji) === cleanEmoji);
 
         if (existing) {
-          const userHasReacted = existing.users && existing.users.includes(uid);
+          const userHasReacted = existing.users && existing.users.map(String).includes(uid);
           if (userHasReacted) {
-            existing.users = existing.users.filter((u) => u !== uid);
+            action = 'remove';
+            existing.users = existing.users.filter((u) => String(u) !== uid);
             existing.count = existing.users.length;
           } else {
+            action = 'add';
             existing.users = [...(existing.users || []), uid];
             existing.count = existing.users.length;
           }
           existing.emoji = cleanEmoji;
         } else {
+          action = 'add';
           reactions.push({
             emoji: cleanEmoji,
             count: 1,
@@ -461,7 +465,7 @@ export const useChatStore = create((set, get) => ({
 
         return {
           ...msg,
-          reactions: reactions.filter((r) => r.count > 0),
+          reactions: reactions.filter((r) => r.count > 0 && r.users && r.users.length > 0),
         };
       });
 
@@ -473,8 +477,8 @@ export const useChatStore = create((set, get) => ({
       };
     });
 
-    socketService.sendReaction({ messageId, emoji: cleanEmoji, userId: uid, chatId });
-    api.messages.reaction(messageId, cleanEmoji, uid).catch((e) => { console.error('ignored', e); });
+    socketService.sendReaction({ messageId, emoji: cleanEmoji, userId: uid, chatId, action });
+    api.messages.reaction(messageId, cleanEmoji, uid, action).catch((e) => { console.error('ignored', e); });
   },
 
   updateReaction: (payload) => {
@@ -491,7 +495,7 @@ export const useChatStore = create((set, get) => ({
       targetChats.forEach((cId) => {
         const list = updatedMessages[cId];
         if (Array.isArray(list)) {
-          const index = list.findIndex((m) => m.id === msgId);
+          const index = list.findIndex((m) => m.id === msgId || (m._id && m._id === msgId));
           if (index !== -1) {
             const oldMsg = list[index];
             const newReactions = (payload.reactions || []).map((r) => ({

@@ -342,7 +342,7 @@ export const MessageBubble = ({
           <div className="flex flex-wrap gap-1 mt-1 font-heading">
             {reactions.map((r, i) => {
               const displayEmoji = normalizeEmoji(r.emoji);
-              const hasReacted = r.users && r.users.includes(currentUserId);
+              const hasReacted = r.users && r.users.map(String).includes(String(currentUserId));
               return (
                 <button
                   key={i}

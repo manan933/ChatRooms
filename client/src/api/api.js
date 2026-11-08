@@ -119,10 +119,10 @@ export const api = {
       request(`/api/messages/${messageId}`, {
         method: 'DELETE',
       }),
-    reaction: (messageId, emoji, userId) =>
+    reaction: (messageId, emoji, userId, action) =>
       request(`/api/messages/${messageId}/reactions`, {
         method: 'POST',
-        body: JSON.stringify({ emoji, userId }),
+        body: JSON.stringify({ emoji, userId, action }),
       }),
   },
 

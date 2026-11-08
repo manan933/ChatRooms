@@ -215,7 +215,7 @@ export const deleteMessage = async (req, res, next) => {
 export const addReaction = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { emoji, userId } = req.body;
+    const { emoji, userId, action } = req.body;
 
     if (!emoji) {
       return res.status(400).json({
@@ -225,7 +225,20 @@ export const addReaction = async (req, res, next) => {
     }
 
     const uid = req.user?._id?.toString() || req.user?.id || userId || 'user-1';
-    const updated = await storageService.addReaction(id, emoji, uid);
+    const updated = await storageService.addReaction(id, emoji, uid, action);
+
+    if (updated?.chatId) {
+      const io = req.app.get('io');
+      if (io) {
+        const reactionPayload = {
+          id,
+          messageId: id,
+          chatId: updated.chatId,
+          reactions: updated.reactions || [],
+        };
+        io.to(updated.chatId).emit('update_reaction', reactionPayload);
+      }
+    }
 
     return res.status(200).json({
       success: true,

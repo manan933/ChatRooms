@@ -341,39 +341,67 @@ class StorageService {
     return res.deletedCount > 0;
   }
 
-  async addReaction(messageId, emoji, userId) {
-    const msg = await Message.findOne({ id: messageId });
-    if (!msg) return null;
-
-    const uid = userId || 'user-1';
-    const cleanEmoji = normalizeEmoji(emoji);
-    let reactions = msg.reactions || [];
-    let existing = reactions.find((r) => normalizeEmoji(r.emoji) === cleanEmoji);
-
-    if (existing) {
-      if (!existing.users.includes(uid)) {
-        existing.users.push(uid);
-      } else {
-        existing.users = existing.users.filter((u) => u !== uid);
-      }
-      existing.count = existing.users.length;
-      existing.emoji = cleanEmoji;
-    } else {
-      reactions.push({ emoji: cleanEmoji, count: 1, users: [uid] });
-    }
-
-    msg.reactions = reactions
-      .map((r) => ({ ...r, emoji: normalizeEmoji(r.emoji) }))
-      .filter((r) => r.count > 0);
-
-    await msg.save();
-
-    return {
-      ...msg.toObject(),
-      id: msg.id,
-      reactions: msg.reactions,
-      timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
-    };
+  async addReaction(messageId, emoji, userId, action = null) {
+    if (!messageId) return null;
+    let msg = await Message.findOne({ id: messageId });
+    if (!msg && mongoose.Types.ObjectId.isValid(messageId)) {
+      msg = await Message.findById(messageId);
+    }
+    if (!msg) {
+      console.warn('[storageService] addReaction: Message not found for id:', messageId);
+      return null;
+    }
+
+    const uid = String(userId || 'user-1');
+    const cleanEmoji = normalizeEmoji(emoji);
+    let reactions = Array.isArray(msg.reactions) ? [...msg.reactions] : [];
+    let existingIndex = reactions.findIndex((r) => normalizeEmoji(r.emoji) === cleanEmoji);
+
+    if (existingIndex !== -1) {
+      const existing = reactions[existingIndex];
+      const users = (existing.users || []).map(String);
+      const hasReacted = users.includes(uid);
+
+      if (action === 'add') {
+        if (!hasReacted) {
+          users.push(uid);
+        }
+        existing.users = users;
+        existing.count = users.length;
+      } else if (action === 'remove') {
+        const nextUsers = users.filter((u) => u !== uid);
+        existing.users = nextUsers;
+        existing.count = nextUsers.length;
+      } else {
+        // Toggle if no explicit action
+        if (hasReacted) {
+          existing.users = users.filter((u) => u !== uid);
+          existing.count = existing.users.length;
+        } else {
+          users.push(uid);
+          existing.users = users;
+          existing.count = users.length;
+        }
+      }
+      existing.emoji = cleanEmoji;
+    } else {
+      if (action !== 'remove') {
+        reactions.push({ emoji: cleanEmoji, count: 1, users: [uid] });
+      }
+    }
+
+    msg.reactions = reactions
+      .map((r) => ({ ...r, emoji: normalizeEmoji(r.emoji) }))
+      .filter((r) => r.count > 0 && r.users && r.users.length > 0);
+
+    await msg.save();
+
+    return {
+      ...msg.toObject(),
+      id: msg.id,
+      reactions: msg.reactions,
+      timestamp: msg.timestamp ? new Date(msg.timestamp).toISOString() : new Date().toISOString(),
+    };
   }
 
   async getUserConversations(currentUserId, currentUsername) {

@@ -268,32 +268,34 @@ export const setupChatSocket = (io) => {
     });
 
     // Handle real-time reactions with instant broadcast
-    socket.on('send_reaction', async ({ messageId, emoji, userId: uId, chatId }) => {
-      try {
-        const uid = uId || userId || 'user-1';
-        const cleanEmoji = emoji ? String(emoji).trim() : '👍';
-
-        const updatedMsg = await storageService.addReaction(messageId, cleanEmoji, uid);
-        const reactionPayload = {
-          id: messageId,
-          messageId,
-          chatId: updatedMsg?.chatId || chatId,
-          reactions: updatedMsg?.reactions || [],
-        };
-
-        if (reactionPayload.chatId) {
-          io.to(reactionPayload.chatId).emit('update_reaction', reactionPayload);
-          if (reactionPayload.chatId.startsWith('dm_')) {
-            const parts = reactionPayload.chatId.replace('dm_', '').split('_');
-            if (parts.length === 2) {
-              io.to(`user_${parts[0].toLowerCase()}`).emit('update_reaction', reactionPayload);
-              io.to(`user_${parts[1].toLowerCase()}`).emit('update_reaction', reactionPayload);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[Socket.io] Error in send_reaction handler:', err.message);
-      }
+    socket.on('send_reaction', async ({ messageId, emoji, userId: uId, chatId, action }) => {
+      try {
+        const uid = uId || userId || socket.user?._id?.toString() || socket.user?.id || 'user-1';
+        const cleanEmoji = emoji ? String(emoji).trim() : '👍';
+
+        const updatedMsg = await storageService.addReaction(messageId, cleanEmoji, uid, action);
+        if (!updatedMsg) return;
+
+        const reactionPayload = {
+          id: messageId,
+          messageId,
+          chatId: updatedMsg.chatId || chatId,
+          reactions: updatedMsg.reactions || [],
+        };
+
+        if (reactionPayload.chatId) {
+          io.to(reactionPayload.chatId).emit('update_reaction', reactionPayload);
+          if (reactionPayload.chatId.startsWith('dm_')) {
+            const parts = reactionPayload.chatId.replace('dm_', '').split('_');
+            if (parts.length === 2) {
+              io.to(`user_${parts[0].toLowerCase()}`).emit('update_reaction', reactionPayload);
+              io.to(`user_${parts[1].toLowerCase()}`).emit('update_reaction', reactionPayload);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Socket.io] Error in send_reaction handler:', err.message);
+      }
     });
 
     // ── WebRTC Voice & Video Call Signaling ──────────────────────────
