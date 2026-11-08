@@ -8,7 +8,7 @@ import { normalizeEmoji, renderContentWithEmojis } from '../../utils/emojiMap';
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '😂', '⭐', '🤝', '🎉'];
 
 export const MessageBubble = ({
-  message,
+  message = {},
   isOwn = false,
   onReply,
   onEdit,
@@ -21,11 +21,13 @@ export const MessageBubble = ({
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(message.content || '');
+  const [editText, setEditText] = useState(message?.content || '');
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { id, senderName, senderAvatar, content, timestamp, attachment, reactions = [], isEdited, isRead } = message;
+  if (!message || !message.id) return null;
+
+  const { id = '', senderName = 'Member', senderAvatar = null, content = '', timestamp = null, attachment = null, reactions = [], isEdited = false, isRead = false } = message;
 
   const time = timestamp
     ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })

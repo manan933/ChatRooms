@@ -6,9 +6,6 @@ import {
   VideoOff,
   PhoneOff,
   Monitor,
-  Phone,
-  ShieldCheck,
-  Check,
   AlertTriangle,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
@@ -60,17 +57,20 @@ export const CallModal = ({
 
   // Keep callback refs stable to prevent unmount on parent re-renders
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
   const onSummaryRef = useRef(onCallEndedSummary);
-  onSummaryRef.current = onCallEndedSummary;
 
   const targetId = chat?.username || chat?.userId || chat?.id || callerInfo?.from;
   const targetIdRef = useRef(targetId);
-  targetIdRef.current = targetId;
 
   const chatId = chat?.id || callerInfo?.chatId;
   const chatIdRef = useRef(chatId);
-  chatIdRef.current = chatId;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    onSummaryRef.current = onCallEndedSummary;
+    targetIdRef.current = targetId;
+    chatIdRef.current = chatId;
+  }, [onClose, onCallEndedSummary, targetId, chatId]);
 
   // Format call duration MM:SS
   const formatDuration = (sec) => {

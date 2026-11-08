@@ -9,6 +9,7 @@ import IncomingCallModal from '../components/modals/IncomingCallModal';
 import ForwardModal from '../components/modals/ForwardModal';
 import Avatar from '../components/ui/Avatar';
 import { X } from '../components/ui/Icons';
+import ErrorBoundary from '../components/ui/ErrorBoundary';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
@@ -565,34 +566,36 @@ export const ChatPage = () => {
           }}
           className="md:!flex"
         >
-          <ChatArea
-            chat={activeChat}
-            messages={activeMessages}
-            currentUser={user}
-            typingUsers={currentTypingUsers}
-            workspaces={workspaces}
-            isLoadingMessages={isLoadingMessages}
-            onOpenWorkspaceModal={handleOpenWorkspace}
-            onSelectWorkspace={handleSelectWorkspace}
-            onBack={handleCloseChat}
-            onSend={(content, attachment) =>
-              activeChat && sendMessage(activeChat.id, content, attachment, user)
-            }
-            onEditMessage={(msgId, content) =>
-              activeChat && editMessage(activeChat.id, msgId, content)
-            }
-            onDeleteMessage={(msgId) =>
-              activeChat && deleteMessage(activeChat.id, msgId)
-            }
-            onCallEndedSummary={handleCallEndedSummary}
-            onReaction={(msgId, emoji) =>
-              activeChat && addReaction(activeChat.id, msgId, emoji, user?.id || user?._id)
-            }
-            onForwardMessage={handleOpenForward}
-            onLeaveChat={(chatId, action) => {
-              useChatStore.getState().removeChat(chatId, action);
-            }}
-          />
+          <ErrorBoundary onBack={handleCloseChat} onReset={() => selectChat(activeChat)}>
+            <ChatArea
+              chat={activeChat}
+              messages={activeMessages}
+              currentUser={user}
+              typingUsers={currentTypingUsers}
+              workspaces={workspaces}
+              isLoadingMessages={isLoadingMessages}
+              onOpenWorkspaceModal={handleOpenWorkspace}
+              onSelectWorkspace={handleSelectWorkspace}
+              onBack={handleCloseChat}
+              onSend={(content, attachment) =>
+                activeChat && sendMessage(activeChat.id, content, attachment, user)
+              }
+              onEditMessage={(msgId, content) =>
+                activeChat && editMessage(activeChat.id, msgId, content)
+              }
+              onDeleteMessage={(msgId) =>
+                activeChat && deleteMessage(activeChat.id, msgId)
+              }
+              onCallEndedSummary={handleCallEndedSummary}
+              onReaction={(msgId, emoji) =>
+                activeChat && addReaction(activeChat.id, msgId, emoji, user?.id || user?._id)
+              }
+              onForwardMessage={handleOpenForward}
+              onLeaveChat={(chatId, action) => {
+                useChatStore.getState().removeChat(chatId, action);
+              }}
+            />
+          </ErrorBoundary>
         </div>
       </div>
 

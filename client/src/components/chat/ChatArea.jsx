@@ -103,13 +103,15 @@ export const ChatArea = ({
 
   // Filter messages if search is active
   const filteredMessages = useMemo(() => {
-    if (!searchQuery.trim()) return messages;
+    if (!Array.isArray(messages)) return [];
+    if (!searchQuery.trim()) return messages.filter(Boolean);
     const q = searchQuery.toLowerCase();
     return messages.filter(
       (m) =>
-        m.content?.toLowerCase().includes(q) ||
-        m.senderName?.toLowerCase().includes(q) ||
-        m.attachment?.name?.toLowerCase().includes(q)
+        m &&
+        (m.content?.toLowerCase().includes(q) ||
+          m.senderName?.toLowerCase().includes(q) ||
+          m.attachment?.name?.toLowerCase().includes(q))
     );
   }, [messages, searchQuery]);
 
@@ -118,13 +120,19 @@ export const ChatArea = ({
     const groups = [];
     let lastDate = null;
 
-    filteredMessages.forEach((msg) => {
-      const msgDate = new Date(msg.timestamp).toDateString();
+    filteredMessages.forEach((msg, idx) => {
+      if (!msg) return;
+      const ts = msg.timestamp ? new Date(msg.timestamp) : new Date();
+      const msgDate = !isNaN(ts.getTime()) ? ts.toDateString() : 'Today';
       if (msgDate !== lastDate) {
-        groups.push({ type: 'date', date: formatDate(msg.timestamp), id: `date-${msgDate}` });
+        groups.push({
+          type: 'date',
+          date: formatDate(msg.timestamp || new Date()),
+          id: `date-${msgDate}-${groups.length}`,
+        });
         lastDate = msgDate;
       }
-      groups.push({ type: 'message', data: msg, id: msg.id });
+      groups.push({ type: 'message', data: msg, id: msg.id || `msg-${idx}` });
     });
 
     return groups;

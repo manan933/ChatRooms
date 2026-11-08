@@ -5,13 +5,8 @@ import {
   Loader2,
   ArrowRight,
   Lock,
-  CheckCircle2,
-  ShieldCheck,
-  Zap,
-  Phone,
   Sun,
   Moon,
-  MessageSquare,
 } from '../components/ui/Icons';
 import useAuthStore from '../store/authStore';
 import useThemeStore from '../store/themeStore';

@@ -12,7 +12,8 @@ const gradients = [
   'linear-gradient(135deg, #FC734D 0%, #F59E0B 100%)', // Cantaloupe to Amber
 ];
 
-const getGradient = (name = '') => {
+const getGradient = (rawName = '') => {
+  const name = typeof rawName === 'string' ? rawName : String(rawName || '');
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
@@ -20,13 +21,14 @@ const getGradient = (name = '') => {
   return gradients[Math.abs(hash) % gradients.length];
 };
 
-const getInitials = (name = '') => {
-  if (!name) return '?';
+const getInitials = (rawName = '') => {
+  const name = typeof rawName === 'string' ? rawName : String(rawName || '');
+  if (!name.trim()) return '?';
   const parts = name.trim().split(' ').filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return ((parts[0][0] || '') + (parts[1][0] || '')).toUpperCase() || '?';
   }
-  return name.slice(0, 2).toUpperCase();
+  return name.slice(0, 2).toUpperCase() || '?';
 };
 
 const sizes = {

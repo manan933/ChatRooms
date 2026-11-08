@@ -4,6 +4,7 @@ import AuthPage from './pages/AuthPage';
 import ChatPage from './pages/ChatPage';
 import NotFoundPage from './pages/NotFoundPage';
 import InstallPwaPrompt from './components/ui/InstallPwaPrompt';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 
 // Permitted top-level application routes (Clean URLs, no hashes)
 const VALID_ROUTES = new Set(['', '/', '/chat', '/login', '/register', '/index.html']);
@@ -39,16 +40,18 @@ export function App() {
   const isKnownRoute = VALID_ROUTES.has(currentPath);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <InstallPwaPrompt />
-      {!isKnownRoute ? (
-        <NotFoundPage onReturnHome={handleReturnHome} />
-      ) : isAuthenticated ? (
-        <ChatPage />
-      ) : (
-        <AuthPage />
-      )}
-    </div>
+    <ErrorBoundary>
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <InstallPwaPrompt />
+        {!isKnownRoute ? (
+          <NotFoundPage onReturnHome={handleReturnHome} />
+        ) : isAuthenticated ? (
+          <ChatPage />
+        ) : (
+          <AuthPage />
+        )}
+      </div>
+    </ErrorBoundary>
   );
 }
 
