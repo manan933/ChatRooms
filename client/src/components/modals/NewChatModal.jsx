@@ -135,7 +135,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
             setActiveTab('contact');
             setError(null);
           }}
-          className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`shrink-0 flex-1 py-2 px-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'contact'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
@@ -151,7 +151,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
             setActiveTab('group');
             setError(null);
           }}
-          className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`shrink-0 flex-1 py-2 px-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'group'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
@@ -167,7 +167,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
             setActiveTab('join_group');
             setError(null);
           }}
-          className={`shrink-0 flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`shrink-0 flex-1 py-2 px-3.5 rounded-xl text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'join_group'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
@@ -193,7 +193,7 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
               placeholder="Search by name or @username..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+              className="w-full pl-9 pr-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-sm sm:text-base text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
               autoFocus
             />
           </div>
@@ -211,12 +211,12 @@ export const NewChatModal = ({ isOpen, onClose, onAddContact, onCreateGroup, onS
                   className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[var(--bg-hover)] transition-colors"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Avatar name={user.name} src={user.avatar} size="sm" />
+                    <Avatar name={user.name} src={user.avatar} size="md" />
                     <div className="min-w-0 font-heading">
-                      <div className="text-xs font-bold text-[var(--text-primary)] truncate">
+                      <div className="text-sm sm:text-base font-bold text-[var(--text-primary)] truncate">
                         {user.name}
                       </div>
-                      <div className="text-[10px] text-[var(--text-muted)]">
+                      <div className="text-xs sm:text-[13px] text-[var(--text-muted)]">
                         @{user.primaryUsername || user.username}
                       </div>
                     </div>

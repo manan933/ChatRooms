@@ -534,13 +534,13 @@ export const Sidebar = ({
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     {channel.isAnnouncement ? (
-                      <Megaphone size={13} className="text-[var(--accent-highlight)] shrink-0" />
+                      <Megaphone size={14} className="text-[var(--accent-highlight)] shrink-0" />
                     ) : (
-                      <Hash size={13} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                      <Hash size={14} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
                     )}
-                    <span className="text-xs truncate">{channel.rawName}</span>
+                    <span className="text-sm sm:text-base font-medium truncate">{channel.rawName}</span>
                   </div>
-                  <span className="text-[10px] text-[var(--text-muted)] shrink-0">
+                  <span className="text-xs text-[var(--text-muted)] shrink-0">
                     {channel.membersCount}
                   </span>
                 </button>
@@ -579,10 +579,10 @@ export const Sidebar = ({
                             }`}
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <Hash size={12} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
-                              <span className="text-xs truncate">{channel.rawName}</span>
+                              <Hash size={14} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                              <span className="text-sm sm:text-base font-medium truncate">{channel.rawName}</span>
                             </div>
-                            <span className="text-[10px] text-[var(--text-muted)] shrink-0">
+                            <span className="text-xs text-[var(--text-muted)] shrink-0">
                               {channel.membersCount}
                             </span>
                           </button>

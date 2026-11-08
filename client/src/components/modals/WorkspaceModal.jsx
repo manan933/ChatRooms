@@ -118,7 +118,7 @@ export const WorkspaceModal = ({
                 setActiveTab('select');
                 setError(null);
               }}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
                 activeTab === 'select'
                   ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                   : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
@@ -135,7 +135,7 @@ export const WorkspaceModal = ({
               setActiveTab('join');
               setError(null);
             }}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
               activeTab === 'join'
                 ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
@@ -151,7 +151,7 @@ export const WorkspaceModal = ({
               setActiveTab('create');
               setError(null);
             }}
-            className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-3 rounded-xl text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
               activeTab === 'create'
                 ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
@@ -171,7 +171,7 @@ export const WorkspaceModal = ({
         {/* ── TAB 1: SELECT WORKSPACE ────────────────────────────── */}
         {activeTab === 'select' && (
           <div className="flex flex-col gap-2.5">
-            <span className="text-xs text-[var(--text-muted)] font-body">
+            <span className="text-sm text-[var(--text-muted)] font-body">
               Switch to a workspace to access its team channels:
             </span>
 

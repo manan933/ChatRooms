@@ -94,31 +94,48 @@ export const setupChatSocket = (io) => {
     socket.emit('online_users_list', getOnlineUsersList());
 
     // Dynamic registration handler
-    socket.on('register_user', ({ userId: uId, username: uName }) => {
-      if (uId) socket.join(`user_${uId}`);
-      if (uName) {
-        const clean = uName.toLowerCase().replace(/^@/, '');
-        socket.join(`user_${clean}`);
-        registerPresence(uId, clean);
+    socket.on('register_user', (payload) => {
+      try {
+        const { userId: uId, username: uName } = payload || {};
+        if (uId) socket.join(`user_${uId}`);
+        if (uName) {
+          const clean = String(uName).toLowerCase().replace(/^@/, '');
+          socket.join(`user_${clean}`);
+          registerPresence(uId, clean);
+        }
+        socket.emit('online_users_list', getOnlineUsersList());
+      } catch (err) {
+        console.error('[Socket.io] Error in register_user:', err.message);
       }
-      socket.emit('online_users_list', getOnlineUsersList());
     });
 
     // Request full list of currently online users
     socket.on('get_online_users', () => {
-      socket.emit('online_users_list', getOnlineUsersList());
+      try {
+        socket.emit('online_users_list', getOnlineUsersList());
+      } catch (err) {
+        console.error('[Socket.io] Error in get_online_users:', err.message);
+      }
     });
 
     // Join a specific chat room (channel, DM, or personal group)
     socket.on('join_room', (roomId) => {
-      if (!roomId) return;
-      socket.join(roomId);
+      try {
+        if (!roomId) return;
+        socket.join(roomId);
+      } catch (err) {
+        console.error('[Socket.io] Error in join_room:', err.message);
+      }
     });
 
     // Leave a room
     socket.on('leave_room', (roomId) => {
-      if (!roomId) return;
-      socket.leave(roomId);
+      try {
+        if (!roomId) return;
+        socket.leave(roomId);
+      } catch (err) {
+        console.error('[Socket.io] Error in leave_room:', err.message);
+      }
     });
 
     // Handle incoming message with ZERO LATENCY optimistic broadcast
@@ -240,49 +257,59 @@ export const setupChatSocket = (io) => {
     });
 
     // Handle typing status with multi-recipient routing
-    socket.on('typing_start', ({ roomId, chatId, userName, userId: uId }) => {
-      const targetRoom = roomId || chatId;
-      if (!targetRoom) return;
+    socket.on('typing_start', (data) => {
+      try {
+        const { roomId, chatId, userName, userId: uId } = data || {};
+        const targetRoom = roomId || chatId;
+        if (!targetRoom) return;
 
-      const payload = {
-        roomId: targetRoom,
-        chatId: targetRoom,
-        userId: uId || userId,
-        userName: userName || socket.user?.name || username || 'Someone',
-        isTyping: true,
-      };
+        const payload = {
+          roomId: targetRoom,
+          chatId: targetRoom,
+          userId: uId || userId,
+          userName: userName || socket.user?.name || username || 'Someone',
+          isTyping: true,
+        };
 
-      socket.to(targetRoom).emit('user_typing', payload);
+        socket.to(targetRoom).emit('user_typing', payload);
 
-      if (targetRoom.startsWith('dm_')) {
-        const parts = targetRoom.replace('dm_', '').split('_');
-        if (parts.length === 2) {
-          socket.to(`user_${parts[0].toLowerCase()}`).emit('user_typing', payload);
-          socket.to(`user_${parts[1].toLowerCase()}`).emit('user_typing', payload);
+        if (targetRoom.startsWith('dm_')) {
+          const parts = targetRoom.replace('dm_', '').split('_');
+          if (parts.length === 2) {
+            socket.to(`user_${parts[0].toLowerCase()}`).emit('user_typing', payload);
+            socket.to(`user_${parts[1].toLowerCase()}`).emit('user_typing', payload);
+          }
         }
+      } catch (err) {
+        console.error('[Socket.io] Error in typing_start:', err.message);
       }
     });
 
-    socket.on('typing_stop', ({ roomId, chatId, userId: uId, userName }) => {
-      const targetRoom = roomId || chatId;
-      if (!targetRoom) return;
+    socket.on('typing_stop', (data) => {
+      try {
+        const { roomId, chatId, userId: uId, userName } = data || {};
+        const targetRoom = roomId || chatId;
+        if (!targetRoom) return;
 
-      const payload = {
-        roomId: targetRoom,
-        chatId: targetRoom,
-        userId: uId || userId,
-        userName: userName || socket.user?.name || username || 'Someone',
-        isTyping: false,
-      };
+        const payload = {
+          roomId: targetRoom,
+          chatId: targetRoom,
+          userId: uId || userId,
+          userName: userName || socket.user?.name || username || 'Someone',
+          isTyping: false,
+        };
 
-      socket.to(targetRoom).emit('user_typing', payload);
+        socket.to(targetRoom).emit('user_typing', payload);
 
-      if (targetRoom.startsWith('dm_')) {
-        const parts = targetRoom.replace('dm_', '').split('_');
-        if (parts.length === 2) {
-          socket.to(`user_${parts[0].toLowerCase()}`).emit('user_typing', payload);
-          socket.to(`user_${parts[1].toLowerCase()}`).emit('user_typing', payload);
+        if (targetRoom.startsWith('dm_')) {
+          const parts = targetRoom.replace('dm_', '').split('_');
+          if (parts.length === 2) {
+            socket.to(`user_${parts[0].toLowerCase()}`).emit('user_typing', payload);
+            socket.to(`user_${parts[1].toLowerCase()}`).emit('user_typing', payload);
+          }
         }
+      } catch (err) {
+        console.error('[Socket.io] Error in typing_stop:', err.message);
       }
     });
 
@@ -319,93 +346,117 @@ export const setupChatSocket = (io) => {
 
     // ── WebRTC Voice & Video Call Signaling ──────────────────────────
     socket.on('call_user', (data) => {
-      const { userToCall, signalData, isVideo, chatId } = data || {};
-      if (!userToCall) return;
-      const cleanTarget = String(userToCall).toLowerCase().replace(/^@/, '');
-      const callerInfo = {
-        from: username || userId,
-        callerId: userId,
-        callerUsername: username,
-        callerName: socket.user?.name || username || 'User',
-        callerAvatar: socket.user?.avatar || null,
-        signalData,
-        isVideo: Boolean(isVideo),
-        chatId,
-      };
+      try {
+        const { userToCall, signalData, isVideo, chatId } = data || {};
+        if (!userToCall) return;
+        const cleanTarget = String(userToCall).toLowerCase().replace(/^@/, '');
+        const callerInfo = {
+          from: username || userId,
+          callerId: userId,
+          callerUsername: username,
+          callerName: socket.user?.name || username || 'User',
+          callerAvatar: socket.user?.avatar || null,
+          signalData,
+          isVideo: Boolean(isVideo),
+          chatId,
+        };
 
-      io.to(`user_${cleanTarget}`).emit('call_incoming', callerInfo);
-      io.to(`user_${userToCall}`).emit('call_incoming', callerInfo);
-      if (chatId) {
-        socket.to(chatId).emit('call_incoming', callerInfo);
+        io.to(`user_${cleanTarget}`).emit('call_incoming', callerInfo);
+        io.to(`user_${userToCall}`).emit('call_incoming', callerInfo);
+        if (chatId) {
+          socket.to(chatId).emit('call_incoming', callerInfo);
+        }
+      } catch (err) {
+        console.error('[Socket.io] Error in call_user:', err.message);
       }
     });
 
     socket.on('answer_call', (data) => {
-      const { to, signalData } = data || {};
-      if (!to) return;
-      const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-      io.to(`user_${cleanTarget}`).emit('call_answered', {
-        from: username || userId,
-        signalData,
-      });
-      io.to(`user_${to}`).emit('call_answered', {
-        from: username || userId,
-        signalData,
-      });
+      try {
+        const { to, signalData } = data || {};
+        if (!to) return;
+        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+        io.to(`user_${cleanTarget}`).emit('call_answered', {
+          from: username || userId,
+          signalData,
+        });
+        io.to(`user_${to}`).emit('call_answered', {
+          from: username || userId,
+          signalData,
+        });
+      } catch (err) {
+        console.error('[Socket.io] Error in answer_call:', err.message);
+      }
     });
 
     socket.on('ice_candidate', (data) => {
-      const { to, candidate, chatId } = data || {};
-      if (to) {
-        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-        io.to(`user_${cleanTarget}`).emit('ice_candidate', { from: username || userId, candidate });
-        io.to(`user_${to}`).emit('ice_candidate', { from: username || userId, candidate });
-      }
-      if (chatId) {
-        socket.to(chatId).emit('ice_candidate', { from: username || userId, candidate });
+      try {
+        const { to, candidate, chatId } = data || {};
+        if (to) {
+          const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+          io.to(`user_${cleanTarget}`).emit('ice_candidate', { from: username || userId, candidate });
+          io.to(`user_${to}`).emit('ice_candidate', { from: username || userId, candidate });
+        }
+        if (chatId) {
+          socket.to(chatId).emit('ice_candidate', { from: username || userId, candidate });
+        }
+      } catch (err) {
+        console.error('[Socket.io] Error in ice_candidate:', err.message);
       }
     });
 
     socket.on('end_call', (data) => {
-      const { to, chatId } = data || {};
-      if (to) {
-        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-        io.to(`user_${cleanTarget}`).emit('call_ended', { from: username || userId });
-        io.to(`user_${to}`).emit('call_ended', { from: username || userId });
-      }
-      if (chatId) {
-        socket.to(chatId).emit('call_ended', { from: username || userId });
+      try {
+        const { to, chatId } = data || {};
+        if (to) {
+          const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+          io.to(`user_${cleanTarget}`).emit('call_ended', { from: username || userId });
+          io.to(`user_${to}`).emit('call_ended', { from: username || userId });
+        }
+        if (chatId) {
+          socket.to(chatId).emit('call_ended', { from: username || userId });
+        }
+      } catch (err) {
+        console.error('[Socket.io] Error in end_call:', err.message);
       }
     });
 
     socket.on('reject_call', (data) => {
-      const { to } = data || {};
-      if (!to) return;
-      const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-      io.to(`user_${cleanTarget}`).emit('call_rejected', { from: username || userId });
-      io.to(`user_${to}`).emit('call_rejected', { from: username || userId });
+      try {
+        const { to } = data || {};
+        if (!to) return;
+        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
+        io.to(`user_${cleanTarget}`).emit('call_rejected', { from: username || userId });
+        io.to(`user_${to}`).emit('call_rejected', { from: username || userId });
+      } catch (err) {
+        console.error('[Socket.io] Error in reject_call:', err.message);
+      }
     });
 
     socket.on('disconnect', () => {
-      const keys = [userId, username].filter(Boolean);
-      keys.forEach((key) => {
-        const clean = key.toLowerCase().replace(/^@/, '');
-        const s = userSockets.get(clean);
-        if (s) {
-          s.delete(socket.id);
-          if (s.size === 0) {
-            userSockets.delete(clean);
-            io.emit('user_status', {
-              userId,
-              username: (username || '').toLowerCase().replace(/^@/, ''),
-              status: 'offline',
-            });
-            if (userId) {
-              storageService.updateUserStatus(userId, 'offline').catch(() => {});
+      try {
+        const keys = [userId, username].filter(Boolean);
+        keys.forEach((key) => {
+          const clean = key.toLowerCase().replace(/^@/, '');
+          const s = userSockets.get(clean);
+          if (s) {
+            s.delete(socket.id);
+            if (s.size === 0) {
+              userSockets.delete(clean);
+              io.emit('user_status', {
+                userId,
+                username: (username || '').toLowerCase().replace(/^@/, ''),
+                status: 'offline',
+              });
+              if (userId) {
+                storageService.updateUserStatus(userId, 'offline').catch(() => {});
+              }
             }
           }
-        }
-      });
+        });
+      } catch (err) {
+        console.error('[Socket.io] Error in disconnect handler:', err.message);
+      }
     });
   });
 };

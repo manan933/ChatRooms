@@ -12,7 +12,11 @@ export const errorHandler = (err, req, res, next) => {
 
   // Mongoose Duplicate Key (e.g. unique username or email)
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
+    const field = err.keyValue
+      ? Object.keys(err.keyValue)[0]
+      : err.keyPattern
+        ? Object.keys(err.keyPattern)[0]
+        : 'field';
     const message = `A record with that ${field} already exists.`;
     return res.status(400).json({ success: false, message, field });
   }

@@ -68,10 +68,10 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
             <Avatar name={chat.name} src={chat.avatar} size="lg" className="mb-3" />
           )}
 
-          <h3 className="text-base font-bold text-[var(--text-primary)] m-0">
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] m-0">
             {chat.name}
           </h3>
-          <p className="text-xs font-body text-[var(--text-muted)] mt-0.5 m-0">
+          <p className="text-sm font-body text-[var(--text-muted)] mt-0.5 m-0">
             {chat.workspaceName ? `${chat.workspaceName}` : chat.username ? `@${chat.username}` : `${chat.membersCount || 1} members`}
           </p>
         </div>
@@ -83,7 +83,7 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
                 Invite Code
               </span>
-              <span className="text-xs font-bold text-[var(--accent)] truncate block">
+              <span className="text-sm sm:text-base font-bold text-[var(--accent)] truncate block">
                 {joinCode}
               </span>
             </div>
@@ -103,7 +103,7 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
           <button
             type="button"
             onClick={() => toggleMuteChat(chat.id)}
-            className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
+            className={`py-2.5 px-3.5 rounded-xl border text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors ${
               muted
                 ? 'bg-[var(--accent-highlight)]/15 border-[var(--accent-highlight)]/30 text-[var(--accent-highlight)] font-bold'
                 : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
@@ -117,7 +117,7 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
         {/* ── Members or Mutual Groups ────────────────────────────── */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+            <span className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
               <Users size={14} className="text-[var(--accent)]" />
               <span>{isDirect ? 'Mutual Information' : `Participants (${(chat.members || []).length || chat.membersCount || 1})`}</span>
             </span>
