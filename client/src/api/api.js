@@ -102,6 +102,15 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ code }),
       }),
+    addMembers: (nodeId, members) =>
+      request(`/api/workspaces/nodes/${nodeId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ members }),
+      }),
+    removeMember: (nodeId, memberId) =>
+      request(`/api/workspaces/nodes/${nodeId}/members/${memberId}`, {
+        method: 'DELETE',
+      }),
   },
 
   messages: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check, Phone, PhoneOff, Video } from '../ui/Icons';
+import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check, Phone, PhoneOff, Video, Forward } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
 import { getFileUrl } from '../../api/api';
@@ -14,6 +14,7 @@ export const MessageBubble = ({
   onEdit,
   onDelete,
   onReaction,
+  onForward,
   onCallBack,
   currentUserId,
 }) => {
@@ -150,6 +151,19 @@ export const MessageBubble = ({
             {copied ? <Check size={14} className="text-[var(--accent)]" /> : <Copy size={14} />}
           </button>
 
+          {/* Forward Message (WhatsApp style) */}
+          <button
+            type="button"
+            onClick={() => {
+              onForward?.(message);
+              setShowMenu(false);
+            }}
+            className="p-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+            title="Forward Message"
+          >
+            <Forward size={14} />
+          </button>
+
           {/* Own Message Actions: Edit & Delete */}
           {isOwn && (
             <>
@@ -189,6 +203,13 @@ export const MessageBubble = ({
               : 'bubble-received rounded-bl-xs'
           }`}
         >
+          {/* WhatsApp-Style Forwarded Banner */}
+          {message.isForwarded && (
+            <div className={`flex items-center gap-1 text-[11px] font-body italic mb-1.5 select-none ${isOwn ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
+              <Forward size={12} className="shrink-0" />
+              <span>Forwarded</span>
+            </div>
+          )}
           {/* Attachment Presentation */}
           {attachment && (
             <div className="mb-2">

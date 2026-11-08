@@ -102,6 +102,7 @@ export const sendMessage = async (req, res, next) => {
       type: type || (attachment?.type || 'text'),
       callDetails: callDetails || null,
       attachment: attachment || null,
+      isForwarded: Boolean(req.body?.isForwarded),
       timestamp: timestamp || new Date().toISOString(),
     });
 

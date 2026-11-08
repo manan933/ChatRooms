@@ -193,6 +193,7 @@ export const setupChatSocket = (io) => {
           type: type || (finalAttachment?.type || 'text'),
           callDetails: callDetails || null,
           attachment: finalAttachment,
+          isForwarded: Boolean(data?.isForwarded),
           reactions: [],
           timestamp: now,
         };

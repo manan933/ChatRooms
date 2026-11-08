@@ -121,15 +121,6 @@ export const AuthPage = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Live Platform Badge (Desktop) */}
-          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-glass)] border border-[var(--border)] text-xs font-heading font-semibold text-[var(--text-secondary)] backdrop-blur-md shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>Next-Gen Realtime Platform</span>
-            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[var(--accent-subtle)] text-[var(--accent)]">
-              v2.0
-            </span>
-          </div>
-
           {/* Quick Theme Switcher */}
           <button
             type="button"
@@ -157,21 +148,12 @@ export const AuthPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
           {/* ── Left Editorial Showcase (FluxEdit & Pelmatech Style) ─── */}
           <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--accent-subtle)] border border-[var(--border)] text-xs font-heading font-bold text-[var(--accent)] w-fit backdrop-blur-md shadow-xs">
-              <Zap size={13} className="text-[var(--accent-highlight)]" />
-              <span>Ultra Low-Latency Channels & Direct Chat</span>
-            </div>
-
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold tracking-tight text-[var(--text-primary)] leading-[1.08] m-0">
               Communicate at the speed of{' '}
               <span className="font-body italic font-normal text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent)] via-[var(--accent-highlight)] to-[var(--accent)]">
                 thought.
               </span>
             </h1>
-
-            <p className="text-base sm:text-lg font-body text-[var(--text-secondary)] leading-relaxed max-w-xl m-0">
-              Organize team channels, exchange real-time direct messages, and connect with instant audio & video—crafted with pure visual vibrancy.
-            </p>
 
             {/* Floating Glassmorphic Product Preview Card */}
             <div className="relative max-w-lg hidden sm:block pt-2">
@@ -192,11 +174,6 @@ export const AuthPage = () => {
                       </div>
                       <div className="text-[11px] font-body text-[var(--text-muted)]">Engineering Core · 12 members</div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent-highlight)]/15 text-[var(--accent-highlight)] border border-[var(--accent-highlight)]/30 text-xs font-bold font-heading">
-                    <Phone size={12} />
-                    <span>04:20 Call Active</span>
                   </div>
                 </div>
 
@@ -231,17 +208,6 @@ export const AuthPage = () => {
                       </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Metric Footer Badges */}
-                <div className="pt-2 flex items-center justify-between text-xs font-heading text-[var(--text-muted)] border-t border-[var(--border-subtle)]">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck size={14} className="text-emerald-400" /> End-to-End Encrypted
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Zap size={14} className="text-[var(--accent-highlight)]" /> Zero Latency
-                  </span>
-                  <span>Hardware Accelerated</span>
                 </div>
               </div>
             </div>
@@ -289,7 +255,7 @@ export const AuthPage = () => {
                 </div>
 
                 {/* Form Header */}
-                <div className="mb-5">
+                <div className="mb-6">
                   <h2 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-[var(--text-primary)] m-0">
                     {isRegister ? (
                       <>
@@ -305,11 +271,6 @@ export const AuthPage = () => {
                       'Welcome back'
                     )}
                   </h2>
-                  <p className="text-xs sm:text-sm font-body text-[var(--text-secondary)] mt-1.5 leading-relaxed">
-                    {isRegister
-                      ? 'Create your account to start collaborating in seconds.'
-                      : 'Enter your account details below to access your channels.'}
-                  </p>
                 </div>
 
                 {/* Error Banner */}

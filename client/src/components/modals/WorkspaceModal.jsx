@@ -197,22 +197,30 @@ export const WorkspaceModal = ({
                           {isSelected && <CheckCircle2 size={13} className="text-[var(--accent)]" />}
                         </div>
                         <div className="text-[10px] text-[var(--text-muted)] font-body flex items-center gap-2">
-                          <span>{ws.membersCount || 1} members</span>
+                          <span>{ws.membersCount || ws.memberCount || 1} members</span>
                           <span>·</span>
                           <span>{ws.nodes?.length || 1} channels</span>
+                          {ws.joinCode && (
+                            <>
+                              <span>·</span>
+                              <span className="font-mono text-[var(--accent)] font-semibold">{ws.joinCode}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(ws.joinCode || 'WS-001', ws.id)}
-                        className="p-1.5 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] cursor-pointer"
-                        title="Copy Code"
-                      >
-                        {copiedCode === ws.id ? <Check size={12} className="text-[var(--accent)]" /> : <Copy size={12} />}
-                      </button>
+                      {ws.joinCode && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(ws.joinCode, ws.id)}
+                          className="p-1.5 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] border border-[var(--border)] cursor-pointer"
+                          title={`Copy Invite Code: ${ws.joinCode}`}
+                        >
+                          {copiedCode === ws.id ? <Check size={12} className="text-[var(--accent)]" /> : <Copy size={12} />}
+                        </button>
+                      )}
 
                       <button
                         type="button"
@@ -246,10 +254,10 @@ export const WorkspaceModal = ({
               <input
                 type="text"
                 required
-                placeholder="e.g. WS-001 or ENG-101"
+                placeholder="e.g. WS-TECH-1234"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs sm:text-sm font-mono tracking-wider text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] uppercase"
                 autoFocus
               />
               <span className="text-[10px] text-[var(--text-muted)] font-body mt-1 block">

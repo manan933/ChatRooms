@@ -8,6 +8,7 @@ import {
   addMembersToNode,
   joinGroupByCode,
   leaveParentGroup,
+  removeMemberFromNode,
 } from '../controllers/workspaceController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -22,5 +23,7 @@ router.post('/:id/nodes/:nodeId/members', protect, addMembersToNode);
 router.post('/nodes/:nodeId/members', protect, addMembersToNode);
 router.post('/join', protect, joinGroupByCode);
 router.post('/leave-parent-group', protect, leaveParentGroup);
+router.delete('/:id/nodes/:nodeId/members/:memberId', protect, removeMemberFromNode);
+router.delete('/nodes/:nodeId/members/:memberId', protect, removeMemberFromNode);
 
 export default router;

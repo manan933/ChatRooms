@@ -353,7 +353,9 @@ export const useChatStore = create((set, get) => ({
       senderUsername: currentUser?.primaryUsername || '',
       senderAvatar: currentUser?.avatar || null,
       reactions: [],
+      isForwarded: Boolean(extra?.isForwarded),
       timestamp: new Date().toISOString(),
+      ...extra,
     };
 
     // 1. Optimistic UI update

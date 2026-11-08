@@ -48,6 +48,13 @@ const WorkspaceSchema = new mongoose.Schema(
       required: [true, 'Workspace name is required'],
       trim: true,
     },
+    joinCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+      default: '',
+    },
     rootNodeId: {
       type: String,
       required: true,

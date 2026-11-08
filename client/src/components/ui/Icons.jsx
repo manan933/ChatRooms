@@ -518,6 +518,13 @@ export const Share2 = createIcon(
   </>
 );
 
+export const Forward = createIcon(
+  <>
+    <polyline points="15 17 20 12 15 7" />
+    <path d="M4 18v-2a4 4 0 0 1 4-4h12" />
+  </>
+);
+
 export const Wifi = createIcon(
   <>
     <path d="M5 12.55a11 11 0 0 1 14.08 0" />

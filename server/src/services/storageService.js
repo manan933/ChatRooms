@@ -726,6 +726,7 @@ class StorageService {
     const ws = await Workspace.create({
       id: wsId,
       name: name.trim(),
+      joinCode: code,
       rootNodeId,
       defaultNodeId,
       type: 'organization',
@@ -734,6 +735,14 @@ class StorageService {
       creatorName: 'You',
       contextualUsername: contextualUsername || '',
       policy: { emoji: true, reactions: true, editMessage: true, deleteMessage: true },
+      members: [
+        {
+          user: userId && mongoose.Types.ObjectId.isValid(userId) ? userId : null,
+          role: 'admin',
+          contextualUsername: contextualUsername || '',
+          joinedAt: new Date(),
+        },
+      ],
     });
 
     const genNode = await this.addNodeToWorkspace(wsId, { name: 'general', folder: null });
@@ -791,11 +800,14 @@ class StorageService {
 
   async joinWorkspace(code, userId) {
     const cleanCode = code.toUpperCase().trim();
-    let node = await WorkspaceNode.findOne({ joinCode: cleanCode });
-    let workspace = null;
+    let workspace = await Workspace.findOne({ joinCode: cleanCode }).lean();
+    let node = null;
 
-    if (node) {
-      workspace = await Workspace.findOne({ id: node.workspaceId }).lean();
+    if (!workspace) {
+      node = await WorkspaceNode.findOne({ joinCode: cleanCode });
+      if (node) {
+        workspace = await Workspace.findOne({ id: node.workspaceId }).lean();
+      }
     }
     if (!workspace) {
       workspace = await Workspace.findOne({ id: cleanCode.toLowerCase() }).lean();

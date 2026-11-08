@@ -106,6 +106,10 @@ export const CallModal = ({
     if (!isOpen) return;
 
     let isMounted = true;
+    let endTimeout = null;
+    let rejectTimeout = null;
+
+    setCallStatus(isInitiator ? 'calling' : 'connecting');
     setDuration(0);
     durationRef.current = 0;
     summarySentRef.current = false;
@@ -324,7 +328,9 @@ export const CallModal = ({
       if (isMounted) {
         setCallStatus('ended');
         emitCallSummary('ended');
-        setTimeout(() => onCloseRef.current?.(), 1000);
+        endTimeout = setTimeout(() => {
+          if (isMounted) onCloseRef.current?.();
+        }, 600);
       }
     };
 
@@ -333,7 +339,9 @@ export const CallModal = ({
       if (isMounted) {
         setCallStatus('rejected');
         emitCallSummary('declined');
-        setTimeout(() => onCloseRef.current?.(), 1500);
+        rejectTimeout = setTimeout(() => {
+          if (isMounted) onCloseRef.current?.();
+        }, 800);
       }
     };
 
@@ -362,6 +370,8 @@ export const CallModal = ({
     return () => {
       isMounted = false;
       clearInterval(timer);
+      if (endTimeout) clearTimeout(endTimeout);
+      if (rejectTimeout) clearTimeout(rejectTimeout);
 
       socketService.off('call_answered', handleAnswer);
       socketService.off('ice_candidate', handleIceCandidate);

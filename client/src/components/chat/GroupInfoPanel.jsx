@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   Users,
@@ -9,34 +9,124 @@ import {
   Bell,
   BellOff,
   LogOut,
+  UserPlus,
+  Trash2,
+  Loader2,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useChatStore from '../../store/chatStore';
+import useAuthStore from '../../store/authStore';
+import api from '../../api/api';
 
 const ROLE_CONFIG = {
-  owner: { label: 'Owner', bg: 'rgba(252, 115, 77, 0.12)', text: 'var(--accent-highlight)', border: 'rgba(252, 115, 77, 0.25)' },
-  admin: { label: 'Admin', bg: 'var(--accent-subtle)', text: 'var(--accent)', border: 'rgba(2, 151, 222, 0.25)' },
-  moderator: { label: 'Mod', bg: 'var(--accent-subtle)', text: 'var(--accent)', border: 'rgba(2, 151, 222, 0.25)' },
+  owner: { label: 'Admin', bg: 'rgba(252, 115, 77, 0.15)', text: 'var(--accent-highlight)', border: 'rgba(252, 115, 77, 0.35)' },
+  admin: { label: 'Admin', bg: 'var(--accent-subtle)', text: 'var(--accent)', border: 'rgba(2, 151, 222, 0.35)' },
+  moderator: { label: 'Mod', bg: 'var(--accent-subtle)', text: 'var(--accent)', border: 'rgba(2, 151, 222, 0.35)' },
   member: { label: 'Member', bg: 'rgba(148, 163, 184, 0.12)', text: 'var(--text-muted)', border: 'var(--border-subtle)' },
 };
 
 export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   const [copied, setCopied] = useState(false);
   const { toggleMuteChat, isChatMuted, blockUser, unblockUser, isUserBlocked } = useChatStore();
+  const { user } = useAuthStore();
+
+  const currentUserId = user?._id || user?.id;
+  const currentUsername = (user?.primaryUsername || user?.username || '').toLowerCase().replace(/^@/, '');
+
+  const [members, setMembers] = useState(chat?.members || []);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [addUsername, setAddUsername] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
+
+  useEffect(() => {
+    if (chat) {
+      setMembers(chat.members || []);
+      setShowAddMember(false);
+      setAddUsername('');
+      setAddError(null);
+    }
+  }, [chat?.id, chat?.members]);
 
   if (!chat) return null;
 
   const isChannel = chat.type === 'channel';
   const isDirect = !isChannel && chat.type !== 'group';
-  const joinCode = chat.joinCode || (isChannel ? 'CR-001' : null);
+  // Use real join code from chat or workspace, never fallback to fake CR-001
+  const joinCode = chat.joinCode || chat.workspaceJoinCode || null;
   const muted = isChatMuted(chat.id);
   const contactBlocked = isDirect ? isUserBlocked(chat.userId || chat.id || chat.username) : false;
+
+  // Determine if current user is admin/owner of this channel or workspace
+  const isAdmin =
+    chat.owner === currentUserId ||
+    chat.owner?.toString() === currentUserId?.toString() ||
+    chat.createdBy === currentUserId ||
+    chat.creatorName?.includes('You') ||
+    (members || []).some(
+      (m) =>
+        ((m.id && m.id === currentUserId) || (m.username && m.username.toLowerCase().replace(/^@/, '') === currentUsername)) &&
+        (m.role === 'admin' || m.role === 'owner')
+    );
 
   const handleCopyCode = () => {
     if (joinCode) {
       navigator.clipboard?.writeText(joinCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleAddMember = async (e) => {
+    e.preventDefault();
+    if (!addUsername.trim()) return;
+
+    setAddLoading(true);
+    setAddError(null);
+    const cleanTarget = addUsername.trim().replace(/^@/, '').toLowerCase();
+
+    try {
+      const res = await api.workspaces.addMembers(chat.id, [{ username: cleanTarget }]);
+      if (res.ok) {
+        setMembers((prev) => [
+          ...prev,
+          {
+            id: `mem-${Date.now()}`,
+            name: cleanTarget,
+            username: cleanTarget,
+            role: 'member',
+            joinedAt: new Date(),
+          },
+        ]);
+        setAddUsername('');
+        setShowAddMember(false);
+        setActionSuccess(`Added @${cleanTarget} to channel`);
+        setTimeout(() => setActionSuccess(null), 3000);
+      } else {
+        setAddError(res.error || 'Failed to add member. Check username.');
+      }
+    } catch {
+      setAddError('Error connecting to server.');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
+  const handleRemoveMember = async (memberId, memberUsername) => {
+    if (!window.confirm(`Remove @${memberUsername} from this ${isChannel ? 'channel' : 'group'}?`)) return;
+
+    try {
+      const res = await api.workspaces.removeMember(chat.id, memberId || memberUsername);
+      if (res.ok) {
+        setMembers((prev) => prev.filter((m) => m.id !== memberId && m.username !== memberUsername));
+        setActionSuccess(`Removed @${memberUsername}`);
+        setTimeout(() => setActionSuccess(null), 3000);
+      } else {
+        alert(res.error || 'Could not remove member');
+      }
+    } catch {
+      alert('Error connecting to server');
     }
   };
 
@@ -72,25 +162,33 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
             {chat.name}
           </h3>
           <p className="text-sm font-body text-[var(--text-muted)] mt-0.5 m-0">
-            {chat.workspaceName ? `${chat.workspaceName}` : chat.username ? `@${chat.username}` : `${chat.membersCount || 1} members`}
+            {chat.workspaceName ? `${chat.workspaceName}` : chat.username ? `@${chat.username}` : `${members.length || chat.membersCount || 1} members`}
           </p>
         </div>
+
+        {/* Action feedback banner */}
+        {actionSuccess && (
+          <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5 animate-fadeIn">
+            <Check size={14} />
+            <span>{actionSuccess}</span>
+          </div>
+        )}
 
         {/* ── Join Code Card (if channel) ───────────────────────────── */}
         {joinCode && (
           <div className="p-3 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between">
             <div className="min-w-0 flex-1 mr-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                Invite Code
+                Workspace Invite Code
               </span>
-              <span className="text-sm sm:text-base font-bold text-[var(--accent)] truncate block">
+              <span className="text-sm sm:text-base font-mono font-bold text-[var(--accent)] truncate block">
                 {joinCode}
               </span>
             </div>
             <button
               type="button"
               onClick={handleCopyCode}
-              className="py-1 px-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-lg text-[11px] font-bold border-none cursor-pointer flex items-center gap-1 shadow-xs"
+              className="py-1 px-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg text-[11px] font-bold border-none cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
             >
               {copied ? <Check size={12} /> : <Copy size={12} />}
               <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -119,9 +217,49 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
               <Users size={14} className="text-[var(--accent)]" />
-              <span>{isDirect ? 'Mutual Information' : `Participants (${(chat.members || []).length || chat.membersCount || 1})`}</span>
+              <span>{isDirect ? 'Mutual Information' : `Participants (${members.length || 1})`}</span>
             </span>
+
+            {/* Admin Add Member Trigger Button */}
+            {isAdmin && (isChannel || chat.type === 'group') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddMember(!showAddMember);
+                  setAddError(null);
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer shadow-xs transition-colors"
+              >
+                <UserPlus size={12} />
+                <span>Add Member</span>
+              </button>
+            )}
           </div>
+
+          {/* Inline Add Member Form (Admin only) */}
+          {showAddMember && (
+            <form onSubmit={handleAddMember} className="p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--accent)]/40 flex flex-col gap-2 animate-fadeIn">
+              <span className="text-[11px] font-bold text-[var(--text-secondary)]">Add User by Username</span>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  placeholder="username"
+                  value={addUsername}
+                  onChange={(e) => setAddUsername(e.target.value)}
+                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  disabled={addLoading || !addUsername.trim()}
+                  className="py-1.5 px-3 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                >
+                  {addLoading ? <Loader2 size={12} className="animate-spin" /> : <span>Add</span>}
+                </button>
+              </div>
+              {addError && <span className="text-[10px] text-[var(--danger)] font-body">{addError}</span>}
+            </form>
+          )}
 
           <div className="space-y-1.5">
             {isDirect ? (
@@ -129,18 +267,21 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
                 Direct encrypted room on <strong className="text-[var(--text-primary)] font-heading">ChatRooms</strong>.
               </div>
             ) : (
-              (chat.members || []).map((m) => {
+              members.map((m) => {
                 const roleCfg = ROLE_CONFIG[m.role] || ROLE_CONFIG.member;
+                const isMemberAdmin = m.role === 'admin' || m.role === 'owner';
+                const canRemove = isAdmin && !isMemberAdmin && m.id !== currentUserId && m.username?.toLowerCase() !== currentUsername;
+
                 return (
                   <div
-                    key={m.id || m._id}
+                    key={m.id || m._id || m.username}
                     className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar name={m.name} size="sm" status={m.status} />
+                      <Avatar name={m.name || m.username} size="sm" status={m.status} />
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-[var(--text-primary)] truncate">
-                          {m.name}
+                          {m.name || m.username}
                         </div>
                         <div className="text-[10px] text-[var(--text-muted)] truncate">
                           @{m.username}
@@ -148,16 +289,30 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
                       </div>
                     </div>
 
-                    <span
-                      className="px-1.5 py-0.5 rounded-md text-[9px] font-bold border shrink-0"
-                      style={{
-                        backgroundColor: roleCfg.bg,
-                        color: roleCfg.text,
-                        borderColor: roleCfg.border,
-                      }}
-                    >
-                      {roleCfg.label}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="px-1.5 py-0.5 rounded-md text-[9px] font-bold border shrink-0"
+                        style={{
+                          backgroundColor: roleCfg.bg,
+                          color: roleCfg.text,
+                          borderColor: roleCfg.border,
+                        }}
+                      >
+                        {roleCfg.label}
+                      </span>
+
+                      {/* Admin remove member button */}
+                      {canRemove && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMember(m.id, m.username)}
+                          className="p-1 rounded-md text-[var(--danger)] hover:bg-[var(--danger)]/15 border-none bg-transparent cursor-pointer transition-colors"
+                          title={`Remove @${m.username}`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -185,7 +340,7 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`Permanently remove ${chat.name}?`)) {
+                if (window.confirm(`Permanently clear & delete chat history for ${chat.name}?`)) {
                   onLeaveChat?.(chat.id, 'delete');
                   onClose();
                 }
@@ -193,35 +348,51 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
               className="py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
             >
               <X size={14} />
-              <span>Delete</span>
+              <span>Delete Chat</span>
             </button>
           </div>
         )}
 
         {isDirect && (
-          contactBlocked ? (
-            <button
-              type="button"
-              onClick={() => unblockUser(chat)}
-              className="w-full mt-2 py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Check size={14} />
-              <span>Unblock User</span>
-            </button>
-          ) : (
+          <div className="flex flex-col gap-2 mt-2">
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`Block ${chat.name}? They will not be able to send you messages or call you.`)) {
-                  blockUser(chat);
+                if (window.confirm(`Clear and delete chat history with ${chat.name}?`)) {
+                  onLeaveChat?.(chat.id, 'delete');
+                  onClose();
                 }
               }}
-              className="w-full mt-2 py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
             >
-              <Ban size={14} />
-              <span>Block User</span>
+              <Trash2 size={14} />
+              <span>Delete Chat</span>
             </button>
-          )
+
+            {contactBlocked ? (
+              <button
+                type="button"
+                onClick={() => unblockUser(chat)}
+                className="w-full py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Check size={14} />
+                <span>Unblock User</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Block ${chat.name}? They will not be able to send you messages or call you.`)) {
+                    blockUser(chat);
+                  }
+                }}
+                className="w-full py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Ban size={14} />
+                <span>Block User</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
     </aside>

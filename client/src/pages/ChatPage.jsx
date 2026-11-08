@@ -6,6 +6,9 @@ import WorkspaceModal from '../components/modals/WorkspaceModal';
 import SettingsModal from '../components/modals/SettingsModal';
 import CallModal from '../components/modals/CallModal';
 import IncomingCallModal from '../components/modals/IncomingCallModal';
+import ForwardModal from '../components/modals/ForwardModal';
+import Avatar from '../components/ui/Avatar';
+import { X } from '../components/ui/Icons';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
@@ -55,7 +58,15 @@ export const ChatPage = () => {
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeCallSession, setActiveCallSession] = useState(null);
+  const [forwardModalOpen, setForwardModalOpen] = useState(false);
+  const [messageToForward, setMessageToForward] = useState(null);
+  const [inAppToast, setInAppToast] = useState(null);
   const bufferedIceCandidatesRef = React.useRef([]);
+
+  // Auto-request notifications permission on login
+  useEffect(() => {
+    notificationService.requestPermission().catch(() => {});
+  }, []);
 
   // ── Mobile Hardware & Gesture Back Navigation ────────────────────
   const activeChatRef = React.useRef(activeChat);
@@ -194,19 +205,30 @@ export const ChatPage = () => {
 
       if (!isFromMe && !isMuted) {
         playReceivedSound();
+        const snippet =
+          msg.type === 'call'
+            ? msg.callDetails?.isVideo
+              ? '📹 Video Call'
+              : '📞 Voice Call'
+            : msg.content || msg.text || (msg.attachment ? 'Sent an attachment' : 'New message');
+
         // Cross-platform native notifications on Android PWA & Windows Desktop
-        if (typeof document !== 'undefined' && (document.hidden || !document.hasFocus())) {
-          notificationService.notifyMessage({
-            title: msg.senderName || msg.senderUsername || 'ChatRooms',
-            body:
-              msg.type === 'call'
-                ? msg.callDetails?.isVideo
-                  ? '📹 Video Call'
-                  : '📞 Voice Call'
-                : msg.text || (msg.attachments?.length ? 'Sent an attachment' : 'New message'),
+        notificationService.notifyMessage({
+          title: msg.senderName || msg.senderUsername || 'ChatRooms',
+          body: snippet,
+          chatId: msg.chatId,
+          icon: '/android-chrome-192x192.png',
+        });
+
+        // Real-Time in-app banner if looking at another chat or general view
+        if (!activeChatRef.current || activeChatRef.current.id !== msg.chatId) {
+          setInAppToast({
             chatId: msg.chatId,
-            icon: '/android-chrome-192x192.png',
+            senderName: msg.senderName || msg.senderUsername || 'ChatRooms',
+            senderAvatar: msg.senderAvatar,
+            text: snippet,
           });
+          setTimeout(() => setInAppToast(null), 4500);
         }
       }
     };
@@ -252,14 +274,12 @@ export const ChatPage = () => {
       bufferedIceCandidatesRef.current = [];
       setIncomingCall(callData);
 
-      // System notification when window is minimized or in background
-      if (typeof document !== 'undefined' && (document.hidden || !document.hasFocus())) {
-        notificationService.notifyCall({
-          callerName: callData.callerName || callData.from || 'Incoming Call',
-          isVideo: callData.isVideo,
-          chatId: callData.chatId || callData.roomId,
-        });
-      }
+      // System notification for incoming call
+      notificationService.notifyCall({
+        callerName: callData.callerName || callData.from || 'Incoming Call',
+        isVideo: callData.isVideo,
+        chatId: callData.chatId || callData.roomId,
+      });
     };
 
     const handleGlobalIceCandidate = (data) => {
@@ -391,6 +411,26 @@ export const ChatPage = () => {
         status: status || 'ended',
       },
     });
+  };
+
+  const handleOpenForward = (msg) => {
+    setMessageToForward(msg);
+    setForwardModalOpen(true);
+  };
+
+  const handleForwardMessage = async (targetChat, originalMsg) => {
+    if (!targetChat || !originalMsg) return;
+    const forwardExtra = {
+      isForwarded: true,
+      type: originalMsg.type || 'text',
+    };
+    await sendMessage(
+      targetChat.id,
+      originalMsg.content || '',
+      originalMsg.attachment || null,
+      user,
+      forwardExtra
+    );
   };
 
   const handleDeclineIncomingCall = () => {
@@ -533,6 +573,7 @@ export const ChatPage = () => {
             onReaction={(msgId, emoji) =>
               activeChat && addReaction(activeChat.id, msgId, emoji, user?.id || user?._id)
             }
+            onForwardMessage={handleOpenForward}
             onLeaveChat={(chatId, action) => {
               useChatStore.getState().removeChat(chatId, action);
             }}
@@ -540,7 +581,47 @@ export const ChatPage = () => {
         </div>
       </div>
 
+      {/* ── Real-Time In-App Message Toast Banner ───────────────────── */}
+      {inAppToast && (
+        <div
+          onClick={() => {
+            selectChat(inAppToast.chatId);
+            setInAppToast(null);
+          }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 p-3 rounded-2xl bg-[var(--bg-glass)] backdrop-blur-xl border border-[var(--border)] shadow-2xl flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] transition-all animate-bounceIn select-none"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Avatar name={inAppToast.senderName} src={inAppToast.senderAvatar} size="sm" />
+            <div className="min-w-0 font-heading">
+              <span className="text-xs font-bold text-[var(--accent)] truncate block">
+                {inAppToast.senderName}
+              </span>
+              <p className="text-[11px] font-body text-[var(--text-primary)] truncate m-0">
+                {inAppToast.text}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setInAppToast(null);
+            }}
+            className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* ── Modals ─────────────────────────────────────────────────── */}
+      <ForwardModal
+        isOpen={forwardModalOpen}
+        onClose={() => setForwardModalOpen(false)}
+        message={messageToForward}
+        onForward={handleForwardMessage}
+      />
+
       <NewChatModal
         isOpen={newChatModalOpen}
         onClose={handleCloseNewChat}

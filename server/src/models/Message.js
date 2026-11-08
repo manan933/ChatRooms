@@ -81,6 +81,10 @@ const MessageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isForwarded: {
+      type: Boolean,
+      default: false,
+    },
     isRead: {
       type: Boolean,
       default: false,

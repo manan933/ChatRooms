@@ -54,18 +54,26 @@ export const getWorkspaces = async (req, res, next) => {
 
       const rawWorkspaces = await Workspace.find(query).sort({ createdAt: 1 }).lean();
       
-      // Populate nodes for each workspace so Sidebar can render channels
+      // Populate nodes and joinCode for each workspace
       const workspaces = await Promise.all(
         rawWorkspaces.map(async (ws) => {
           const nodes = await WorkspaceNode.find({ workspaceId: ws.id }).lean();
+          let wsJoinCode = ws.joinCode;
+          if (!wsJoinCode) {
+            const shortCode = (ws.name || 'WS').substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
+            wsJoinCode = 'WS-' + shortCode + '-' + Math.floor(1000 + Math.random() * 9000);
+            await Workspace.updateOne({ id: ws.id }, { $set: { joinCode: wsJoinCode } });
+          }
           return {
             ...ws,
+            joinCode: wsJoinCode,
             nodes: nodes.map((n) => ({
               id: n.id,
               name: n.name,
               membersCount: n.memberCount || 1,
               folder: n.parentId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
               isAnnouncement: Boolean(n.isAnnouncement),
+              joinCode: wsJoinCode,
             })),
           };
         })
@@ -220,17 +228,15 @@ export const createWorkspace = async (req, res, next) => {
       const rootNodeId = `root-${wsId}`;
       const defaultChannelId = `chan-general-${wsId}`;
       const shortCode = trimmedName.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
-      const salt = Date.now().toString(36).slice(-3).toUpperCase();
-      const randomSuffix = `${Math.floor(1000 + Math.random() * 9000)}-${salt}`;
-      const rootJoinCode = `ZYN-${shortCode}-${randomSuffix}`;
-      const generalJoinCode = `ZYN-${shortCode}-${randomSuffix}-GEN`;
+      const randDigits = Math.floor(1000 + Math.random() * 9000);
+      const wsJoinCode = 'WS-' + shortCode + '-' + randDigits;
 
       const creatorMember = {
         id: req.user?._id?.toString() || req.user?.id || 'user-1',
         name: req.user?.name || 'Creator',
         username: req.user?.primaryUsername || 'creator',
         avatar: req.user?.avatar || null,
-        role: 'owner',
+        role: 'admin',
         joinedAt: new Date(),
       };
 
@@ -242,7 +248,7 @@ export const createWorkspace = async (req, res, next) => {
         children: [defaultChannelId],
         memberCount: 1,
         hasConversation: true,
-        joinCode: rootJoinCode,
+        joinCode: wsJoinCode,
         description: description?.trim() || `${trimmedName} headquarters & primary workspace`,
         createdBy: req.user?._id || null,
         members: [creatorMember],
@@ -256,7 +262,7 @@ export const createWorkspace = async (req, res, next) => {
         children: [],
         memberCount: 1,
         hasConversation: true,
-        joinCode: generalJoinCode,
+        joinCode: wsJoinCode + '-GEN',
         description: 'General workspace discussions',
         createdBy: req.user?._id || null,
         members: [creatorMember],
@@ -265,11 +271,12 @@ export const createWorkspace = async (req, res, next) => {
       const newWs = await Workspace.create({
         id: wsId,
         name: trimmedName,
+        joinCode: wsJoinCode,
         rootNodeId,
         defaultNodeId: defaultChannelId,
         type: 'organization',
         memberCount: 1,
-        owner: req.user?._id || null,
+        owner: req.user?._id || req.user?.id || null,
         creatorName: req.user?.name ? `${req.user.name} (You)` : 'You',
         contextualUsername:
           contextualUsername?.trim() ||
@@ -281,6 +288,16 @@ export const createWorkspace = async (req, res, next) => {
           deleteMessage: true,
           title: 'Standard Collaboration Policy',
         },
+        members: [
+          {
+            user: req.user?._id || req.user?.id,
+            role: 'admin',
+            contextualUsername:
+              contextualUsername?.trim() ||
+              `${req.user?.primaryUsername || 'user'}.${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+            joinedAt: new Date(),
+          },
+        ],
       });
 
       return res.status(201).json({
@@ -493,9 +510,13 @@ export const joinGroupByCode = async (req, res, next) => {
     }
 
     const clean = code.trim().toUpperCase();
+    const currentUserId = req.user?._id || req.user?.id;
+    const currentUsername = req.user?.primaryUsername || req.user?.username || 'user';
+    const currentName = req.user?.name || currentUsername;
+    const currentAvatar = req.user?.avatar || null;
 
     if (!isMongoLive()) {
-      const workspace = await storageService.joinWorkspace(clean, req.user?._id || req.user?.id);
+      const workspace = await storageService.joinWorkspace(clean, currentUserId);
       if (!workspace) {
         return res.status(404).json({
           success: false,
@@ -512,15 +533,43 @@ export const joinGroupByCode = async (req, res, next) => {
     }
 
     try {
-      const node = await WorkspaceNode.findOne({ joinCode: clean });
+      // 1. Search by Workspace joinCode
+      let workspace = await Workspace.findOne({
+        $or: [
+          { joinCode: clean },
+          { id: clean.toLowerCase() },
+          { joinCode: new RegExp('^' + clean + '$', 'i') },
+        ],
+      });
 
-      if (!node) {
-        // Also check if matches workspace join code in storage
-        const fallbackWs = await storageService.joinWorkspace(clean, req.user?._id || req.user?.id);
+      let targetNode = null;
+
+      if (workspace) {
+        targetNode =
+          (await WorkspaceNode.findOne({ id: workspace.defaultNodeId })) ||
+          (await WorkspaceNode.findOne({ id: workspace.rootNodeId })) ||
+          (await WorkspaceNode.findOne({ workspaceId: workspace.id }));
+      } else {
+        // 2. Search by WorkspaceNode joinCode
+        targetNode = await WorkspaceNode.findOne({
+          $or: [
+            { joinCode: clean },
+            { id: clean.toLowerCase() },
+            { joinCode: new RegExp('^' + clean + '$', 'i') },
+          ],
+        });
+
+        if (targetNode?.workspaceId) {
+          workspace = await Workspace.findOne({ id: targetNode.workspaceId });
+        }
+      }
+
+      if (!workspace && !targetNode) {
+        const fallbackWs = await storageService.joinWorkspace(clean, currentUserId);
         if (!fallbackWs) {
           return res.status(404).json({
             success: false,
-            message: 'Invalid workspace invite code or channel not found',
+            message: 'Invalid invite code "' + clean + '". No matching workspace found.',
           });
         }
         return res.status(200).json({
@@ -532,44 +581,80 @@ export const joinGroupByCode = async (req, res, next) => {
         });
       }
 
-      node.memberCount = (node.memberCount || 0) + 1;
-      await node.save();
-
-      let workspace = null;
-      if (node.workspaceId) {
-        workspace = await Workspace.findOne({ id: node.workspaceId });
-        if (workspace && req.user) {
-          const isMember = (workspace.members || []).some(
-            (m) => m.user?.toString() === (req.user._id || req.user.id)?.toString()
-          );
-          if (!isMember) {
-            workspace.members.push({
-              user: req.user._id || req.user.id,
-              role: 'member',
-              contextualUsername: `${req.user.primaryUsername || 'user'}.${workspace.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
-              joinedAt: new Date(),
-            });
-            workspace.memberCount = (workspace.memberCount || 0) + 1;
-            await workspace.save();
-          }
+      // Add user to Workspace members if not already present
+      if (workspace && currentUserId) {
+        workspace.members = workspace.members || [];
+        const isMember = workspace.members.some(
+          (m) => m.user?.toString() === currentUserId.toString()
+        );
+        if (!isMember) {
+          workspace.members.push({
+            user: currentUserId,
+            role: 'member',
+            contextualUsername: currentUsername + '.' + workspace.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+            joinedAt: new Date(),
+          });
+          workspace.memberCount = workspace.members.length;
+          await workspace.save();
         }
       }
+
+      // Add user to all channels in this workspace so they have immediate access
+      if (workspace?.id) {
+        const allNodes = await WorkspaceNode.find({ workspaceId: workspace.id });
+        for (const n of allNodes) {
+          n.members = n.members || [];
+          const exists = n.members.some(
+            (m) =>
+              m.id === currentUserId?.toString() ||
+              m.username?.toLowerCase() === currentUsername.toLowerCase()
+          );
+          if (!exists) {
+            n.members.push({
+              id: currentUserId?.toString() || ('mem-' + Date.now()),
+              name: currentName,
+              username: currentUsername,
+              avatar: currentAvatar,
+              role: 'member',
+              joinedAt: new Date(),
+            });
+            n.memberCount = n.members.length;
+            await n.save();
+          }
+        }
+        if (!targetNode && allNodes.length > 0) {
+          targetNode = allNodes[0];
+        }
+      }
+
+      const nodes = await WorkspaceNode.find({ workspaceId: workspace.id }).lean();
+      const formattedWs = {
+        ...(workspace.toObject ? workspace.toObject() : workspace),
+        nodes: nodes.map((n) => ({
+          id: n.id,
+          name: n.name,
+          membersCount: n.memberCount || 1,
+          folder: n.parentId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
+          isAnnouncement: Boolean(n.isAnnouncement),
+          joinCode: workspace.joinCode,
+        })),
+      };
 
       return res.status(200).json({
         success: true,
         data: {
-          node,
-          workspace,
+          workspace: formattedWs,
+          node: targetNode,
         },
       });
     } catch (dbErr) {
       console.warn('[JoinWorkspace] Mongoose query failed, using storageService:', dbErr.message);
-      const workspace = await storageService.joinWorkspace(clean);
+      const workspace = await storageService.joinWorkspace(clean, currentUserId);
       return res.status(200).json({
         success: true,
         data: {
           workspace,
-          node: workspace.nodes?.[0],
+          node: workspace?.nodes?.[0],
         },
       });
     }
@@ -598,6 +683,83 @@ export const leaveParentGroup = async (req, res, next) => {
       leftIds: [groupId],
       leftCount: 1,
       parentId: null,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+// @desc    Remove a member from a group/node or workspace
+// @route   DELETE /api/workspaces/nodes/:nodeId/members/:memberId
+// @access  Protected
+export const removeMemberFromNode = async (req, res, next) => {
+  try {
+    const { nodeId, memberId } = req.params;
+    const currentUserId = req.user?._id?.toString() || req.user?.id?.toString();
+    const currentUsername = (req.user?.primaryUsername || req.user?.username || '').toLowerCase();
+
+    if (!nodeId || !memberId) {
+      return res.status(400).json({ success: false, message: 'nodeId and memberId are required' });
+    }
+
+    const node = await WorkspaceNode.findOne({ id: nodeId });
+    if (!node) {
+      return res.status(404).json({ success: false, message: 'Channel or group not found' });
+    }
+
+    const workspace = node.workspaceId ? await Workspace.findOne({ id: node.workspaceId }) : null;
+
+    // Check authorization: Must be owner, admin, or the user removing themselves
+    const isSelf = memberId === currentUserId || memberId.toLowerCase() === currentUsername;
+    const isWsOwner = workspace && workspace.owner?.toString() === currentUserId;
+    const isWsAdmin = workspace && (workspace.members || []).some(
+      (m) => m.user?.toString() === currentUserId && (m.role === 'admin' || m.role === 'owner')
+    );
+    const isNodeAdmin = (node.members || []).some(
+      (m) => (m.id === currentUserId || m.username?.toLowerCase() === currentUsername) &&
+             (m.role === 'admin' || m.role === 'owner')
+    );
+
+    if (!isSelf && !isWsOwner && !isWsAdmin && !isNodeAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Permission denied: Only workspace admins can remove members',
+      });
+    }
+
+    // Filter out the member
+    node.members = (node.members || []).filter(
+      (m) => m.id !== memberId && m.username?.toLowerCase() !== memberId.toLowerCase()
+    );
+    node.memberCount = node.members.length;
+    await node.save();
+
+    // If removing from workspace
+    if (workspace) {
+      workspace.members = (workspace.members || []).filter(
+        (m) => m.user?.toString() !== memberId
+      );
+      workspace.memberCount = Math.max(1, workspace.members.length);
+      await workspace.save();
+    }
+
+    // Socket real-time broadcast
+    const io = req.app.get('io');
+    if (io) {
+      io.to(nodeId).emit('member_removed', { nodeId, memberId });
+      io.to('user_' + memberId.toLowerCase()).emit('removed_from_channel', { nodeId, workspaceId: workspace?.id });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Member removed successfully',
+      data: {
+        nodeId,
+        memberId,
+        totalMembers: node.memberCount,
+        members: node.members,
+      },
     });
   } catch (error) {
     next(error);

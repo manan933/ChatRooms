@@ -49,6 +49,7 @@ export const ChatArea = ({
   onEditMessage,
   onDeleteMessage,
   onReaction,
+  onForwardMessage,
   onLeaveChat,
   onCallEndedSummary,
 }) => {
@@ -447,6 +448,21 @@ export const ChatArea = ({
               </>
             )}
 
+            {/* Delete / Clear Chat (WhatsApp style) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Clear and delete chat history for ${chat.name}?`)) {
+                  onLeaveChat?.(chat.id, 'delete');
+                }
+              }}
+              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+              title="Delete / Clear Chat"
+              aria-label="Delete / Clear Chat"
+            >
+              <Trash2 size={19} />
+            </button>
+
             {/* Toggle Info Drawer */}
             <button
               type="button"
@@ -513,6 +529,7 @@ export const ChatArea = ({
                   onEdit={onEditMessage}
                   onDelete={onDeleteMessage}
                   onReaction={handleReactionWrapper}
+                  onForward={onForwardMessage}
                   onCallBack={handleCallBack}
                 />
               );
@@ -587,15 +604,17 @@ export const ChatArea = ({
       )}
 
       {/* ── Voice & Video Call Modal ────────────────────────────────── */}
-      <CallModal
-        isOpen={callModalOpen}
-        onClose={() => setCallModalOpen(false)}
-        onCallEndedSummary={onCallEndedSummary}
-        chat={chat}
-        isVideo={isVideoCall}
-        isInitiator={true}
-        currentUser={currentUser}
-      />
+      {callModalOpen && (
+        <CallModal
+          isOpen={callModalOpen}
+          onClose={() => setCallModalOpen(false)}
+          onCallEndedSummary={onCallEndedSummary}
+          chat={chat}
+          isVideo={isVideoCall}
+          isInitiator={true}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 };
