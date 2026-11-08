@@ -47,6 +47,7 @@ export const ChatPage = () => {
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeCallSession, setActiveCallSession] = useState(null);
+  const bufferedIceCandidatesRef = React.useRef([]);
 
   // Automatically show workspace selection popup on login
   useEffect(() => {
@@ -81,12 +82,20 @@ export const ChatPage = () => {
     const handleIncomingCall = (callData) => {
       const myUsername = (user?.primaryUsername || '').toLowerCase().replace(/^@/, '');
       if (callData.from && (callData.from === myUsername || callData.from === user?.id)) return;
+      bufferedIceCandidatesRef.current = [];
       setIncomingCall(callData);
+    };
+
+    const handleGlobalIceCandidate = (data) => {
+      if (data?.candidate) {
+        bufferedIceCandidatesRef.current.push(data.candidate);
+      }
     };
 
     const handleCallEndedGlobal = () => {
       setIncomingCall(null);
       setActiveCallSession(null);
+      bufferedIceCandidatesRef.current = [];
     };
 
     socketService.on('receive_message', handleReceive);
@@ -95,6 +104,7 @@ export const ChatPage = () => {
     socketService.on('contact_added', handleConversationUpdate);
     socketService.on('new_conversation', handleConversationUpdate);
     socketService.on('call_incoming', handleIncomingCall);
+    socketService.on('ice_candidate', handleGlobalIceCandidate);
     socketService.on('call_ended', handleCallEndedGlobal);
     socketService.on('call_rejected', handleCallEndedGlobal);
 
@@ -126,6 +136,7 @@ export const ChatPage = () => {
       socketService.off('contact_added', handleConversationUpdate);
       socketService.off('new_conversation', handleConversationUpdate);
       socketService.off('call_incoming', handleIncomingCall);
+      socketService.off('ice_candidate', handleGlobalIceCandidate);
       socketService.off('call_ended', handleCallEndedGlobal);
       socketService.off('call_rejected', handleCallEndedGlobal);
       window.removeEventListener('focus', handleFocusSync);
@@ -147,8 +158,47 @@ export const ChatPage = () => {
       isInitiator: false,
       incomingSignal: incomingCall.signalData,
       callerInfo: incomingCall,
+      initialIceCandidates: [...bufferedIceCandidatesRef.current],
     });
     setIncomingCall(null);
+  };
+
+  const handleCallEndedSummary = ({ chatId, targetUsername, isVideo, duration, status }) => {
+    const targetChatId = chatId || activeChat?.id;
+    if (!targetChatId) return;
+
+    let readableTime = '';
+    if (duration >= 3600) {
+      const hrs = Math.floor(duration / 3600);
+      const mins = Math.floor((duration % 3600) / 60);
+      readableTime = hrs + ' hr ' + (mins > 0 ? mins + ' min' : '');
+    } else if (duration >= 60) {
+      const mins = Math.floor(duration / 60);
+      const secs = duration % 60;
+      readableTime = secs > 0 ? mins + 'm ' + secs + 's' : mins + ' mins';
+    } else if (duration > 0) {
+      readableTime = duration + 's';
+    }
+
+    let summaryText = '';
+    if (status === 'missed') {
+      summaryText = isVideo ? 'Missed video call' : 'Missed voice call';
+    } else if (status === 'declined') {
+      summaryText = isVideo ? 'Video call declined' : 'Voice call declined';
+    } else {
+      summaryText = isVideo
+        ? 'Video call ended · ' + readableTime
+        : 'Voice call ended · ' + readableTime;
+    }
+
+    sendMessage(targetChatId, summaryText, null, user, {
+      type: 'call',
+      callDetails: {
+        isVideo: Boolean(isVideo),
+        duration: duration || 0,
+        status: status || 'ended',
+      },
+    });
   };
 
   const handleDeclineIncomingCall = () => {
@@ -287,6 +337,7 @@ export const ChatPage = () => {
             onDeleteMessage={(msgId) =>
               activeChat && deleteMessage(activeChat.id, msgId)
             }
+            onCallEndedSummary={handleCallEndedSummary}
             onReaction={(msgId, emoji) =>
               activeChat && addReaction(activeChat.id, msgId, emoji, user?.id || user?._id)
             }
@@ -336,11 +387,13 @@ export const ChatPage = () => {
         <CallModal
           isOpen={Boolean(activeCallSession)}
           onClose={() => setActiveCallSession(null)}
+          onCallEndedSummary={handleCallEndedSummary}
           chat={activeCallSession.chat}
           isVideo={activeCallSession.isVideo}
           isInitiator={false}
           incomingSignal={activeCallSession.incomingSignal}
           callerInfo={activeCallSession.callerInfo}
+          initialIceCandidates={activeCallSession.initialIceCandidates || []}
           currentUser={user}
         />
       )}

@@ -71,6 +71,8 @@ export const setupChatSocket = (io) => {
           id,
           chatId,
           content,
+          type,
+          callDetails,
           senderId,
           senderName,
           senderUsername,
@@ -80,7 +82,7 @@ export const setupChatSocket = (io) => {
           timestamp,
         } = data || {};
 
-        if (!chatId || (!content?.trim() && !attachment)) return;
+        if (!chatId || (!content?.trim() && !attachment && type !== 'call')) return;
 
         const messageId = id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         const finalContent = content ? content.trim() : '';
@@ -95,7 +97,8 @@ export const setupChatSocket = (io) => {
           senderUsername: senderUsername || username || '',
           senderAvatar: senderAvatar || socket.user?.avatar || null,
           content: finalContent,
-          type: attachment?.type || 'text',
+          type: type || (attachment?.type || 'text'),
+          callDetails: callDetails || null,
           attachment: attachment || null,
           reactions: [],
           timestamp: now,

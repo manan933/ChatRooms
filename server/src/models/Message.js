@@ -59,8 +59,13 @@ const MessageSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['text', 'image', 'file', 'system'],
+      enum: ['text', 'image', 'file', 'system', 'call'],
       default: 'text',
+    },
+    callDetails: {
+      isVideo: { type: Boolean, default: false },
+      duration: { type: Number, default: 0 },
+      status: { type: String, enum: ['ended', 'missed', 'declined'], default: 'ended' },
     },
     attachment: {
       type: AttachmentSchema,

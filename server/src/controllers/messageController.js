@@ -31,6 +31,8 @@ export const sendMessage = async (req, res, next) => {
     const {
       id,
       content,
+      type,
+      callDetails,
       senderId,
       senderName,
       senderUsername,
@@ -59,7 +61,8 @@ export const sendMessage = async (req, res, next) => {
       senderUsername: req.user?.primaryUsername || senderUsername || '',
       senderAvatar: req.user?.avatar || senderAvatar || null,
       content: finalContent,
-      type: attachment?.type || 'text',
+      type: type || (attachment?.type || 'text'),
+      callDetails: callDetails || null,
       attachment: attachment || null,
       timestamp: timestamp || new Date().toISOString(),
     });

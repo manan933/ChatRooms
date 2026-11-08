@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check } from '../ui/Icons';
+import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check, Phone, PhoneOff, Video } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
 import { getFileUrl } from '../../api/api';
@@ -14,6 +14,7 @@ export const MessageBubble = ({
   onEdit,
   onDelete,
   onReaction,
+  onCallBack,
   currentUserId,
 }) => {
   const [showMenu, setShowMenu] = useState(false);
@@ -226,8 +227,52 @@ export const MessageBubble = ({
             </div>
           )}
 
-          {/* Text Content or Inline Edit Input */}
-          {isEditing ? (
+          {/* Call Details Card or Text Content */}
+          {message.type === 'call' || message.callDetails ? (
+            <div className="flex items-center gap-3 py-1 px-0.5 font-heading min-w-[210px] sm:min-w-[260px]">
+              <div
+                className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
+                  message.callDetails?.status === 'missed' || message.callDetails?.status === 'declined'
+                    ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                    : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                }`}
+              >
+                {message.callDetails?.isVideo ? (
+                  <Video size={18} />
+                ) : message.callDetails?.status === 'missed' || message.callDetails?.status === 'declined' ? (
+                  <PhoneOff size={18} />
+                ) : (
+                  <Phone size={18} />
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-[var(--text-primary)] truncate flex items-center gap-1.5">
+                  <span>{message.callDetails?.isVideo ? 'Video Call' : 'Voice Call'}</span>
+                  {message.callDetails?.status === 'missed' && (
+                    <span className="text-[10px] text-red-400 font-semibold">(Missed)</span>
+                  )}
+                  {message.callDetails?.status === 'declined' && (
+                    <span className="text-[10px] text-red-400 font-semibold">(Declined)</span>
+                  )}
+                </div>
+                <div className="text-[11px] font-body text-[var(--text-secondary)] truncate mt-0.5">
+                  {content}
+                </div>
+              </div>
+
+              {onCallBack && (
+                <button
+                  type="button"
+                  onClick={() => onCallBack?.(message.callDetails?.isVideo)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-current transition-all cursor-pointer border border-white/10 flex items-center justify-center shrink-0 active:scale-95"
+                  title={message.callDetails?.isVideo ? 'Call back with Video' : 'Call back'}
+                >
+                  {message.callDetails?.isVideo ? <Video size={14} /> : <Phone size={14} />}
+                </button>
+              )}
+            </div>
+          ) : isEditing ? (
             <div className="flex flex-col gap-2 min-w-[200px]" onClick={(e) => e.stopPropagation()}>
               <input
                 type="text"

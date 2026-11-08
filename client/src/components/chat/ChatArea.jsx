@@ -47,6 +47,7 @@ export const ChatArea = ({
   onDeleteMessage,
   onReaction,
   onLeaveChat,
+  onCallEndedSummary,
 }) => {
   const scrollRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
@@ -121,6 +122,11 @@ export const ChatArea = ({
   const handleReactionWrapper = (msgId, emoji) => {
     if (soundEnabled) playReactionSound();
     onReaction?.(msgId, emoji);
+  };
+
+  const handleCallBack = (isVideo = false) => {
+    setIsVideoCall(Boolean(isVideo));
+    setCallModalOpen(true);
   };
 
   // If no conversation is active (Workspace Dashboard)
@@ -379,6 +385,7 @@ export const ChatArea = ({
                   onEdit={onEditMessage}
                   onDelete={onDeleteMessage}
                   onReaction={handleReactionWrapper}
+                  onCallBack={handleCallBack}
                 />
               );
             })
@@ -436,6 +443,7 @@ export const ChatArea = ({
       <CallModal
         isOpen={callModalOpen}
         onClose={() => setCallModalOpen(false)}
+        onCallEndedSummary={onCallEndedSummary}
         chat={chat}
         isVideo={isVideoCall}
         isInitiator={true}

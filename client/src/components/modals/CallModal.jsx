@@ -23,18 +23,22 @@ const RTC_CONFIG = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.relay.metered.ca:80' },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 export const CallModal = ({
   isOpen,
   onClose,
+  onCallEndedSummary,
   chat,
   isVideo = false,
   isInitiator = true,
   incomingSignal = null,
   callerInfo = null,
   currentUser = null,
+  initialIceCandidates = [],
 }) => {
   const [callStatus, setCallStatus] = useState(isInitiator ? 'calling' : 'connecting');
   const [micMuted, setMicMuted] = useState(false);
@@ -45,12 +49,28 @@ export const CallModal = ({
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
+  const remoteStreamRef = useRef(null);
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
   const screenTrackRef = useRef(null);
   const candidateQueue = useRef([]);
+  const durationRef = useRef(0);
+  const summarySentRef = useRef(false);
+
+  // Keep callback refs stable to prevent unmount on parent re-renders
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const onSummaryRef = useRef(onCallEndedSummary);
+  onSummaryRef.current = onCallEndedSummary;
 
   const targetId = chat?.username || chat?.userId || chat?.id || callerInfo?.from;
+  const targetIdRef = useRef(targetId);
+  targetIdRef.current = targetId;
+
+  const chatId = chat?.id || callerInfo?.chatId;
+  const chatIdRef = useRef(chatId);
+  chatIdRef.current = chatId;
 
   // Format call duration MM:SS
   const formatDuration = (sec) => {
@@ -59,45 +79,83 @@ export const CallModal = ({
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  // ── Emit Call Summary To Chat Timeline ──────────────────────
+  const emitCallSummary = (statusOverride) => {
+    if (summarySentRef.current) return;
+    summarySentRef.current = true;
+
+    const currentDur = durationRef.current;
+    let finalStatus = statusOverride;
+    if (!finalStatus) {
+      finalStatus = currentDur > 0 ? 'ended' : 'missed';
+    }
+
+    if (onSummaryRef.current) {
+      onSummaryRef.current({
+        chatId: chatIdRef.current,
+        targetUsername: targetIdRef.current,
+        isVideo,
+        duration: currentDur,
+        status: finalStatus,
+      });
+    }
+  };
+
   // ── Initialize WebRTC Call Session ────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
 
     let isMounted = true;
     setDuration(0);
+    durationRef.current = 0;
+    summarySentRef.current = false;
     setCallError(null);
     setMicMuted(false);
     setCameraOff(!isVideo);
     setScreenSharing(false);
-    candidateQueue.current = [];
+    candidateQueue.current = [...(initialIceCandidates || [])];
 
     playCallStartSound();
 
     const startWebRtc = async () => {
       try {
-        // 1. Acquire local media stream (Voice or Video)
-        const constraints = {
-          audio: true,
-          video: isVideo ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
-        };
-
-        let stream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (mediaErr) {
-          // Fallback to audio-only if camera access failed
-          console.warn('[WebRTC] Video camera access failed, falling back to audio:', mediaErr.message);
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-          if (isMounted) setCameraOff(true);
+        // 1. Acquire local media stream (Voice or Video) with fallback
+        let stream = null;
+        if (isVideo) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+              video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+            });
+          } catch (camErr1) {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: true,
+              });
+            } catch (camErr2) {
+              console.warn('[WebRTC] Camera unavailable, falling back to audio:', camErr2.message);
+              stream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true },
+                video: false,
+              });
+              if (isMounted) setCameraOff(true);
+            }
+          }
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            video: false,
+          });
         }
 
         if (!isMounted) {
-          stream.getTracks().forEach((t) => t.stop());
+          stream?.getTracks().forEach((t) => t.stop());
           return;
         }
 
         localStreamRef.current = stream;
-        if (localVideoRef.current && isVideo) {
+        if (localVideoRef.current && isVideo && !cameraOff) {
           localVideoRef.current.srcObject = stream;
         }
 
@@ -110,12 +168,36 @@ export const CallModal = ({
           pc.addTrack(track, stream);
         });
 
-        // Handle incoming remote media tracks
+        // Setup persistent remote stream
+        remoteStreamRef.current = new MediaStream();
+
+        // Handle incoming remote media tracks (both audio and video)
         pc.ontrack = (event) => {
           console.log('[WebRTC] Received remote stream track:', event.track.kind);
-          if (remoteVideoRef.current && event.streams && event.streams[0]) {
-            remoteVideoRef.current.srcObject = event.streams[0];
+          if (event.streams && event.streams[0]) {
+            event.streams[0].getTracks().forEach((track) => {
+              if (!remoteStreamRef.current.getTracks().some((t) => t.id === track.id)) {
+                remoteStreamRef.current.addTrack(track);
+              }
+            });
+          } else if (event.track) {
+            if (!remoteStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
+              remoteStreamRef.current.addTrack(event.track);
+            }
           }
+
+          // Pipe to audio element (uninterrupted audio playback on all devices)
+          if (remoteAudioRef.current) {
+            remoteAudioRef.current.srcObject = remoteStreamRef.current;
+            remoteAudioRef.current.play().catch((err) => console.log('Audio autoplay:', err));
+          }
+
+          // Pipe to video element
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = remoteStreamRef.current;
+            remoteVideoRef.current.play().catch((err) => console.log('Video autoplay:', err));
+          }
+
           if (isMounted) {
             setCallStatus('connected');
           }
@@ -123,49 +205,74 @@ export const CallModal = ({
 
         // Handle local ICE candidates and relay via Socket.io
         pc.onicecandidate = (event) => {
-          if (event.candidate && targetId) {
+          if (event.candidate && targetIdRef.current) {
             socketService.sendIceCandidate({
-              to: targetId,
+              to: targetIdRef.current,
               candidate: event.candidate,
-              chatId: chat?.id,
+              chatId: chatIdRef.current,
             });
           }
         };
 
+        // Resilient connection state listeners
         pc.onconnectionstatechange = () => {
           console.log('[WebRTC] Connection state:', pc.connectionState);
           if (pc.connectionState === 'connected' && isMounted) {
             setCallStatus('connected');
-          } else if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
-            if (isMounted) setCallStatus('ended');
+          } else if (pc.connectionState === 'failed') {
+            if (isMounted) {
+              setCallStatus('ended');
+              emitCallSummary('ended');
+            }
+          }
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          console.log('[WebRTC] ICE state:', pc.iceConnectionState);
+          if (
+            (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') &&
+            isMounted
+          ) {
+            setCallStatus('connected');
+          } else if (pc.iceConnectionState === 'failed') {
+            if (pcRef.current && isInitiator) {
+              pcRef.current.restartIce?.();
+            }
           }
         };
 
         // 3. Signaling: Caller (Offer) vs Callee (Answer)
         if (isInitiator) {
-          const offer = await pc.createOffer();
+          const offer = await pc.createOffer({
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: Boolean(isVideo),
+          });
           await pc.setLocalDescription(offer);
 
           socketService.callUser({
-            userToCall: targetId,
+            userToCall: targetIdRef.current,
             signalData: offer,
             isVideo,
-            chatId: chat?.id,
+            chatId: chatIdRef.current,
           });
         } else if (incomingSignal) {
           await pc.setRemoteDescription(new RTCSessionDescription(incomingSignal));
 
-          // Process queued ICE candidates
+          // Drain queued & initial ICE candidates
           while (candidateQueue.current.length > 0) {
             const cand = candidateQueue.current.shift();
-            await pc.addIceCandidate(new RTCIceCandidate(cand));
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(cand));
+            } catch (e) {
+              console.warn('[WebRTC] Early addIceCandidate err:', e);
+            }
           }
 
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
 
           socketService.answerCall({
-            to: targetId,
+            to: targetIdRef.current,
             signalData: answer,
           });
         }
@@ -186,7 +293,11 @@ export const CallModal = ({
           await pcRef.current.setRemoteDescription(new RTCSessionDescription(signalData));
           while (candidateQueue.current.length > 0) {
             const cand = candidateQueue.current.shift();
-            await pcRef.current.addIceCandidate(new RTCIceCandidate(cand));
+            try {
+              await pcRef.current.addIceCandidate(new RTCIceCandidate(cand));
+            } catch (e) {
+              console.warn('[WebRTC] drain candidate err:', e);
+            }
           }
           if (isMounted) setCallStatus('connected');
         } catch (e) {
@@ -197,11 +308,11 @@ export const CallModal = ({
 
     const handleIceCandidate = async ({ candidate }) => {
       if (!candidate) return;
-      if (pcRef.current && pcRef.current.remoteDescription) {
+      if (pcRef.current && pcRef.current.remoteDescription && pcRef.current.remoteDescription.type) {
         try {
           await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate));
         } catch (e) {
-          console.error('[WebRTC] addIceCandidate error:', e);
+          console.warn('[WebRTC] addIceCandidate live error:', e);
         }
       } else {
         candidateQueue.current.push(candidate);
@@ -212,7 +323,8 @@ export const CallModal = ({
       playCallEndSound();
       if (isMounted) {
         setCallStatus('ended');
-        setTimeout(() => onClose?.(), 1000);
+        emitCallSummary('ended');
+        setTimeout(() => onCloseRef.current?.(), 1000);
       }
     };
 
@@ -220,7 +332,8 @@ export const CallModal = ({
       playCallEndSound();
       if (isMounted) {
         setCallStatus('rejected');
-        setTimeout(() => onClose?.(), 1500);
+        emitCallSummary('declined');
+        setTimeout(() => onCloseRef.current?.(), 1500);
       }
     };
 
@@ -231,8 +344,17 @@ export const CallModal = ({
 
     // Call Duration Timer
     const timer = setInterval(() => {
-      if (isMounted && callStatus === 'connected') {
-        setDuration((prev) => prev + 1);
+      if (isMounted) {
+        setCallStatus((currentStatus) => {
+          if (currentStatus === 'connected') {
+            setDuration((prev) => {
+              const next = prev + 1;
+              durationRef.current = next;
+              return next;
+            });
+          }
+          return currentStatus;
+        });
       }
     }, 1000);
 
@@ -246,7 +368,7 @@ export const CallModal = ({
       socketService.off('call_ended', handleCallEnded);
       socketService.off('call_rejected', handleCallRejected);
 
-      // Stop all media tracks to turn off camera and mic light
+      // Stop local tracks
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
@@ -260,7 +382,7 @@ export const CallModal = ({
         pcRef.current = null;
       }
     };
-  }, [isOpen, isInitiator, isVideo, targetId, incomingSignal, onClose, chat?.id]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -287,7 +409,9 @@ export const CallModal = ({
       } else if (cameraOff) {
         // Was started audio-only, request camera track dynamically
         try {
-          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const videoStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          });
           const newVideoTrack = videoStream.getVideoTracks()[0];
           localStreamRef.current.addTrack(newVideoTrack);
           if (localVideoRef.current) {
@@ -365,11 +489,12 @@ export const CallModal = ({
   // ── End Call ────────────────────────────────────────────────
   const handleEndCall = () => {
     playCallEndSound();
-    if (targetId) {
-      socketService.endCall({ to: targetId, chatId: chat?.id });
+    if (targetIdRef.current) {
+      socketService.endCall({ to: targetIdRef.current, chatId: chatIdRef.current });
     }
+    emitCallSummary('ended');
     setCallStatus('ended');
-    onClose?.();
+    onCloseRef.current?.();
   };
 
   const contactName = chat?.name || callerInfo?.callerName || 'Participant';
@@ -377,6 +502,9 @@ export const CallModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm select-none animate-fadeIn">
+      {/* Hidden dedicated audio element: Guarantees continuous voice stream playback */}
+      <audio ref={remoteAudioRef} autoPlay playsInline />
+
       <div className="w-full max-w-2xl bg-[var(--bg-primary)] border border-[var(--border)] rounded-2xl shadow-2xl flex flex-col items-center relative overflow-hidden font-heading">
         {/* Top Header Bar */}
         <div className="w-full px-4 py-3 bg-[var(--bg-secondary)] border-b border-[var(--border)] flex items-center justify-between z-10">
@@ -424,7 +552,7 @@ export const CallModal = ({
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className={`w-full h-full object-cover ${callStatus === 'connected' ? 'block' : 'hidden'}`}
+            className={`w-full h-full object-cover ${callStatus === 'connected' && !cameraOff ? 'block' : 'hidden'}`}
           />
 
           {/* Voice Mode or Waiting / Ringing Placeholder */}
