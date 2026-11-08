@@ -166,7 +166,12 @@ export const MessageBubble = ({
           onClick={() => {
             if (window.innerWidth < 768) setShowMenu((prev) => !prev);
           }}
-          className={`relative px-3.5 py-2 rounded-2xl text-[14px] font-body leading-relaxed break-words transition-all ${
+          style={{
+            background: isOwn ? 'var(--bubble-sent)' : 'var(--bubble-received)',
+            backgroundColor: isOwn ? 'var(--bubble-sent-bg)' : 'var(--bubble-received-bg)',
+            color: isOwn ? '#FFFFFF' : 'var(--bubble-received-text)',
+          }}
+          className={`relative px-3.5 py-2 rounded-2xl text-[15.5px] sm:text-[16px] font-body leading-relaxed break-words transition-all shadow-sm ${
             isOwn
               ? 'bubble-sent rounded-br-xs'
               : 'bubble-received rounded-bl-xs'
@@ -316,13 +321,13 @@ export const MessageBubble = ({
 
           {/* Time & Read Status Indicator */}
           <div
-            className={`flex items-center justify-end gap-1 mt-1 text-[10px] select-none font-body ${
-              isOwn ? 'text-white/80' : 'text-[var(--text-muted)]'
+            className={`flex items-center justify-end gap-1 mt-1 text-[11px] sm:text-[12px] select-none font-body ${
+              isOwn ? 'text-white/85' : 'text-[var(--text-muted)]'
             }`}
           >
             {isEdited && <span className="italic">edited</span>}
             <span>{time}</span>
-            {isOwn && <CheckCheck size={12} className="text-white/90" />}
+            {isOwn && <CheckCheck size={13} className="text-white/95" />}
           </div>
         </div>
 

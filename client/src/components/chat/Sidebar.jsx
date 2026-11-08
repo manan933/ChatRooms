@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
   Megaphone,
+  BellOff,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
@@ -65,7 +66,7 @@ export const Sidebar = ({
   const [copiedWsCode, setCopiedWsCode] = useState(false);
 
   const { theme, toggleTheme } = useThemeStore();
-  const { typingStatus = {}, onlineUsers = [] } = useChatStore();
+  const { typingStatus = {}, onlineUsers = [], isChatMuted } = useChatStore();
 
   // Sync selected workspace from external selection
   React.useEffect(() => {
@@ -160,10 +161,10 @@ export const Sidebar = ({
 
   return (
     <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
-      {/* ── Top Brand Header (ChatRooms in Lakki Reddy) ───────────────── */}
-      <div className="h-13 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
+      {/* ── Top Brand Header (ChatRooms Horizontal Lockup) ───────────── */}
+      <div className="h-14 sm:h-15 px-3.5 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
         <div className="flex items-center">
-          <BrandLogo variant="lockup" size="md" />
+          <BrandLogo variant="lockup" size="md" className="h-10 sm:h-11 max-w-[210px]" />
         </div>
 
         <div className="flex items-center gap-0.5">
@@ -193,15 +194,15 @@ export const Sidebar = ({
         <button
           type="button"
           onClick={() => setActiveTab('direct')}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'direct'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
-          <Users size={13} />
+          <Users size={14} />
           <span>Chats</span>
-          <span className={`ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'direct' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
+          <span className={`ml-0.5 text-[11px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'direct' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
             {directList.length}
           </span>
         </button>
@@ -209,15 +210,15 @@ export const Sidebar = ({
         <button
           type="button"
           onClick={() => setActiveTab('workplace')}
-          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
+          className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 ${
             activeTab === 'workplace'
               ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
               : 'bg-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)]'
           }`}
         >
-          <Building2 size={13} />
+          <Building2 size={14} />
           <span>Workplaces</span>
-          <span className={`ml-0.5 text-[10px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'workplace' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
+          <span className={`ml-0.5 text-[11px] px-1.5 py-0.2 rounded-full font-bold ${activeTab === 'workplace' ? 'bg-white/25 text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'}`}>
             {workspaces.length}
           </span>
         </button>
@@ -302,13 +303,13 @@ export const Sidebar = ({
       {/* ── Search Input ────────────────────────────────────────────── */}
       <div className="px-3 py-1 shrink-0">
         <div className="relative flex items-center">
-          <Search size={13} className="absolute left-2.5 text-[var(--text-muted)] pointer-events-none" />
+          <Search size={15} className="absolute left-2.5 text-[var(--text-muted)] pointer-events-none" />
           <input
             type="text"
             placeholder={activeTab === 'direct' ? 'Search conversations...' : 'Search channels...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors shadow-xs"
+            className="w-full pl-8 pr-2.5 py-1.5 bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] rounded-xl text-xs sm:text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors shadow-xs"
           />
         </div>
       </div>
@@ -395,21 +396,26 @@ export const Sidebar = ({
                       <Avatar name={item.name} src={item.avatar} size="sm" status={isContactOnline ? 'online' : 'offline'} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs truncate font-heading font-semibold text-[var(--text-primary)]">
+                          <span className="text-xs sm:text-sm truncate font-heading font-semibold text-[var(--text-primary)]">
                             {item.name}
                           </span>
-                          {item.lastMessageTime && (
-                            <span className="text-[10px] font-body text-[var(--text-muted)] shrink-0 font-normal">
-                              {formatTime(item.lastMessageTime)}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isChatMuted?.(item.id) && (
+                              <BellOff size={11} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
+                            )}
+                            {item.lastMessageTime && (
+                              <span className="text-[11px] font-body text-[var(--text-muted)] font-normal">
+                                {formatTime(item.lastMessageTime)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {isTyping ? (
-                          <p className="text-[11px] font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                          <p className="text-xs font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
+                          <p className="text-xs font-body text-[var(--text-muted)] truncate m-0 leading-tight">
                             {item.lastMessage || (isContactOnline ? 'Active now' : 'Connected on ChatRooms')}
                           </p>
                         )}
@@ -420,7 +426,7 @@ export const Sidebar = ({
 
               {directList.filter((i) => i.type === 'group').length > 0 && (
                 <div className="pt-3 pb-1 px-2 font-heading">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     Groups
                   </span>
                 </div>
@@ -446,14 +452,19 @@ export const Sidebar = ({
                       <Avatar name={item.name} src={item.avatar} size="sm" status={null} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-xs truncate font-heading font-semibold text-[var(--text-primary)]">
+                          <span className="text-xs sm:text-sm truncate font-heading font-semibold text-[var(--text-primary)]">
                             {item.name}
                           </span>
-                          {item.lastMessageTime && (
-                            <span className="text-[10px] font-body text-[var(--text-muted)] shrink-0 font-normal">
-                              {formatTime(item.lastMessageTime)}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isChatMuted?.(item.id) && (
+                              <BellOff size={11} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
+                            )}
+                            {item.lastMessageTime && (
+                              <span className="text-[11px] font-body text-[var(--text-muted)] font-normal">
+                                {formatTime(item.lastMessageTime)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {isTyping ? (
                           <p className="text-[11px] font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">

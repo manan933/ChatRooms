@@ -109,3 +109,52 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+// ── Real-Time Notification Click: Brings window to focus on Android / Windows ──
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const chatId = event.notification.data?.chatId;
+  const targetUrl = chatId ? `/?chatId=${encodeURIComponent(chatId)}` : '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // 1. If an existing window is open, focus it and notify of chat switch
+      for (const client of clientList) {
+        if ('focus' in client) {
+          if (chatId) {
+            client.postMessage({ type: 'OPEN_CHAT', chatId });
+          }
+          return client.focus();
+        }
+      }
+      // 2. If no window open, open new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// ── Web Push Event Listener (Server to Client background delivery) ──
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : 'New notification' };
+  }
+
+  const title = data.title || 'ChatRooms';
+  const options = {
+    body: data.body || 'You received a new message',
+    icon: data.icon || '/android-chrome-192x192.png',
+    badge: '/android-chrome-192x192.png',
+    tag: data.tag || data.chatId || 'chatrooms-push',
+    renotify: true,
+    vibrate: [200, 100, 200],
+    data: { chatId: data.chatId, url: '/' },
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});

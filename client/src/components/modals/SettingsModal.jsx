@@ -13,6 +13,9 @@ import {
   KeyRound,
   Download,
   Laptop,
+  BellOff,
+  Ban,
+  SendHorizontal,
 } from '../ui/Icons';
 import Modal from '../ui/Modal';
 import Avatar from '../ui/Avatar';
@@ -20,6 +23,7 @@ import useThemeStore from '../../store/themeStore';
 import useChatStore from '../../store/chatStore';
 import api from '../../api/api';
 import BrandLogo from '../ui/BrandLogo';
+import notificationService from '../../utils/notificationService';
 import {
   playSentSound,
   playReceivedSound,
@@ -67,7 +71,39 @@ export const SettingsModal = ({
   const fileInputRef = useRef(null);
 
   const { theme, setTheme, soundEnabled, setSoundEnabled } = useThemeStore();
-  const { workspaces } = useChatStore();
+  const {
+    workspaces,
+    mutedChats = [],
+    blockedUsers = [],
+    toggleMuteChat,
+    unblockUser,
+    contacts = [],
+    groups = [],
+  } = useChatStore();
+
+  const [notifPermission, setNotifPermission] = useState(
+    notificationService.getPermissionState()
+  );
+  const [testNotifSent, setTestNotifSent] = useState(false);
+
+  const handleRequestPushPermission = async () => {
+    const res = await notificationService.requestPermission();
+    setNotifPermission(res);
+    if (res === 'granted') {
+      setSuccessMsg('Realtime system notifications are active!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    }
+  };
+
+  const handleTestSystemNotification = async () => {
+    await notificationService.notifyMessage({
+      title: 'ChatRooms 🔔',
+      body: 'Realtime notifications are working on your device just like WhatsApp!',
+      chatId: null,
+    });
+    setTestNotifSent(true);
+    setTimeout(() => setTestNotifSent(false), 3000);
+  };
 
   const handleAvatarFile = async (file) => {
     if (!file) return;
@@ -424,24 +460,62 @@ export const SettingsModal = ({
             </div>
           )}
 
-          {/* ──────────────── TAB 3: NOTIFICATIONS ────────────────────── */}
+          {/* ──────────────── TAB 3: NOTIFICATIONS & PRIVACY ────────── */}
           {activeTab === 'notifications' && (
             <div className="flex flex-col gap-4 font-heading">
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[var(--text-primary)]">Desktop Push Alerts</div>
-                  <div className="text-[11px] font-body text-[var(--text-muted)]">
-                    Receive background browser notifications for direct messages and mentions
+              {/* Native System Push Notifications (Android & Windows WhatsApp Style) */}
+              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
+                      <Bell size={15} className="text-[var(--accent)]" />
+                      <span>Realtime System Notifications (Android & Windows)</span>
+                    </div>
+                    <div className="text-[11px] font-body text-[var(--text-muted)] mt-1 leading-relaxed">
+                      Receive heads-up banners, vibration, and audio rings just like WhatsApp on Android and Windows Action Center, even when ChatRooms is minimized.
+                    </div>
                   </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border shrink-0 ${
+                      notifPermission === 'granted'
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                        : notifPermission === 'denied'
+                        ? 'bg-red-500/15 border-red-500/30 text-red-400'
+                        : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                    }`}
+                  >
+                    {notifPermission === 'granted'
+                      ? '● Active'
+                      : notifPermission === 'denied'
+                      ? '✕ Blocked in Browser'
+                      : '○ Needs Permission'}
+                  </span>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={desktopPush}
-                  onChange={(e) => setDesktopPush(e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 cursor-pointer"
-                />
+
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]">
+                  {notifPermission !== 'granted' && (
+                    <button
+                      type="button"
+                      onClick={handleRequestPushPermission}
+                      className="py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold border-none cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+                    >
+                      <Check size={13} />
+                      <span>Enable System Notifications</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleTestSystemNotification}
+                    disabled={testNotifSent}
+                    className="py-1.5 px-3 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors"
+                  >
+                    <SendHorizontal size={12} />
+                    <span>{testNotifSent ? 'Notification Sent!' : 'Send Test Notification'}</span>
+                  </button>
+                </div>
               </div>
 
+              {/* Synthesized Audio Effects */}
               <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
                 <div>
                   <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
@@ -471,34 +545,110 @@ export const SettingsModal = ({
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[var(--text-primary)]">Do Not Disturb</div>
-                  <div className="text-[11px] font-body text-[var(--text-muted)]">
-                    Mute all notifications and chimes during focused sessions
+              {/* Do Not Disturb & Read Receipts */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">Do Not Disturb</div>
+                    <div className="text-[10px] font-body text-[var(--text-muted)]">Mute incoming chimes</div>
                   </div>
+                  <input
+                    type="checkbox"
+                    checked={dndMode}
+                    onChange={(e) => setDndMode(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 cursor-pointer"
+                  />
                 </div>
-                <input
-                  type="checkbox"
-                  checked={dndMode}
-                  onChange={(e) => setDndMode(e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 cursor-pointer"
-                />
+
+                <div className="p-3 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-[var(--text-primary)]">Read Receipts</div>
+                    <div className="text-[10px] font-body text-[var(--text-muted)]">Show checkmarks</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={readReceipts}
+                    onChange={(e) => setReadReceipts(e.target.checked)}
+                    className="w-4 h-4 accent-blue-600 cursor-pointer"
+                  />
+                </div>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-bold text-[var(--text-primary)]">Read Receipts</div>
-                  <div className="text-[11px] font-body text-[var(--text-muted)]">
-                    Let others see when you have viewed their incoming messages
+              {/* ── Muted Conversations Manager ───────────────────────── */}
+              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <BellOff size={14} className="text-[var(--accent-highlight)]" />
+                    <span>Muted Conversations ({mutedChats.length})</span>
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={readReceipts}
-                  onChange={(e) => setReadReceipts(e.target.checked)}
-                  className="w-4 h-4 accent-blue-600 cursor-pointer"
-                />
+                {mutedChats.length === 0 ? (
+                  <p className="text-[11px] font-body text-[var(--text-muted)] m-0 italic">
+                    No chats or channels are currently muted.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                    {mutedChats.map((chatId) => {
+                      const matchContact = contacts.find((c) => c.id === chatId);
+                      const matchGroup = groups.find((g) => g.id === chatId);
+                      const label = matchContact?.name || matchGroup?.name || chatId;
+                      return (
+                        <div
+                          key={chatId}
+                          className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between gap-2"
+                        >
+                          <div className="min-w-0 flex-1 flex items-center gap-2">
+                            <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                              {label}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleMuteChat(chatId)}
+                            className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] cursor-pointer"
+                          >
+                            Unmute
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Blocked Contacts Manager ─────────────────────────── */}
+              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <Ban size={14} className="text-red-400" />
+                    <span>Blocked Users ({blockedUsers.length})</span>
+                  </div>
+                </div>
+                {blockedUsers.length === 0 ? (
+                  <p className="text-[11px] font-body text-[var(--text-muted)] m-0 italic">
+                    You have not blocked any contacts.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                    {blockedUsers.map((ident) => (
+                      <div
+                        key={ident}
+                        className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between gap-2"
+                      >
+                        <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                          @{ident}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => unblockUser(ident)}
+                          className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 cursor-pointer"
+                        >
+                          Unblock
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

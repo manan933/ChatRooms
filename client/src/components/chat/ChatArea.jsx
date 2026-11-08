@@ -9,6 +9,8 @@ import {
   Info,
   X,
   Hash,
+  BellOff,
+  Ban,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import MessageBubble from './MessageBubble';
@@ -68,7 +70,12 @@ export const ChatArea = ({
   const [isVideoCall, setIsVideoCall] = useState(false);
 
   const { soundEnabled } = useThemeStore();
-  const { onlineUsers = [] } = useChatStore();
+  const { onlineUsers = [], isChatMuted, isUserBlocked, unblockUser } = useChatStore();
+
+  const isMuted = chat ? isChatMuted(chat.id) : false;
+  const isBlocked = chat && chat.type !== 'channel' && chat.type !== 'group'
+    ? isUserBlocked(chat.userId || chat.id || chat.username)
+    : false;
 
   const workspace = chat?.type === 'channel'
     ? workspaces.find((w) => w.name === chat.workspaceName)
@@ -316,11 +323,16 @@ export const ChatArea = ({
             {/* Title & Status */}
             <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setInfoOpen(!infoOpen)}>
               <div className="flex items-center gap-2">
-                <h2 className="text-xs sm:text-sm font-heading font-semibold text-[var(--text-primary)] truncate tracking-tight m-0">
+                <h2 className="text-sm sm:text-base font-heading font-bold text-[var(--text-primary)] truncate tracking-tight m-0">
                   {chat.name}
                 </h2>
+                {isMuted && (
+                  <span title="Notifications muted">
+                    <BellOff size={14} className="text-[var(--accent-highlight)] shrink-0" />
+                  </span>
+                )}
               </div>
-              <div className="text-[10px] font-body text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
+              <div className="text-xs sm:text-[13px] font-body text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
                 {typingUsers.length > 0 ? (
                   <span className="text-[var(--accent)] flex items-center gap-1 font-medium animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> {typingUsers.join(', ')} typing...
@@ -387,33 +399,36 @@ export const ChatArea = ({
               </button>
             )}
 
-            {/* Voice Call */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsVideoCall(false);
-                setCallModalOpen(true);
-              }}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-              title="Voice Call"
-              aria-label="Voice Call"
-            >
-              <Phone size={16} />
-            </button>
+            {/* Voice & Video Calls (Direct & Group chats, not channels, not blocked) */}
+            {chat.type !== 'channel' && !isBlocked && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVideoCall(false);
+                    setCallModalOpen(true);
+                  }}
+                  className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  title="Voice Call"
+                  aria-label="Voice Call"
+                >
+                  <Phone size={16} />
+                </button>
 
-            {/* Video Call */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsVideoCall(true);
-                setCallModalOpen(true);
-              }}
-              className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-              title="Video Call"
-              aria-label="Video Call"
-            >
-              <Video size={16} />
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsVideoCall(true);
+                    setCallModalOpen(true);
+                  }}
+                  className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  title="Video Call"
+                  aria-label="Video Call"
+                >
+                  <Video size={16} />
+                </button>
+              </>
+            )}
 
             {/* Toggle Info Drawer */}
             <button
@@ -457,7 +472,7 @@ export const ChatArea = ({
               if (item.type === 'date') {
                 return (
                   <div key={item.id} className="flex items-center justify-center my-3 select-none">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-heading font-medium text-[var(--text-muted)] bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+                    <span className="px-3 py-1 rounded-full text-xs font-heading font-semibold text-[var(--text-muted)] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] shadow-xs">
                       {item.date}
                     </span>
                   </div>
@@ -512,13 +527,29 @@ export const ChatArea = ({
           </button>
         )}
 
-        {/* ── Message Composer ────────────────────────────────────────── */}
-        <Composer
-          chatId={chat.id}
-          currentUser={currentUser}
-          onSend={handleSendWrapper}
-          policy={policy}
-        />
+        {/* ── Message Composer or Blocked Banner ─────────────────────── */}
+        {isBlocked ? (
+          <div className="p-4 glass-panel border-t border-[var(--border)] flex items-center justify-between gap-3 text-xs sm:text-sm font-heading">
+            <div className="flex items-center gap-2 text-[var(--accent-highlight)] font-semibold min-w-0">
+              <Ban size={18} className="shrink-0" />
+              <span className="truncate">You have blocked this contact. Unblock to send and receive messages.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => unblockUser(chat)}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 font-bold cursor-pointer transition-colors shrink-0"
+            >
+              Unblock
+            </button>
+          </div>
+        ) : (
+          <Composer
+            chatId={chat.id}
+            currentUser={currentUser}
+            onSend={handleSendWrapper}
+            policy={policy}
+          />
+        )}
       </div>
 
       {/* ── Right-Side Details Drawer (Responsive Mobile Slide-Over) ── */}

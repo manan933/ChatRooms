@@ -19,12 +19,12 @@ export const BrandLogo = ({
   const isDark = theme === 'dark';
 
   const sizeClasses = {
-    xs: variant === 'lockup' ? 'h-6' : 'w-6 h-6',
-    sm: variant === 'lockup' ? 'h-8' : 'w-8 h-8',
-    md: variant === 'lockup' ? 'h-10' : 'w-11 h-11',
-    lg: variant === 'lockup' ? 'h-14' : 'w-16 h-16',
-    xl: variant === 'lockup' ? 'h-18' : 'w-24 h-24',
-    '2xl': variant === 'lockup' ? 'h-24' : 'w-32 h-32',
+    xs: variant === 'lockup' ? 'h-7' : 'w-7 h-7',
+    sm: variant === 'lockup' ? 'h-9' : 'w-9 h-9',
+    md: variant === 'lockup' ? 'h-11' : 'w-12 h-12',
+    lg: variant === 'lockup' ? 'h-16' : 'w-18 h-18',
+    xl: variant === 'lockup' ? 'h-22' : 'w-28 h-28',
+    '2xl': variant === 'lockup' ? 'h-28' : 'w-36 h-36',
   };
 
   const currentSizeClass = sizeClasses[size] || sizeClasses.md;

@@ -45,10 +45,10 @@
   --gradient-accent: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%);
   --gradient-hybrid: linear-gradient(135deg, #0297DE 0%, #FC734D 100%);
 
-  --bubble-sent: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%);
+  --bubble-sent: linear-gradient(135deg, #0297DE 0%, #0088CC 100%);
   --bubble-sent-bg: #0297DE;
-  --bubble-sent-text: #FCFFFF;
-  --bubble-received: rgba(12, 25, 38, 0.75);
+  --bubble-sent-text: #FFFFFF;
+  --bubble-received: rgba(12, 25, 38, 0.88);
   --bubble-received-bg: #0C1926;
   --bubble-received-text: #FCFFFF;
 
@@ -104,11 +104,11 @@
   --gradient-accent: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%);
   --gradient-hybrid: linear-gradient(135deg, #0593C6 0%, #D83995 100%);
 
-  --bubble-sent: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%);
+  --bubble-sent: linear-gradient(135deg, #0593C6 0%, #0280AE 100%);
   --bubble-sent-bg: #0593C6;
-  --bubble-sent-text: #FCFFFF;
-  --bubble-received: rgba(240, 248, 252, 0.85);
-  --bubble-received-bg: #F0F8FC;
+  --bubble-sent-text: #FFFFFF;
+  --bubble-received: #FFFFFF;
+  --bubble-received-bg: #FFFFFF;
   --bubble-received-text: #02202C;
 
   --online: #0593C6;
@@ -136,6 +136,10 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 16.5px;
+}
+
 html, body {
   width: 100%;
   height: 100%;
@@ -143,6 +147,8 @@ html, body {
   overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
   font-family: 'Alegreya', serif;
+  font-size: 1.05rem;
+  line-height: 1.5;
   background: var(--bg-app-gradient);
   background-color: var(--bg-primary);
   background-attachment: fixed;
@@ -275,18 +281,18 @@ button, a, input, textarea, select, [role="button"] {
 /* Sent and Received Chat Message Bubbles */
 .bubble-sent {
   background-color: #0297DE !important;
-  background-image: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%) !important;
+  background-image: linear-gradient(135deg, #0297DE 0%, #0088CC 100%) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 16px rgba(2, 151, 222, 0.35);
+  box-shadow: 0 4px 16px rgba(2, 151, 222, 0.40);
   border: 1px solid rgba(255, 255, 255, 0.20) !important;
 }
 
 [data-theme="light"] .bubble-sent {
   background-color: #0593C6 !important;
-  background-image: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%) !important;
+  background-image: linear-gradient(135deg, #0593C6 0%, #0280AE 100%) !important;
   color: #FFFFFF !important;
-  box-shadow: 0 4px 16px rgba(5, 147, 198, 0.30);
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(5, 147, 198, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.30) !important;
 }
 
 .bubble-received {
@@ -296,13 +302,13 @@ button, a, input, textarea, select, [role="button"] {
   border: 1px solid var(--border) !important;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.20);
 }
 
 [data-theme="light"] .bubble-received {
-  background-color: #F0F8FC !important;
+  background-color: #FFFFFF !important;
   background-image: none !important;
   color: #02202C !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: 0 2px 10px rgba(5, 147, 198, 0.10);
+  border: 1px solid rgba(5, 147, 198, 0.22) !important;
+  box-shadow: 0 3px 12px rgba(5, 147, 198, 0.12);
 }

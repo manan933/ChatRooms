@@ -306,7 +306,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           enterKeyHint="send"
           autoCapitalize="sentences"
           autoComplete="on"
-          className="flex-1 bg-transparent border-none outline-none resize-none py-1.5 text-sm sm:text-[14px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[36px] max-h-[120px] leading-relaxed"
+          className="flex-1 bg-transparent border-none outline-none resize-none py-1.5 text-[15px] sm:text-[16px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[38px] max-h-[130px] leading-relaxed"
         />
 
         {/* Send Button */}

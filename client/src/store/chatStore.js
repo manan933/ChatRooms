@@ -3,6 +3,24 @@ import api from '../api/api';
 import socketService from '../api/socket';
 import { normalizeEmoji } from '../utils/emojiMap';
 
+const getInitialMutedChats = () => {
+  try {
+    const raw = localStorage.getItem('chatrooms_muted_chats');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const getInitialBlockedUsers = () => {
+  try {
+    const raw = localStorage.getItem('chatrooms_blocked_users');
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
 export const useChatStore = create((set, get) => ({
   activeChat: null,
   contacts: [],
@@ -11,6 +29,8 @@ export const useChatStore = create((set, get) => ({
   messages: {},
   typingStatus: {},
   onlineUsers: [],
+  mutedChats: getInitialMutedChats(),
+  blockedUsers: getInitialBlockedUsers(),
   isLoadingChats: false,
   isLoadingMessages: false,
 
@@ -129,12 +149,68 @@ export const useChatStore = create((set, get) => ({
     }));
   },
 
-  blockUser: (userId) => {
+  toggleMuteChat: (chatId) => {
+    if (!chatId) return;
     set((state) => {
-      const blocked = state.blockedUsers || [];
-      if (blocked.includes(userId)) return state;
-      return { blockedUsers: [...blocked, userId] };
+      const current = state.mutedChats || [];
+      const updated = current.includes(chatId)
+        ? current.filter((id) => id !== chatId)
+        : [...current, chatId];
+      localStorage.setItem('chatrooms_muted_chats', JSON.stringify(updated));
+      return { mutedChats: updated };
     });
+  },
+
+  isChatMuted: (chatId) => {
+    return (get().mutedChats || []).includes(chatId);
+  },
+
+  blockUser: (target) => {
+    if (!target) return;
+    const identifiers = [];
+    if (typeof target === 'string') {
+      identifiers.push(target.toLowerCase().replace(/^@/, ''));
+    } else {
+      if (target.id) identifiers.push(String(target.id).toLowerCase());
+      if (target.userId) identifiers.push(String(target.userId).toLowerCase());
+      if (target.username || target.primaryUsername) {
+        identifiers.push(String(target.username || target.primaryUsername).toLowerCase().replace(/^@/, ''));
+      }
+    }
+
+    set((state) => {
+      const current = state.blockedUsers || [];
+      const updated = Array.from(new Set([...current, ...identifiers]));
+      localStorage.setItem('chatrooms_blocked_users', JSON.stringify(updated));
+      return { blockedUsers: updated };
+    });
+  },
+
+  unblockUser: (target) => {
+    if (!target) return;
+    const identifiers = [];
+    if (typeof target === 'string') {
+      identifiers.push(target.toLowerCase().replace(/^@/, ''));
+    } else {
+      if (target.id) identifiers.push(String(target.id).toLowerCase());
+      if (target.userId) identifiers.push(String(target.userId).toLowerCase());
+      if (target.username || target.primaryUsername) {
+        identifiers.push(String(target.username || target.primaryUsername).toLowerCase().replace(/^@/, ''));
+      }
+    }
+
+    set((state) => {
+      const current = state.blockedUsers || [];
+      const updated = current.filter((id) => !identifiers.includes(id));
+      localStorage.setItem('chatrooms_blocked_users', JSON.stringify(updated));
+      return { blockedUsers: updated };
+    });
+  },
+
+  isUserBlocked: (identifier) => {
+    if (!identifier) return false;
+    const clean = String(identifier).toLowerCase().replace(/^@/, '');
+    return (get().blockedUsers || []).includes(clean);
   },
 
   // Load messages for a chat (silent = true prevents clearing screen with skeleton)
@@ -218,6 +294,16 @@ export const useChatStore = create((set, get) => ({
   receiveMessage: (message) => {
     if (!message || !message.chatId) return;
     const chatId = message.chatId;
+
+    // Drop incoming message if sender is blocked
+    const senderUid = (message.senderId || '').toString().toLowerCase();
+    const senderUname = (message.senderUsername || '').toLowerCase().replace(/^@/, '');
+    const isBlocked = (get().blockedUsers || []).some(
+      (b) => b === senderUid || b === senderUname || b === chatId
+    );
+    if (isBlocked) {
+      return;
+    }
 
     // Immediately join the room so subsequent updates flow seamlessly
     socketService.joinRoom(chatId);

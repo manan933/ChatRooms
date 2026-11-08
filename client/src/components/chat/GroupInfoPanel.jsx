@@ -22,13 +22,15 @@ const ROLE_CONFIG = {
 
 export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   const [copied, setCopied] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const { toggleMuteChat, isChatMuted, blockUser, unblockUser, isUserBlocked } = useChatStore();
 
   if (!chat) return null;
 
   const isChannel = chat.type === 'channel';
   const isDirect = !isChannel && chat.type !== 'group';
   const joinCode = chat.joinCode || (isChannel ? 'CR-001' : null);
+  const muted = isChatMuted(chat.id);
+  const contactBlocked = isDirect ? isUserBlocked(chat.userId || chat.id || chat.username) : false;
 
   const handleCopyCode = () => {
     if (joinCode) {
@@ -100,10 +102,10 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
         <div className="grid grid-cols-1 gap-2">
           <button
             type="button"
-            onClick={() => setMuted(!muted)}
+            onClick={() => toggleMuteChat(chat.id)}
             className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors ${
               muted
-                ? 'bg-[var(--accent-highlight)]/10 border-[var(--accent-highlight)]/25 text-[var(--accent-highlight)]'
+                ? 'bg-[var(--accent-highlight)]/15 border-[var(--accent-highlight)]/30 text-[var(--accent-highlight)] font-bold'
                 : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
@@ -197,20 +199,29 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
         )}
 
         {isDirect && (
-          <button
-            type="button"
-            onClick={() => {
-              if (window.confirm(`Block ${chat.name}? They will not be able to send you messages.`)) {
-                useChatStore.getState().blockUser(chat.id);
-                onLeaveChat?.(chat.id, 'delete');
-                onClose();
-              }
-            }}
-            className="w-full mt-2 py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
-          >
-            <Ban size={14} />
-            <span>Block User</span>
-          </button>
+          contactBlocked ? (
+            <button
+              type="button"
+              onClick={() => unblockUser(chat)}
+              className="w-full mt-2 py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Check size={14} />
+              <span>Unblock User</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`Block ${chat.name}? They will not be able to send you messages or call you.`)) {
+                  blockUser(chat);
+                }
+              }}
+              className="w-full mt-2 py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Ban size={14} />
+              <span>Block User</span>
+            </button>
+          )
         )}
       </div>
     </aside>

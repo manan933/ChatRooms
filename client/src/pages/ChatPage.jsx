@@ -10,6 +10,7 @@ import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
 import { playReceivedSound } from '../utils/zyntraSound';
+import notificationService from '../utils/notificationService';
 
 export const ChatPage = () => {
   const { user, logout, updateProfile, promptWorkspaceOnLogin, setPromptWorkspaceOnLogin } = useAuthStore();
@@ -20,6 +21,9 @@ export const ChatPage = () => {
     workspaces,
     messages,
     typingStatus,
+    onlineUsers,
+    mutedChats,
+    blockedUsers,
     isLoadingChats,
     isLoadingMessages,
     loadChats,
@@ -69,9 +73,28 @@ export const ChatPage = () => {
     loadChats();
 
     const handleReceive = (msg) => {
+      if (!msg) return;
+      const isMuted = (mutedChats || []).includes(msg.chatId);
+      const isFromMe = (user?.id && msg.senderId === user.id) || (user?._id && msg.senderId === user._id);
+
       receiveMessage(msg);
-      if (msg && msg.senderId !== user?.id && msg.senderId !== user?._id) {
+
+      if (!isFromMe && !isMuted) {
         playReceivedSound();
+        // Cross-platform native notifications on Android PWA & Windows Desktop
+        if (typeof document !== 'undefined' && (document.hidden || !document.hasFocus())) {
+          notificationService.notifyMessage({
+            title: msg.senderName || msg.senderUsername || 'ChatRooms',
+            body:
+              msg.type === 'call'
+                ? msg.callDetails?.isVideo
+                  ? '📹 Video Call'
+                  : '📞 Voice Call'
+                : msg.text || (msg.attachments?.length ? 'Sent an attachment' : 'New message'),
+            chatId: msg.chatId,
+            icon: '/android-chrome-192x192.png',
+          });
+        }
       }
     };
     const handleReaction = (msg) => updateReaction(msg);
@@ -101,8 +124,29 @@ export const ChatPage = () => {
     const handleIncomingCall = (callData) => {
       const myUsername = (user?.primaryUsername || '').toLowerCase().replace(/^@/, '');
       if (callData.from && (callData.from === myUsername || callData.from === user?.id)) return;
+
+      // Auto-reject incoming call if caller is blocked
+      const callerFrom = (callData.from || '').toLowerCase().replace(/^@/, '');
+      const callerId = (callData.callerId || '').toString().toLowerCase();
+      const isBlocked = (blockedUsers || []).some(
+        (b) => b === callerFrom || b === callerId
+      );
+      if (isBlocked) {
+        socketService.rejectCall({ target: callData.from, roomId: callData.roomId });
+        return;
+      }
+
       bufferedIceCandidatesRef.current = [];
       setIncomingCall(callData);
+
+      // System notification when window is minimized or in background
+      if (typeof document !== 'undefined' && (document.hidden || !document.hasFocus())) {
+        notificationService.notifyCall({
+          callerName: callData.callerName || callData.from || 'Incoming Call',
+          isVideo: callData.isVideo,
+          chatId: callData.chatId || callData.roomId,
+        });
+      }
     };
 
     const handleGlobalIceCandidate = (data) => {
