@@ -79,6 +79,15 @@ const MessageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isRead: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    readBy: {
+      type: [String],
+      default: [],
+    },
     timestamp: {
       type: Date,
       default: Date.now,

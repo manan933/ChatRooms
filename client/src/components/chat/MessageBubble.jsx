@@ -24,7 +24,7 @@ export const MessageBubble = ({
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const { id, senderName, senderAvatar, content, timestamp, attachment, reactions = [], isEdited } = message;
+  const { id, senderName, senderAvatar, content, timestamp, attachment, reactions = [], isEdited, isRead } = message;
 
   const time = timestamp
     ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -327,7 +327,13 @@ export const MessageBubble = ({
           >
             {isEdited && <span className="italic">edited</span>}
             <span>{time}</span>
-            {isOwn && <CheckCheck size={13} className="text-white/95" />}
+            {isOwn && (
+              isRead ? (
+                <CheckCheck size={14} className="text-white/95 inline-block shrink-0" title="Seen" />
+              ) : (
+                <Check size={13} className="text-white/70 inline-block shrink-0" title="Sent (not seen yet)" />
+              )
+            )}
           </div>
         </div>
 

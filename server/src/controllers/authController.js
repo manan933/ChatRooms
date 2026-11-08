@@ -191,3 +191,33 @@ export const addContext = async (req, res, next) => {
     next(error);
   }
 };
+
+export const updatePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide both your current and new password' });
+    }
+    if (typeof newPassword !== 'string' || newPassword.trim().length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long' });
+    }
+
+    const userId = req.user._id || req.user.id;
+    const user = await storageService.getUserById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isMatch = await storageService.verifyPassword(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    const hashed = await storageService.hashPassword(newPassword.trim());
+    await storageService.updateUserPassword(userId, hashed);
+
+    return res.status(200).json({ success: true, message: 'Password updated successfully!' });
+  } catch (error) {
+    next(error);
+  }
+};

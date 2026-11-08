@@ -239,6 +239,85 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
+  // Mark messages in a conversation as read (1 tick -> 2 ticks for sender)
+  markMessagesAsRead: (chatId) => {
+    if (!chatId) return;
+    const currentUser = (() => {
+      try {
+        const raw = localStorage.getItem('user');
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    })();
+    const currentUid = (currentUser?.id || currentUser?._id || '').toString();
+    const currentUname = (currentUser?.primaryUsername || currentUser?.username || '').toLowerCase().replace(/^@/, '');
+
+    // 1. Emit read receipt over socket
+    socketService.emit('mark_read', {
+      chatId,
+      userId: currentUid,
+      username: currentUname,
+    });
+
+    // 2. Persist to API
+    api.messages.markRead(chatId).catch(() => {});
+
+    // 3. Update incoming messages locally
+    set((state) => {
+      const list = state.messages[chatId];
+      if (!list || list.length === 0) return state;
+      let changed = false;
+      const updated = list.map((m) => {
+        const mSenderId = (m.senderId || '').toString();
+        const mSenderName = (m.senderUsername || '').toLowerCase().replace(/^@/, '');
+        const isOwn = (currentUid && mSenderId === currentUid) || (currentUname && mSenderName === currentUname);
+        if (!isOwn && !m.isRead) {
+          changed = true;
+          return { ...m, isRead: true };
+        }
+        return m;
+      });
+
+      if (!changed) return state;
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: updated,
+        },
+      };
+    });
+  },
+
+  // Handler when participant reads messages
+  handleMessagesRead: ({ chatId, readerUsername }) => {
+    if (!chatId) return;
+    set((state) => {
+      const list = state.messages[chatId];
+      if (!list || list.length === 0) return state;
+      let changed = false;
+      const updated = list.map((m) => {
+        if (!m.isRead) {
+          changed = true;
+          return {
+            ...m,
+            isRead: true,
+            readBy: readerUsername ? [...(m.readBy || []), readerUsername] : (m.readBy || []),
+          };
+        }
+        return m;
+      });
+
+      if (!changed) return state;
+      return {
+        messages: {
+          ...state.messages,
+          [chatId]: updated,
+        },
+      };
+    });
+  },
+
   // Send message with instant optimistic update
   sendMessage: async (chatId, content, attachment = null, currentUser, extra = {}) => {
     if (!chatId || (!content?.trim() && !attachment && !extra?.callDetails)) return;

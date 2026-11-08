@@ -10,6 +10,21 @@ export const getMessagesByChat = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'chatId is required' });
     }
 
+    const userId = req.user ? (req.user._id || req.user.id) : null;
+    const username = req.user ? (req.user.primaryUsername || req.user.username) : null;
+
+    // Asynchronously mark incoming messages as read when user loads the chat
+    if (userId) {
+      storageService.markMessagesRead(chatId, userId, username).then((hasRead) => {
+        if (hasRead) {
+          const io = req.app.get('io');
+          if (io) {
+            io.to(chatId).emit('messages_read', { chatId, readerId: userId, readerUsername: username });
+          }
+        }
+      }).catch(() => {});
+    }
+
     const list = await storageService.getMessagesByChat(chatId);
     return res.status(200).json({
       success: true,
@@ -18,6 +33,29 @@ export const getMessagesByChat = async (req, res, next) => {
     });
   } catch (error) {
     console.error('[Messages] Error in getMessagesByChat:', error);
+    next(error);
+  }
+};
+
+// @desc    Explicitly mark all messages in a chat as read
+// @route   POST /api/messages/:chatId/read
+// @access  Protected
+export const markMessagesAsRead = async (req, res, next) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user?._id || req.user?.id;
+    const username = req.user?.primaryUsername || req.user?.username;
+
+    const hasRead = await storageService.markMessagesRead(chatId, userId, username);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(chatId).emit('messages_read', { chatId, readerId: userId, readerUsername: username });
+    }
+
+    return res.status(200).json({ success: true, updated: hasRead });
+  } catch (error) {
+    console.error('[Messages] Error in markMessagesAsRead:', error);
     next(error);
   }
 };

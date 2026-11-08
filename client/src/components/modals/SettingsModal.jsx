@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   User,
   Palette,
@@ -16,26 +16,25 @@ import {
   BellOff,
   Ban,
   SendHorizontal,
+  LogOut,
+  ShieldCheck,
 } from '../ui/Icons';
 import Modal from '../ui/Modal';
 import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
 import useChatStore from '../../store/chatStore';
+import useAuthStore from '../../store/authStore';
 import api from '../../api/api';
 import BrandLogo from '../ui/BrandLogo';
 import notificationService from '../../utils/notificationService';
-import {
-  playSentSound,
-  playReceivedSound,
-  playReactionSound,
-} from '../../utils/zyntraSound';
+import { playReceivedSound } from '../../utils/zyntraSound';
 
 const STATUS_PRESETS = [
-  'Deep in Code',
-  'Coffee break',
-  'Deploying updates',
-  'Focused / DND',
-  'Available to chat',
+  'Deep in Code 💻',
+  'Coffee break ☕',
+  'Deploying updates 🚀',
+  'Focused / DND 🔕',
+  'Available to chat ✨',
 ];
 
 export const SettingsModal = ({
@@ -58,19 +57,53 @@ export const SettingsModal = ({
   const [errorMsg, setErrorMsg] = useState(null);
   const [copiedCode, setCopiedCode] = useState(null);
 
-  // Privacy & Notifications local state
-  const [readReceipts, setReadReceipts] = useState(true);
-  const [desktopPush, setDesktopPush] = useState(true);
-  const [dndMode, setDndMode] = useState(false);
+  // Sync user prop when opening
+  useEffect(() => {
+    if (user) {
+      setName(user.name || '');
+      setBio(user.bio || 'Communicating on ChatRooms.');
+      setPhone(user.phone || '');
+      setAvatarUrl(user.avatar || '');
+    }
+  }, [user, isOpen]);
+
+  // Preferences with localStorage persistence
+  const [readReceipts, setReadReceipts] = useState(() => {
+    try {
+      return localStorage.getItem('chatrooms_read_receipts') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [desktopPush, setDesktopPush] = useState(() => {
+    try {
+      return localStorage.getItem('chatrooms_desktop_push') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+
+  const [dndMode, setDndMode] = useState(() => {
+    try {
+      return localStorage.getItem('chatrooms_dnd') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState(null);
+  const [passwordError, setPasswordError] = useState(null);
 
   const fileInputRef = useRef(null);
 
   const { theme, setTheme, soundEnabled, setSoundEnabled } = useThemeStore();
+  const { logout } = useAuthStore();
   const {
     workspaces,
     mutedChats = [],
@@ -86,12 +119,33 @@ export const SettingsModal = ({
   );
   const [testNotifSent, setTestNotifSent] = useState(false);
 
+  const handleToggleReadReceipts = (val) => {
+    setReadReceipts(val);
+    try {
+      localStorage.setItem('chatrooms_read_receipts', String(val));
+    } catch {}
+  };
+
+  const handleToggleDesktopPush = (val) => {
+    setDesktopPush(val);
+    try {
+      localStorage.setItem('chatrooms_desktop_push', String(val));
+    } catch {}
+  };
+
+  const handleToggleDnd = (val) => {
+    setDndMode(val);
+    try {
+      localStorage.setItem('chatrooms_dnd', String(val));
+    } catch {}
+  };
+
   const handleRequestPushPermission = async () => {
     const res = await notificationService.requestPermission();
     setNotifPermission(res);
     if (res === 'granted') {
       setSuccessMsg('Realtime system notifications are active!');
-      setTimeout(() => setSuccessMsg(null), 3000);
+      setTimeout(() => setSuccessMsg(null), 3500);
     }
   };
 
@@ -114,10 +168,10 @@ export const SettingsModal = ({
       if (res.ok && res.data?.url) {
         setAvatarUrl(res.data.url);
       } else {
-        setErrorMsg('Failed to upload picture');
+        setErrorMsg('Failed to upload picture. Please try another file.');
       }
     } catch {
-      setErrorMsg('Failed to upload picture');
+      setErrorMsg('Failed to upload picture. Network error.');
     } finally {
       setIsUploading(false);
     }
@@ -139,25 +193,79 @@ export const SettingsModal = ({
     setIsSaving(false);
     if (res?.success) {
       setSuccessMsg('Profile changes saved successfully!');
-      setTimeout(() => setSuccessMsg(null), 3000);
+      setTimeout(() => setSuccessMsg(null), 3500);
     } else {
       setErrorMsg(res?.error || 'Failed to update profile');
     }
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword) return;
-    setPasswordMsg('Password verification active. Updated securely.');
-    setCurrentPassword('');
-    setNewPassword('');
-    setTimeout(() => setPasswordMsg(null), 3000);
+    setPasswordMsg(null);
+    setPasswordError(null);
+
+    if (!currentPassword || !newPassword) {
+      setPasswordError('Please provide both your current and new password.');
+      return;
+    }
+    if (newPassword.trim().length < 6) {
+      setPasswordError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (confirmPassword && newPassword !== confirmPassword) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const res = await api.auth.updatePassword({
+        currentPassword: currentPassword.trim(),
+        newPassword: newPassword.trim(),
+      });
+
+      if (res.ok && res.data?.success) {
+        setPasswordMsg('Password updated successfully!');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setTimeout(() => setPasswordMsg(null), 4000);
+      } else {
+        setPasswordError(res.error || res.data?.message || 'Failed to update password');
+      }
+    } catch (err) {
+      setPasswordError(err.message || 'Error communicating with server');
+    } finally {
+      setIsUpdatingPassword(false);
+    }
   };
 
   const handleCopy = (text, key) => {
+    if (!text) return;
     navigator.clipboard?.writeText(text);
     setCopiedCode(key);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleInstallPwa = async () => {
+    if (window.chatroomsInstallPrompt) {
+      try {
+        window.chatroomsInstallPrompt.prompt();
+        const choice = await window.chatroomsInstallPrompt.userChoice;
+        if (choice?.outcome === 'accepted') {
+          setSuccessMsg('ChatRooms installed successfully!');
+        }
+      } catch (e) {
+        console.error('Install prompt error:', e);
+      }
+    } else {
+      alert(
+        'To install ChatRooms app:\n' +
+        '• On Windows Chrome / Edge: Click the install icon (⊕) on the right side of the address bar.\n' +
+        '• On Android Chrome: Tap the 3 dots menu ⋮ and select "Add to Home screen" or "Install App".\n' +
+        '• On iOS Safari: Tap the Share button and tap "Add to Home Screen".'
+      );
+    }
   };
 
   return (
@@ -165,20 +273,20 @@ export const SettingsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <BrandLogo variant="icon" size="sm" />
-          <span>Settings</span>
+          <span className="font-heading font-bold text-base sm:text-lg">Settings</span>
         </div>
       }
       size="lg"
     >
-      <div className="flex flex-col md:flex-row gap-5 min-h-[440px] font-heading">
+      <div className="flex flex-col md:flex-row gap-5 min-h-[460px] font-heading">
         {/* ── Left Sidebar Navigation ────────────────────────────────── */}
-        <div className="w-full md:w-48 shrink-0 flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-[var(--border)] pr-0 md:pr-4">
+        <div className="w-full md:w-52 shrink-0 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 border-b md:border-b-0 md:border-r border-[var(--border)] pr-0 md:pr-4">
           {[
             { id: 'profile', label: 'My Profile', icon: User },
             { id: 'appearance', label: 'Appearance', icon: Palette },
-            { id: 'notifications', label: 'Notifications', icon: Bell },
+            { id: 'notifications', label: 'Notifications & Sound', icon: Bell },
             { id: 'workplaces', label: 'Workplaces', icon: Building2 },
             { id: 'account', label: 'Security & Login', icon: Lock },
           ].map((tab) => {
@@ -192,14 +300,16 @@ export const SettingsModal = ({
                   setActiveTab(tab.id);
                   setSuccessMsg(null);
                   setErrorMsg(null);
+                  setPasswordMsg(null);
+                  setPasswordError(null);
                 }}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border-none text-left shrink-0 ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer border-none text-left shrink-0 ${
                   isActive
-                    ? 'bg-[var(--accent)] text-[var(--text-primary)] shadow-xs'
+                    ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-hover)] text-white shadow-md'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] bg-transparent'
                 }`}
               >
-                <Icon size={15} />
+                <Icon size={16} className={isActive ? 'text-white' : 'text-[var(--accent)]'} />
                 <span>{tab.label}</span>
               </button>
             );
@@ -207,20 +317,20 @@ export const SettingsModal = ({
 
           <div className="mt-auto pt-4 hidden md:flex flex-col items-center border-t border-[var(--border)]">
             <BrandLogo variant="lockup" size="sm" className="opacity-90" />
-            <span className="text-[10px] font-body text-[var(--text-muted)] mt-1">v2.0 · ChatRooms</span>
+            <span className="text-[11px] font-body text-[var(--text-muted)] mt-1.5 font-medium">v2.0 · ChatRooms</span>
           </div>
         </div>
 
         {/* ── Right Content Panel ────────────────────────────────────── */}
         <div className="flex-1 min-w-0 flex flex-col justify-between overflow-y-auto custom-scrollbar pr-1 font-body">
           {successMsg && (
-            <div className="p-3 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-[var(--accent)] text-xs mb-4 flex items-center gap-2 font-heading">
-              <Check size={14} /> <span>{successMsg}</span>
+            <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm mb-4 flex items-center gap-2 font-heading font-semibold">
+              <Check size={16} /> <span>{successMsg}</span>
             </div>
           )}
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/25 text-[var(--danger)] text-xs mb-4 font-heading">
+            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs sm:text-sm mb-4 font-heading font-semibold">
               {errorMsg}
             </div>
           )}
@@ -229,7 +339,7 @@ export const SettingsModal = ({
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
               {/* Avatar Preview & Upload */}
-              <div className="flex items-center gap-4 p-3 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl">
+              <div className="flex items-center gap-4 p-4 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl">
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -243,36 +353,36 @@ export const SettingsModal = ({
 
                 <Avatar name={name || user?.name} src={avatarUrl} size="lg" />
 
-                <div className="flex flex-col gap-1.5 min-w-0 font-heading">
+                <div className="flex flex-col gap-2 min-w-0 font-heading">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      className="py-1 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 border-none shadow-xs"
+                      className="py-1.5 px-3.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-colors flex items-center gap-2 border-none shadow-sm"
                     >
-                      {isUploading ? <Loader2 size={13} /> : <Upload size={13} />}
+                      {isUploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                       <span>Upload Picture</span>
                     </button>
                     {avatarUrl && (
                       <button
                         type="button"
                         onClick={() => setAvatarUrl('')}
-                        className="py-1 px-2.5 text-xs text-[var(--danger)] hover:bg-red-500/10 rounded-xl bg-transparent border-none cursor-pointer"
+                        className="py-1.5 px-3 text-xs sm:text-sm text-red-400 hover:bg-red-500/10 rounded-xl bg-transparent border-none cursor-pointer font-semibold"
                       >
                         Remove
                       </button>
                     )}
                   </div>
-                  <span className="text-[10px] text-[var(--text-muted)] font-body">
+                  <span className="text-xs text-[var(--text-muted)] font-body">
                     Visible across connected ChatRooms channels.
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-[11px] font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                     Display Name
                   </label>
                   <input
@@ -280,16 +390,16 @@ export const SettingsModal = ({
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                    className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                     Username
                   </label>
-                  <div className="flex items-center gap-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-3 py-2">
-                    <span className="text-xs font-heading text-[var(--text-muted)] flex-1 truncate">
+                  <div className="flex items-center gap-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-3.5 py-2.5">
+                    <span className="text-sm font-heading font-semibold text-[var(--text-muted)] flex-1 truncate">
                       @{user?.primaryUsername || 'user'}
                     </span>
                     <button
@@ -298,14 +408,14 @@ export const SettingsModal = ({
                       className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
                       title="Copy handle"
                     >
-                      {copiedCode === 'username' ? <Check size={12} className="text-[var(--accent)]" /> : <Copy size={12} />}
+                      {copiedCode === 'username' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                     </button>
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="text-[11px] font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                   Status Note / Bio
                 </label>
                 <input
@@ -313,7 +423,7 @@ export const SettingsModal = ({
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="What are you working on?"
-                  className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] mb-1.5"
+                  className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] mb-2"
                 />
                 <div className="flex flex-wrap gap-1.5 font-heading">
                   {STATUS_PRESETS.map((preset) => (
@@ -321,7 +431,7 @@ export const SettingsModal = ({
                       key={preset}
                       type="button"
                       onClick={() => setBio(preset)}
-                      className="px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer transition-colors"
                     >
                       {preset}
                     </button>
@@ -329,28 +439,29 @@ export const SettingsModal = ({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-[11px] font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                     Email Address
                   </label>
                   <input
                     type="email"
                     disabled
                     value={user?.email || 'user@chatrooms.app'}
-                    className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-muted)] opacity-75 cursor-not-allowed"
+                    className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-muted)] opacity-75 cursor-not-allowed"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                  <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1.5">
                     Phone (Optional)
                   </label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                    placeholder="+1 (555) 000-0000"
+                    className="w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
                   />
                 </div>
               </div>
@@ -358,103 +469,112 @@ export const SettingsModal = ({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="w-full mt-2 py-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-heading font-bold transition-all cursor-pointer border-none shadow-sm flex items-center justify-center gap-2"
+                className="w-full mt-2 py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-sm font-heading font-bold transition-all cursor-pointer border-none shadow-md flex items-center justify-center gap-2"
               >
-                {isSaving ? <Loader2 size={14} /> : null}
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : null}
                 <span>Save Profile Changes</span>
               </button>
             </form>
           )}
 
-          {/* ──────────────── TAB 2: APPEARANCE (Item 29: Two Themes) ───────────────────────── */}
+          {/* ──────────────── TAB 2: APPEARANCE ───────────────────────── */}
           {activeTab === 'appearance' && (
-            <div className="flex flex-col gap-4 font-heading">
+            <div className="flex flex-col gap-5 font-heading">
               <div>
-                <label className="text-xs font-bold text-[var(--text-primary)] block mb-2">
-                  Select Theme (Exclusive Two Modes)
+                <label className="text-sm font-bold text-[var(--text-primary)] block mb-3">
+                  Color Theme (Exclusive Two Modes)
                 </label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   {/* Theme 2: Midnight Dark */}
                   <button
                     type="button"
                     onClick={() => setTheme('dark')}
-                    className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
+                    className={`relative p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
                       theme === 'dark'
-                        ? 'bg-[var(--bg-secondary)] border-[#0297DE] ring-2 ring-[#0297DE]/30'
+                        ? 'bg-[var(--bg-secondary)] border-[#0297DE] ring-2 ring-[#0297DE]/40 shadow-lg'
                         : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:bg-[var(--bg-hover)]'
                     }`}
                   >
-                    <div className="w-full h-14 rounded-xl bg-[#02070A] border border-[#0297DE]/30 p-2 flex flex-col justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-[#0297DE]" />
-                        <div className="w-12 h-2 rounded-full bg-[#0297DE]/60" />
+                    {theme === 'dark' && (
+                      <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-[#0297DE] text-black text-[11px] font-bold flex items-center gap-1 shadow-xs">
+                        <Check size={12} strokeWidth={3} />
+                        <span>Active</span>
                       </div>
-                      <div className="w-8 h-2 rounded-full bg-[#FC734D] self-end" />
+                    )}
+                    <div className="w-full h-16 rounded-xl bg-[#02070A] border border-[#0297DE]/30 p-2.5 flex flex-col justify-between mb-3 shadow-inner">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-[#0297DE]" />
+                        <div className="w-14 h-2 rounded-full bg-[#0297DE]/60" />
+                      </div>
+                      <div className="w-10 h-2.5 rounded-full bg-[#FC734D] self-end" />
                     </div>
-                    <div className="text-xs font-bold text-[var(--text-primary)]">Midnight Dark</div>
-                    <div className="text-[10px] font-body text-[var(--text-muted)]">Midnight Black #02070A · Electric Blue #0297DE · Cantaloupe #FC734D</div>
+                    <div className="text-sm font-bold text-[var(--text-primary)]">Midnight Dark</div>
+                    <div className="text-xs font-body text-[var(--text-muted)] mt-1">
+                      Midnight Black <code className="text-[#0297DE]">#02070A</code> · Electric Blue <code className="text-[#0297DE]">#0297DE</code> · Cantaloupe Orange <code className="text-[#FC734D]">#FC734D</code>
+                    </div>
                   </button>
 
                   {/* Theme 1: Skyblue Vibrant */}
                   <button
                     type="button"
                     onClick={() => setTheme('light')}
-                    className={`p-3 rounded-2xl border text-left cursor-pointer transition-all ${
+                    className={`relative p-3.5 rounded-2xl border text-left cursor-pointer transition-all ${
                       theme === 'light'
-                        ? 'bg-[var(--bg-secondary)] border-[#0593C6] ring-2 ring-[#0593C6]/30'
+                        ? 'bg-[var(--bg-secondary)] border-[#0593C6] ring-2 ring-[#0593C6]/40 shadow-lg'
                         : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:bg-[var(--bg-hover)]'
                     }`}
                   >
-                    <div className="w-full h-14 rounded-xl bg-[#FCFFFF] border border-[#0593C6]/30 p-2 flex flex-col justify-between mb-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-4 h-4 rounded-full bg-[#0593C6]" />
-                        <div className="w-12 h-2 rounded-full bg-[#0593C6]/60" />
+                    {theme === 'light' && (
+                      <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-[#0593C6] text-white text-[11px] font-bold flex items-center gap-1 shadow-xs">
+                        <Check size={12} strokeWidth={3} />
+                        <span>Active</span>
                       </div>
-                      <div className="w-8 h-2 rounded-full bg-[#D83995] self-end" />
+                    )}
+                    <div className="w-full h-16 rounded-xl bg-[#FCFFFF] border border-[#0593C6]/30 p-2.5 flex flex-col justify-between mb-3 shadow-inner">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-[#0593C6]" />
+                        <div className="w-14 h-2 rounded-full bg-[#0593C6]/60" />
+                      </div>
+                      <div className="w-10 h-2.5 rounded-full bg-[#D83995] self-end" />
                     </div>
-                    <div className="text-xs font-bold text-[var(--text-primary)]">Skyblue Vibrant</div>
-                    <div className="text-[10px] font-body text-[var(--text-muted)]">Skyblue #0593C6 · White #FCFFFF · Hot Pink #D83995</div>
+                    <div className="text-sm font-bold text-[var(--text-primary)]">Skyblue Vibrant</div>
+                    <div className="text-xs font-body text-[var(--text-muted)] mt-1">
+                      Sky Blue <code className="text-[#0593C6]">#0593C6</code> · White <code className="text-[var(--text-primary)]">#FCFFFF</code> · Hot Pink <code className="text-[#D83995]">#D83995</code>
+                    </div>
                   </button>
                 </div>
               </div>
 
               {/* Progressive Web App Status & Install Section */}
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
-                <div className="flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
-                      <Laptop size={14} />
+                    <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                      <Laptop size={16} className="text-[var(--accent)]" />
                       <span>Progressive Web App (PWA)</span>
                     </div>
-                    <div className="text-[11px] font-body text-[var(--text-muted)] mt-0.5">
-                      Install ChatRooms as a standalone app on desktop, iPhone, iPad, or Android phone.
+                    <div className="text-xs font-body text-[var(--text-muted)] mt-1">
+                      Install ChatRooms as a fast standalone app on Windows, Mac, Android, or iOS.
                     </div>
                   </div>
-                  {window.matchMedia('(display-mode: standalone)').matches ? (
-                    <span className="px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-semibold flex items-center gap-1.5">
-                      <Check size={12} /> Installed
+                  {typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches ? (
+                    <span className="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-1.5 shrink-0">
+                      <Check size={14} /> Installed as App
                     </span>
                   ) : (
                     <button
                       type="button"
-                      onClick={async () => {
-                        if (window.chatroomsInstallPrompt) {
-                          window.chatroomsInstallPrompt.prompt();
-                          await window.chatroomsInstallPrompt.userChoice;
-                        } else {
-                          alert('To install ChatRooms, tap your browser menu or share icon and select "Add to Home screen" or "Install App".');
-                        }
-                      }}
-                      className="px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 border-none shadow-xs"
+                      onClick={handleInstallPwa}
+                      className="px-4 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs sm:text-sm font-bold cursor-pointer transition-colors flex items-center gap-2 border-none shadow-sm shrink-0"
                     >
-                      <Download size={13} />
+                      <Download size={14} />
                       <span>Install App</span>
                     </button>
                   )}
                 </div>
-                <div className="text-[10px] font-body text-[var(--text-muted)] border-t border-[var(--border)] pt-2 flex items-center justify-between">
-                  <span>Offline Service Worker: Active (v1)</span>
-                  <span>Full screen · Hardware accelerated</span>
+                <div className="text-xs font-body text-[var(--text-muted)] border-t border-[var(--border)] pt-2.5 flex items-center justify-between">
+                  <span>Service Worker Cache: Active</span>
+                  <span>Hardware accelerated · Instant wakeup</span>
                 </div>
               </div>
             </div>
@@ -464,19 +584,19 @@ export const SettingsModal = ({
           {activeTab === 'notifications' && (
             <div className="flex flex-col gap-4 font-heading">
               {/* Native System Push Notifications (Android & Windows WhatsApp Style) */}
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
-                      <Bell size={15} className="text-[var(--accent)]" />
+                    <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                      <Bell size={16} className="text-[var(--accent)]" />
                       <span>Realtime System Notifications (Android & Windows)</span>
                     </div>
-                    <div className="text-[11px] font-body text-[var(--text-muted)] mt-1 leading-relaxed">
+                    <div className="text-xs font-body text-[var(--text-muted)] mt-1 leading-relaxed">
                       Receive heads-up banners, vibration, and audio rings just like WhatsApp on Android and Windows Action Center, even when ChatRooms is minimized.
                     </div>
                   </div>
                   <span
-                    className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border shrink-0 ${
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border shrink-0 ${
                       notifPermission === 'granted'
                         ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
                         : notifPermission === 'denied'
@@ -492,14 +612,14 @@ export const SettingsModal = ({
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]">
+                <div className="flex flex-wrap items-center gap-2.5 pt-2.5 border-t border-[var(--border)]">
                   {notifPermission !== 'granted' && (
                     <button
                       type="button"
                       onClick={handleRequestPushPermission}
-                      className="py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold border-none cursor-pointer flex items-center gap-1.5 shadow-xs transition-transform active:scale-95"
+                      className="py-2 px-3.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs sm:text-sm font-bold border-none cursor-pointer flex items-center gap-2 shadow-sm transition-transform active:scale-95"
                     >
-                      <Check size={13} />
+                      <Check size={14} />
                       <span>Enable System Notifications</span>
                     </button>
                   )}
@@ -507,34 +627,35 @@ export const SettingsModal = ({
                     type="button"
                     onClick={handleTestSystemNotification}
                     disabled={testNotifSent}
-                    className="py-1.5 px-3 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors"
+                    className="py-2 px-3.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] border border-[var(--border)] rounded-xl text-xs sm:text-sm font-semibold cursor-pointer flex items-center gap-2 transition-colors"
                   >
-                    <SendHorizontal size={12} />
+                    <SendHorizontal size={14} />
                     <span>{testNotifSent ? 'Notification Sent!' : 'Send Test Notification'}</span>
                   </button>
                 </div>
               </div>
 
               {/* Synthesized Audio Effects */}
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                  <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <Volume2 size={16} className="text-[var(--accent)]" />
                     <span>Synthesized Audio Effects</span>
-                    <span className="px-1.5 py-0.2 rounded-full bg-[var(--accent-subtle)] text-[var(--accent)] text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] text-[10px] font-bold">
                       Web Audio
                     </span>
                   </div>
-                  <div className="text-[11px] font-body text-[var(--text-muted)]">
+                  <div className="text-xs font-body text-[var(--text-muted)] mt-1">
                     Play gentle synthesized audio chimes for incoming messages and reactions
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => playReceivedSound()}
-                    className="px-2 py-1 rounded-lg text-[10px] font-bold bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer flex items-center gap-1.5"
                   >
-                    <Volume2 size={11} /> Test Sound
+                    <Volume2 size={13} /> Test Sound
                   </button>
                   <input
                     type="checkbox"
@@ -546,48 +667,48 @@ export const SettingsModal = ({
               </div>
 
               {/* Do Not Disturb & Read Receipts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-3 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-[var(--text-primary)]">Do Not Disturb</div>
-                    <div className="text-[10px] font-body text-[var(--text-muted)]">Mute incoming chimes</div>
+                    <div className="text-sm font-bold text-[var(--text-primary)]">Do Not Disturb</div>
+                    <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">Mute incoming sound rings</div>
                   </div>
                   <input
                     type="checkbox"
                     checked={dndMode}
-                    onChange={(e) => setDndMode(e.target.checked)}
+                    onChange={(e) => handleToggleDnd(e.target.checked)}
                     className="w-4 h-4 accent-blue-600 cursor-pointer"
                   />
                 </div>
 
-                <div className="p-3 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
+                <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
                   <div>
-                    <div className="text-xs font-bold text-[var(--text-primary)]">Read Receipts</div>
-                    <div className="text-[10px] font-body text-[var(--text-muted)]">Show checkmarks</div>
+                    <div className="text-sm font-bold text-[var(--text-primary)]">Read Receipts</div>
+                    <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">1 tick sent · 2 ticks seen</div>
                   </div>
                   <input
                     type="checkbox"
                     checked={readReceipts}
-                    onChange={(e) => setReadReceipts(e.target.checked)}
+                    onChange={(e) => handleToggleReadReceipts(e.target.checked)}
                     className="w-4 h-4 accent-blue-600 cursor-pointer"
                   />
                 </div>
               </div>
 
               {/* ── Muted Conversations Manager ───────────────────────── */}
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2">
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
-                    <BellOff size={14} className="text-[var(--accent-highlight)]" />
+                  <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <BellOff size={16} className="text-[var(--accent-highlight)]" />
                     <span>Muted Conversations ({mutedChats.length})</span>
                   </div>
                 </div>
                 {mutedChats.length === 0 ? (
-                  <p className="text-[11px] font-body text-[var(--text-muted)] m-0 italic">
+                  <p className="text-xs font-body text-[var(--text-muted)] m-0 italic">
                     No chats or channels are currently muted.
                   </p>
                 ) : (
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar">
                     {mutedChats.map((chatId) => {
                       const matchContact = contacts.find((c) => c.id === chatId);
                       const matchGroup = groups.find((g) => g.id === chatId);
@@ -595,17 +716,17 @@ export const SettingsModal = ({
                       return (
                         <div
                           key={chatId}
-                          className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between gap-2"
+                          className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between gap-2"
                         >
                           <div className="min-w-0 flex-1 flex items-center gap-2">
-                            <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                            <span className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] truncate">
                               {label}
                             </span>
                           </div>
                           <button
                             type="button"
                             onClick={() => toggleMuteChat(chatId)}
-                            className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] cursor-pointer"
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] cursor-pointer"
                           >
                             Unmute
                           </button>
@@ -617,31 +738,31 @@ export const SettingsModal = ({
               </div>
 
               {/* ── Blocked Contacts Manager ─────────────────────────── */}
-              <div className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2">
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-2">
-                    <Ban size={14} className="text-red-400" />
+                  <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <Ban size={16} className="text-red-400" />
                     <span>Blocked Users ({blockedUsers.length})</span>
                   </div>
                 </div>
                 {blockedUsers.length === 0 ? (
-                  <p className="text-[11px] font-body text-[var(--text-muted)] m-0 italic">
+                  <p className="text-xs font-body text-[var(--text-muted)] m-0 italic">
                     You have not blocked any contacts.
                   </p>
                 ) : (
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-2 max-h-36 overflow-y-auto custom-scrollbar">
                     {blockedUsers.map((ident) => (
                       <div
                         key={ident}
-                        className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between gap-2"
+                        className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between gap-2"
                       >
-                        <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                        <span className="text-xs sm:text-sm font-semibold text-[var(--text-primary)] truncate">
                           @{ident}
                         </span>
                         <button
                           type="button"
                           onClick={() => unblockUser(ident)}
-                          className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 cursor-pointer"
                         >
                           Unblock
                         </button>
@@ -655,12 +776,12 @@ export const SettingsModal = ({
 
           {/* ──────────────── TAB 4: WORKPLACES ───────────────────────── */}
           {activeTab === 'workplaces' && (
-            <div className="flex flex-col gap-3 font-heading">
-              <div className="flex items-center justify-between mb-1">
+            <div className="flex flex-col gap-4 font-heading">
+              <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-bold text-[var(--text-primary)]">Active Workplaces</div>
-                  <div className="text-[11px] font-body text-[var(--text-muted)]">
-                    Teams and universities you are participating in
+                  <div className="text-sm font-bold text-[var(--text-primary)]">Active Workplaces</div>
+                  <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">
+                    Teams and workspaces you are participating in
                   </div>
                 </div>
                 <button
@@ -669,27 +790,27 @@ export const SettingsModal = ({
                     onClose();
                     onOpenWorkspaceModal?.();
                   }}
-                  className="px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] rounded-xl text-xs font-bold border-none cursor-pointer flex items-center gap-1 shadow-xs"
+                  className="px-3.5 py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl text-xs sm:text-sm font-bold border-none cursor-pointer flex items-center gap-1.5 shadow-sm"
                 >
                   + Add Workplace
                 </button>
               </div>
 
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {workspaces.map((ws) => (
                   <div
                     key={ws.id}
-                    className="p-3 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between"
+                    className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-[var(--accent)] text-[var(--text-primary)] font-bold text-sm flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-white font-bold text-sm flex items-center justify-center shadow-xs">
                         {ws.name.charAt(0)}
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                        <div className="text-xs sm:text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5">
                           <span>{ws.name}</span>
                         </div>
-                        <div className="text-[10px] font-body text-[var(--text-muted)]">
+                        <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">
                           {ws.membersCount || 1} members · {ws.nodes?.length || 1} channels
                         </div>
                       </div>
@@ -699,10 +820,10 @@ export const SettingsModal = ({
                       <button
                         type="button"
                         onClick={() => handleCopy(ws.joinCode || 'WS-001', ws.id)}
-                        className="px-2 py-1 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg text-[10px] font-semibold cursor-pointer flex items-center gap-1"
+                        className="px-3 py-1.5 bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-[var(--text-secondary)] rounded-xl text-xs font-semibold cursor-pointer flex items-center gap-1.5 transition-colors"
                         title="Copy Invite Code"
                       >
-                        {copiedCode === ws.id ? <Check size={11} className="text-[var(--accent)]" /> : <Copy size={11} />}
+                        {copiedCode === ws.id ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                         <span>Code</span>
                       </button>
                     </div>
@@ -714,56 +835,117 @@ export const SettingsModal = ({
 
           {/* ──────────────── TAB 5: ACCOUNT & SECURITY ───────────────── */}
           {activeTab === 'account' && (
-            <div className="flex flex-col gap-4 font-heading">
-              <form onSubmit={handlePasswordSubmit} className="p-3.5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
-                <div className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                  <KeyRound size={14} className="text-[var(--accent)]" />
+            <div className="flex flex-col gap-5 font-heading">
+              {/* Account Overview Box */}
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3">
+                <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  <ShieldCheck size={18} className="text-emerald-400" />
+                  <span>Account Credentials & Session</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-body">
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)]">
+                    <span className="text-[var(--text-muted)] block text-[11px]">Primary Handle</span>
+                    <span className="text-[var(--text-primary)] font-bold text-sm font-heading">@{user?.primaryUsername || 'user'}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)]">
+                    <span className="text-[var(--text-muted)] block text-[11px]">Registered Email</span>
+                    <span className="text-[var(--text-primary)] font-semibold text-xs truncate block">{user?.email || 'user@chatrooms.app'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Password Change Form */}
+              <form onSubmit={handlePasswordSubmit} className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex flex-col gap-3.5">
+                <div className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                  <KeyRound size={16} className="text-[var(--accent)]" />
                   <span>Update Account Password</span>
                 </div>
 
                 {passwordMsg && (
-                  <div className="p-2 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] text-xs font-body">
-                    {passwordMsg}
+                  <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs sm:text-sm font-semibold flex items-center gap-2">
+                    <Check size={15} /> <span>{passwordMsg}</span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {passwordError && (
+                  <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs sm:text-sm font-semibold">
+                    {passwordError}
+                  </div>
+                )}
+
+                <div className="space-y-3 font-body">
                   <div>
-                    <label className="text-[10px] font-bold text-[var(--text-secondary)] block mb-1">
+                    <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
                       Current Password
                     </label>
                     <input
                       type="password"
                       required
-                      placeholder="••••••••"
+                      placeholder="Enter current password"
                       value={currentPassword}
                       onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                      className="w-full px-3.5 py-2.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
                     />
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-[var(--text-secondary)] block mb-1">
-                      New Password
-                    </label>
-                    <input
-                      type="password"
-                      required
-                      placeholder="••••••••"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                        New Password
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        placeholder="At least 6 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                        Confirm New Password
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Re-enter new password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl text-sm font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                      />
+                    </div>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="self-end py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-xs font-bold rounded-xl border-none cursor-pointer shadow-xs"
+                  disabled={isUpdatingPassword}
+                  className="self-end py-2 px-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs sm:text-sm font-bold rounded-xl border-none cursor-pointer shadow-sm flex items-center gap-2 mt-1 transition-all"
                 >
-                  Update Password
+                  {isUpdatingPassword ? <Loader2 size={14} className="animate-spin" /> : null}
+                  <span>Update Password</span>
                 </button>
               </form>
+
+              {/* Logout Session Button */}
+              <div className="p-4 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold text-[var(--text-primary)]">Log Out Session</div>
+                  <div className="text-xs font-body text-[var(--text-muted)] mt-0.5">Sign out on this device</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    logout();
+                  }}
+                  className="py-2 px-3.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/30 text-xs sm:text-sm font-bold cursor-pointer flex items-center gap-2 transition-colors"
+                >
+                  <LogOut size={15} />
+                  <span>Log Out</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

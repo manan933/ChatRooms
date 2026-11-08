@@ -45,6 +45,8 @@ export const ChatPage = () => {
     setTyping,
     setOnlineUsersList,
     setUserStatus,
+    markMessagesAsRead,
+    handleMessagesRead,
   } = useChatStore();
 
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
@@ -172,6 +174,7 @@ export const ChatPage = () => {
     socketService.on('ice_candidate', handleGlobalIceCandidate);
     socketService.on('call_ended', handleCallEndedGlobal);
     socketService.on('call_rejected', handleCallEndedGlobal);
+    socketService.on('messages_read', handleMessagesRead);
 
     // Initial query for online presence
     socketService.getOnlineUsers();
@@ -182,6 +185,7 @@ export const ChatPage = () => {
       socketService.getOnlineUsers();
       if (activeChat?.id) {
         loadMessages(activeChat.id, true);
+        markMessagesAsRead(activeChat.id);
       }
     };
 
@@ -199,6 +203,7 @@ export const ChatPage = () => {
       socketService.getOnlineUsers();
       if (activeChat?.id) {
         loadMessages(activeChat.id, true);
+        markMessagesAsRead(activeChat.id);
       }
     }, 15000);
 
@@ -214,11 +219,12 @@ export const ChatPage = () => {
       socketService.off('ice_candidate', handleGlobalIceCandidate);
       socketService.off('call_ended', handleCallEndedGlobal);
       socketService.off('call_rejected', handleCallEndedGlobal);
+      socketService.off('messages_read', handleMessagesRead);
       window.removeEventListener('focus', handleFocusSync);
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(syncInterval);
     };
-  }, [loadChats, loadMessages, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername, activeChat?.id]);
+  }, [loadChats, loadMessages, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername, activeChat?.id, markMessagesAsRead, handleMessagesRead]);
 
   const handleAcceptIncomingCall = () => {
     if (!incomingCall) return;

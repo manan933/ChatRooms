@@ -57,6 +57,11 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    updatePassword: (data) =>
+      request('/api/auth/password', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
   },
 
   contacts: {
@@ -96,6 +101,10 @@ export const api = {
 
   messages: {
     byChat: (chatId) => request(`/api/messages/${chatId}`),
+    markRead: (chatId) =>
+      request(`/api/messages/${chatId}/read`, {
+        method: 'POST',
+      }),
     send: (chatId, payload) =>
       request(`/api/messages/${chatId}`, {
         method: 'POST',
