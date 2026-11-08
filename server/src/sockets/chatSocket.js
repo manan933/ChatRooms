@@ -1,6 +1,20 @@
 import jwt from 'jsonwebtoken';
 import storageService from '../services/storageService.js';
 
+// Global active presence registry:
+// Map of userId / lowercased username -> Set of active socket IDs
+const userSockets = new Map();
+
+export const getOnlineUsersList = () => {
+  const list = [];
+  for (const [key, sockets] of userSockets.entries()) {
+    if (sockets && sockets.size > 0) {
+      list.push(key);
+    }
+  }
+  return list;
+};
+
 export const setupChatSocket = (io) => {
   io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
@@ -30,8 +44,41 @@ export const setupChatSocket = (io) => {
   });
 
   io.on('connection', (socket) => {
-    const userId = (socket.user?.id || socket.user?._id || '').toString();
-    const username = (socket.user?.primaryUsername || socket.user?.username || '').toLowerCase().replace(/^@/, '');
+    const rawUserId = socket.user?.id || socket.user?._id;
+    const userId = rawUserId ? rawUserId.toString() : '';
+    const rawUsername = socket.user?.primaryUsername || socket.user?.username || '';
+    const username = rawUsername ? rawUsername.toLowerCase().replace(/^@/, '') : '';
+
+    // Register user socket in presence tracking
+    const registerPresence = (uId, uName) => {
+      const keys = [uId, uName].filter(Boolean);
+      let wasOffline = false;
+
+      keys.forEach((key) => {
+        const clean = key.toLowerCase().replace(/^@/, '');
+        if (!userSockets.has(clean)) {
+          userSockets.set(clean, new Set());
+        }
+        const s = userSockets.get(clean);
+        if (s.size === 0) wasOffline = true;
+        s.add(socket.id);
+      });
+
+      if (wasOffline) {
+        io.emit('user_status', {
+          userId: uId || userId,
+          username: (uName || username).toLowerCase().replace(/^@/, ''),
+          status: 'online',
+        });
+        if (uId || userId) {
+          storageService.updateUserStatus(uId || userId, 'online').catch(() => {});
+        }
+      }
+    };
+
+    if (userId || username) {
+      registerPresence(userId, username);
+    }
 
     // Automatically join user's private inbox rooms for instant DM & alert delivery
     if (userId) {
@@ -43,13 +90,23 @@ export const setupChatSocket = (io) => {
 
     console.log(`[Socket.io] Connected: ${socket.id} (user_${username || userId})`);
 
+    // Send currently online users list to this connected client immediately
+    socket.emit('online_users_list', getOnlineUsersList());
+
     // Dynamic registration handler
     socket.on('register_user', ({ userId: uId, username: uName }) => {
       if (uId) socket.join(`user_${uId}`);
       if (uName) {
         const clean = uName.toLowerCase().replace(/^@/, '');
         socket.join(`user_${clean}`);
+        registerPresence(uId, clean);
       }
+      socket.emit('online_users_list', getOnlineUsersList());
+    });
+
+    // Request full list of currently online users
+    socket.on('get_online_users', () => {
+      socket.emit('online_users_list', getOnlineUsersList());
     });
 
     // Join a specific chat room (channel, DM, or personal group)
@@ -128,15 +185,51 @@ export const setupChatSocket = (io) => {
       }
     });
 
-    // Handle typing status
-    socket.on('typing_start', ({ roomId, userName, userId: uId }) => {
-      if (!roomId) return;
-      socket.to(roomId).emit('user_typing', { userId: uId || userId, userName: userName || username, isTyping: true });
+    // Handle typing status with multi-recipient routing
+    socket.on('typing_start', ({ roomId, chatId, userName, userId: uId }) => {
+      const targetRoom = roomId || chatId;
+      if (!targetRoom) return;
+
+      const payload = {
+        roomId: targetRoom,
+        chatId: targetRoom,
+        userId: uId || userId,
+        userName: userName || socket.user?.name || username || 'Someone',
+        isTyping: true,
+      };
+
+      socket.to(targetRoom).emit('user_typing', payload);
+
+      if (targetRoom.startsWith('dm_')) {
+        const parts = targetRoom.replace('dm_', '').split('_');
+        if (parts.length === 2) {
+          socket.to(`user_${parts[0].toLowerCase()}`).emit('user_typing', payload);
+          socket.to(`user_${parts[1].toLowerCase()}`).emit('user_typing', payload);
+        }
+      }
     });
 
-    socket.on('typing_stop', ({ roomId, userId: uId }) => {
-      if (!roomId) return;
-      socket.to(roomId).emit('user_typing', { userId: uId || userId, isTyping: false });
+    socket.on('typing_stop', ({ roomId, chatId, userId: uId, userName }) => {
+      const targetRoom = roomId || chatId;
+      if (!targetRoom) return;
+
+      const payload = {
+        roomId: targetRoom,
+        chatId: targetRoom,
+        userId: uId || userId,
+        userName: userName || socket.user?.name || username || 'Someone',
+        isTyping: false,
+      };
+
+      socket.to(targetRoom).emit('user_typing', payload);
+
+      if (targetRoom.startsWith('dm_')) {
+        const parts = targetRoom.replace('dm_', '').split('_');
+        if (parts.length === 2) {
+          socket.to(`user_${parts[0].toLowerCase()}`).emit('user_typing', payload);
+          socket.to(`user_${parts[1].toLowerCase()}`).emit('user_typing', payload);
+        }
+      }
     });
 
     // Handle real-time reactions with instant broadcast
@@ -238,7 +331,25 @@ export const setupChatSocket = (io) => {
     });
 
     socket.on('disconnect', () => {
-      // Disconnection handled cleanly
+      const keys = [userId, username].filter(Boolean);
+      keys.forEach((key) => {
+        const clean = key.toLowerCase().replace(/^@/, '');
+        const s = userSockets.get(clean);
+        if (s) {
+          s.delete(socket.id);
+          if (s.size === 0) {
+            userSockets.delete(clean);
+            io.emit('user_status', {
+              userId,
+              username: (username || '').toLowerCase().replace(/^@/, ''),
+              status: 'offline',
+            });
+            if (userId) {
+              storageService.updateUserStatus(userId, 'offline').catch(() => {});
+            }
+          }
+        }
+      });
     });
   });
 };

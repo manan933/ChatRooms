@@ -18,6 +18,7 @@ import {
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
+import useChatStore from '../../store/chatStore';
 import CreateChannelModal from '../modals/CreateChannelModal';
 import { ChatListSkeleton } from '../ui/Skeleton';
 import BrandLogo from '../ui/BrandLogo';
@@ -64,6 +65,7 @@ export const Sidebar = ({
   const [copiedWsCode, setCopiedWsCode] = useState(false);
 
   const { theme, toggleTheme } = useThemeStore();
+  const { typingStatus = {}, onlineUsers = [] } = useChatStore();
 
   // Sync selected workspace from external selection
   React.useEffect(() => {
@@ -368,6 +370,17 @@ export const Sidebar = ({
                 .filter((i) => i.type === 'contact')
                 .map((item) => {
                   const isActive = activeChat?.id === item.id;
+                  const uid = (item.userId || item.id || '').toString().toLowerCase();
+                  const uname = (item.username || item.primaryUsername || '').toLowerCase().replace(/^@/, '');
+                  const isContactOnline = Boolean(
+                    (onlineUsers && (onlineUsers.includes(uid) || onlineUsers.includes(uname))) ||
+                    item.status === 'online' ||
+                    item.online === true
+                  );
+
+                  const typers = typingStatus[item.id] || [];
+                  const isTyping = typers.length > 0;
+
                   return (
                     <button
                       key={item.id}
@@ -379,7 +392,7 @@ export const Sidebar = ({
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                       }`}
                     >
-                      <Avatar name={item.name} src={item.avatar} size="sm" status={item.status || 'online'} />
+                      <Avatar name={item.name} src={item.avatar} size="sm" status={isContactOnline ? 'online' : 'offline'} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-1 mb-0.5">
                           <span className="text-xs truncate font-heading font-semibold text-[var(--text-primary)]">
@@ -391,9 +404,15 @@ export const Sidebar = ({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
-                          {item.lastMessage || 'Connected on ChatRooms'}
-                        </p>
+                        {isTyping ? (
+                          <p className="text-[11px] font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
+                          </p>
+                        ) : (
+                          <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
+                            {item.lastMessage || (isContactOnline ? 'Active now' : 'Connected on ChatRooms')}
+                          </p>
+                        )}
                       </div>
                     </button>
                   );
@@ -410,6 +429,9 @@ export const Sidebar = ({
                 .filter((i) => i.type === 'group')
                 .map((item) => {
                   const isActive = activeChat?.id === item.id;
+                  const typers = typingStatus[item.id] || [];
+                  const isTyping = typers.length > 0;
+
                   return (
                     <button
                       key={item.id}
@@ -433,9 +455,15 @@ export const Sidebar = ({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
-                          {item.lastMessage || 'Group created'}
-                        </p>
+                        {isTyping ? (
+                          <p className="text-[11px] font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> {typers[0]} typing...
+                          </p>
+                        ) : (
+                          <p className="text-[11px] font-body text-[var(--text-muted)] truncate m-0 leading-tight">
+                            {item.lastMessage || 'Group created'}
+                          </p>
+                        )}
                       </div>
                     </button>
                   );

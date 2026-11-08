@@ -64,8 +64,10 @@ export const Avatar = ({ src, name = 'User', size = 'md', status = null, classNa
 
       {status && (
         <span
-          className={`absolute bottom-0 right-0 rounded-full ring-[var(--bg-primary)] ${currentSize.dot} ${
-            status === 'online' ? 'bg-[var(--online)]' : 'bg-slate-400'
+          className={`absolute bottom-0 right-0 rounded-full ring-2 ring-[var(--bg-primary)] ${currentSize.dot} ${
+            status === 'online'
+              ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.85)]'
+              : 'bg-slate-400/60'
           }`}
           title={status === 'online' ? 'Online' : 'Offline'}
         />

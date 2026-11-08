@@ -91,15 +91,23 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
-      socketService.stopTyping(chatId, currentUser.id || currentUser._id);
-    }, 2000);
+      socketService.stopTyping(chatId, currentUser.id || currentUser._id, currentUser.name);
+    }, 2500);
   };
 
   const handleTextChange = (e) => {
     const val = e.target.value;
     setText(val);
     saveDraft(val);
-    handleTyping();
+
+    if (!val.trim()) {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (chatId && currentUser) {
+        socketService.stopTyping(chatId, currentUser.id || currentUser._id, currentUser.name);
+      }
+    } else {
+      handleTyping();
+    }
 
     // Auto-expand textarea
     if (textareaRef.current) {
@@ -162,7 +170,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
 
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (chatId && currentUser) {
-      socketService.stopTyping(chatId, currentUser.id || currentUser._id);
+      socketService.stopTyping(chatId, currentUser.id || currentUser._id, currentUser.name);
     }
 
     if (textareaRef.current) {

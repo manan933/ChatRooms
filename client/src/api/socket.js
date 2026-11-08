@@ -110,13 +110,19 @@ class SocketService {
 
   startTyping(roomId, userName, userId) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit('typing_start', { roomId, userName, userId });
+      this.socket.emit('typing_start', { roomId, chatId: roomId, userName, userId });
     }
   }
 
-  stopTyping(roomId, userId) {
+  stopTyping(roomId, userId, userName) {
     if (this.socket && this.socket.connected) {
-      this.socket.emit('typing_stop', { roomId, userId });
+      this.socket.emit('typing_stop', { roomId, chatId: roomId, userId, userName });
+    }
+  }
+
+  getOnlineUsers() {
+    if (this.socket && this.socket.connected) {
+      this.socket.emit('get_online_users');
     }
   }
 

@@ -17,6 +17,7 @@ import GroupInfoPanel from './GroupInfoPanel';
 import CallModal from '../modals/CallModal';
 import { MessageFeedSkeleton } from '../ui/Skeleton';
 import useThemeStore from '../../store/themeStore';
+import useChatStore from '../../store/chatStore';
 import { playSentSound, playReactionSound } from '../../utils/zyntraSound';
 import BrandLogo from '../ui/BrandLogo';
 
@@ -67,6 +68,7 @@ export const ChatArea = ({
   const [isVideoCall, setIsVideoCall] = useState(false);
 
   const { soundEnabled } = useThemeStore();
+  const { onlineUsers = [] } = useChatStore();
 
   const workspace = chat?.type === 'channel'
     ? workspaces.find((w) => w.name === chat.workspaceName)
@@ -293,14 +295,23 @@ export const ChatArea = ({
               <div className="w-8 h-8 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shrink-0 font-heading">
                 <Hash size={16} />
               </div>
-            ) : (
-              <Avatar
-                name={chat.name}
-                src={chat.avatar}
-                size="sm"
-                status={chat.status || 'online'}
-              />
-            )}
+            ) : (() => {
+              const chatUid = (chat.userId || chat.id || '').toString().toLowerCase();
+              const chatUname = (chat.username || chat.primaryUsername || '').toLowerCase().replace(/^@/, '');
+              const isChatOnline = Boolean(
+                (onlineUsers && (onlineUsers.includes(chatUid) || onlineUsers.includes(chatUname))) ||
+                chat.status === 'online' ||
+                chat.online === true
+              );
+              return (
+                <Avatar
+                  name={chat.name}
+                  src={chat.avatar}
+                  size="sm"
+                  status={chat.type === 'group' ? null : (isChatOnline ? 'online' : 'offline')}
+                />
+              );
+            })()}
 
             {/* Title & Status */}
             <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setInfoOpen(!infoOpen)}>
@@ -310,15 +321,30 @@ export const ChatArea = ({
                 </h2>
               </div>
               <div className="text-[10px] font-body text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
-                {chat.membersCount ? (
-                  <span>{chat.membersCount} members · {chat.workspaceName || 'Channel'}</span>
-                ) : chat.status === 'online' ? (
-                  <span className="text-[var(--online)] flex items-center gap-1 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--online)] inline-block" /> Online
+                {typingUsers.length > 0 ? (
+                  <span className="text-[var(--accent)] flex items-center gap-1 font-medium animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> {typingUsers.join(', ')} typing...
                   </span>
-                ) : (
-                  <span>Direct Room</span>
-                )}
+                ) : chat.membersCount ? (
+                  <span>{chat.membersCount} members · {chat.workspaceName || 'Channel'}</span>
+                ) : (() => {
+                  const chatUid = (chat.userId || chat.id || '').toString().toLowerCase();
+                  const chatUname = (chat.username || chat.primaryUsername || '').toLowerCase().replace(/^@/, '');
+                  const isChatOnline = Boolean(
+                    (onlineUsers && (onlineUsers.includes(chatUid) || onlineUsers.includes(chatUname))) ||
+                    chat.status === 'online' ||
+                    chat.online === true
+                  );
+                  return isChatOnline ? (
+                    <span className="text-emerald-400 flex items-center gap-1 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_6px_rgba(52,211,153,0.8)]" /> Online
+                    </span>
+                  ) : (
+                    <span className="text-[var(--text-muted)] flex items-center gap-1 font-normal">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60 inline-block" /> Offline
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>

@@ -39,6 +39,8 @@ export const ChatPage = () => {
     addChannelToWorkspace,
     leaveWorkspace,
     setTyping,
+    setOnlineUsersList,
+    setUserStatus,
   } = useChatStore();
 
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
@@ -73,7 +75,24 @@ export const ChatPage = () => {
       }
     };
     const handleReaction = (msg) => updateReaction(msg);
-    const handleTyping = ({ roomId, userName, isTyping }) => setTyping(roomId, userName, isTyping);
+    const handleTyping = ({ roomId, chatId, userName, isTyping }) => {
+      const targetId = roomId || chatId;
+      if (targetId) {
+        setTyping(targetId, userName, isTyping);
+      }
+    };
+
+    const handleUserStatus = (data) => {
+      if (data && data.status) {
+        setUserStatus(data.userId, data.username, data.status);
+      }
+    };
+
+    const handleOnlineList = (list) => {
+      if (Array.isArray(list)) {
+        setOnlineUsersList(list);
+      }
+    };
 
     const handleConversationUpdate = () => {
       loadChats();
@@ -101,6 +120,8 @@ export const ChatPage = () => {
     socketService.on('receive_message', handleReceive);
     socketService.on('update_reaction', handleReaction);
     socketService.on('user_typing', handleTyping);
+    socketService.on('user_status', handleUserStatus);
+    socketService.on('online_users_list', handleOnlineList);
     socketService.on('contact_added', handleConversationUpdate);
     socketService.on('new_conversation', handleConversationUpdate);
     socketService.on('call_incoming', handleIncomingCall);
@@ -108,9 +129,13 @@ export const ChatPage = () => {
     socketService.on('call_ended', handleCallEndedGlobal);
     socketService.on('call_rejected', handleCallEndedGlobal);
 
+    // Initial query for online presence
+    socketService.getOnlineUsers();
+
     // Auto-sync on window focus & tab visibility (silent refresh)
     const handleFocusSync = () => {
       loadChats();
+      socketService.getOnlineUsers();
       if (activeChat?.id) {
         loadMessages(activeChat.id, true);
       }
@@ -127,6 +152,7 @@ export const ChatPage = () => {
     // Background sync timer every 15s to guarantee 100% accuracy without manual refresh
     const syncInterval = setInterval(() => {
       loadChats();
+      socketService.getOnlineUsers();
       if (activeChat?.id) {
         loadMessages(activeChat.id, true);
       }
@@ -136,6 +162,8 @@ export const ChatPage = () => {
       socketService.off('receive_message', handleReceive);
       socketService.off('update_reaction', handleReaction);
       socketService.off('user_typing', handleTyping);
+      socketService.off('user_status', handleUserStatus);
+      socketService.off('online_users_list', handleOnlineList);
       socketService.off('contact_added', handleConversationUpdate);
       socketService.off('new_conversation', handleConversationUpdate);
       socketService.off('call_incoming', handleIncomingCall);

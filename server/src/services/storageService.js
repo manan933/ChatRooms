@@ -174,6 +174,21 @@ class StorageService {
     return this.mapUser(user);
   }
 
+  async updateUserStatus(userId, status) {
+    if (!userId) return null;
+    try {
+      const filter = mongoose.Types.ObjectId.isValid(userId) ? { _id: userId } : { id: userId };
+      const updated = await User.findOneAndUpdate(
+        filter,
+        { status: status || 'offline', lastActive: new Date() },
+        { new: true }
+      );
+      return updated ? this.mapUser(updated) : null;
+    } catch {
+      return null;
+    }
+  }
+
   async searchUsers(query, excludeUserId) {
     const q = (query || '').toLowerCase().trim().replace(/^@/, '');
     const filter = {};
@@ -428,7 +443,7 @@ class StorageService {
         username: c.username,
         name: u?.name || c.name,
         avatar: u?.avatar || c.avatar,
-        status: u?.status || c.status || 'online',
+        status: u?.status || c.status || 'offline',
         bio: u?.bio || c.bio || '',
         lastMessage: c.lastMessage || 'Connected on Zyntra',
         lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toISOString() : new Date().toISOString(),

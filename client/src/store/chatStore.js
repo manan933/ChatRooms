@@ -10,6 +10,7 @@ export const useChatStore = create((set, get) => ({
   workspaces: [],
   messages: {},
   typingStatus: {},
+  onlineUsers: [],
   isLoadingChats: false,
   isLoadingMessages: false,
 
@@ -21,6 +22,7 @@ export const useChatStore = create((set, get) => ({
     workspaces: [],
     messages: {},
     typingStatus: {},
+    onlineUsers: [],
   }),
 
   // Initialize all chat streams (Contacts, Groups, Workspaces)
@@ -49,8 +51,20 @@ export const useChatStore = create((set, get) => ({
             : []
           : [];
 
+      const activeOnline = (get().onlineUsers || []).map((x) => String(x).toLowerCase().replace(/^@/, ''));
+      const contactsWithPresence = rawContacts.map((c) => {
+        const uid = (c.userId || c.id || '').toString().toLowerCase();
+        const uname = (c.username || c.primaryUsername || '').toLowerCase().replace(/^@/, '');
+        const isOnline = activeOnline.includes(uid) || activeOnline.includes(uname);
+        return {
+          ...c,
+          status: isOnline ? 'online' : (activeOnline.length > 0 ? 'offline' : (c.status || 'offline')),
+          online: isOnline || (activeOnline.length === 0 && c.status === 'online'),
+        };
+      });
+
       set({
-        contacts: rawContacts,
+        contacts: contactsWithPresence,
         groups: rawGroups,
         workspaces: rawWorkspaces,
         isLoadingChats: false,
@@ -479,7 +493,79 @@ export const useChatStore = create((set, get) => ({
     }));
   },
 
+  setOnlineUsersList: (list = []) => {
+    const normalizedList = list.map((x) => String(x).toLowerCase().replace(/^@/, ''));
+    set((state) => ({
+      onlineUsers: normalizedList,
+      contacts: state.contacts.map((c) => {
+        const uid = (c.userId || c.id || '').toString().toLowerCase();
+        const uname = (c.username || c.primaryUsername || '').toLowerCase().replace(/^@/, '');
+        const isOnline = normalizedList.includes(uid) || normalizedList.includes(uname);
+        return {
+          ...c,
+          status: isOnline ? 'online' : 'offline',
+          online: isOnline,
+        };
+      }),
+      activeChat: state.activeChat && state.activeChat.type !== 'channel'
+        ? (() => {
+            const uid = (state.activeChat.userId || state.activeChat.id || '').toString().toLowerCase();
+            const uname = (state.activeChat.username || state.activeChat.primaryUsername || '').toLowerCase().replace(/^@/, '');
+            const isOnline = normalizedList.includes(uid) || normalizedList.includes(uname);
+            return {
+              ...state.activeChat,
+              status: isOnline ? 'online' : 'offline',
+              online: isOnline,
+            };
+          })()
+        : state.activeChat,
+    }));
+  },
+
+  setUserStatus: (userId, username, status) => {
+    const isOnline = status === 'online';
+    const cleanUid = (userId || '').toString().toLowerCase();
+    const cleanUname = (username || '').toLowerCase().replace(/^@/, '');
+
+    set((state) => {
+      let updatedOnline = [...state.onlineUsers];
+      if (isOnline) {
+        if (cleanUid && !updatedOnline.includes(cleanUid)) updatedOnline.push(cleanUid);
+        if (cleanUname && !updatedOnline.includes(cleanUname)) updatedOnline.push(cleanUname);
+      } else {
+        updatedOnline = updatedOnline.filter((x) => x !== cleanUid && x !== cleanUname);
+      }
+
+      const updatedContacts = state.contacts.map((c) => {
+        const cUid = (c.userId || c.id || '').toString().toLowerCase();
+        const cUname = (c.username || c.primaryUsername || '').toLowerCase().replace(/^@/, '');
+        const match = (cleanUid && cUid === cleanUid) || (cleanUname && cUname === cleanUname);
+        if (match) {
+          return { ...c, status, online: isOnline };
+        }
+        return c;
+      });
+
+      let updatedActiveChat = state.activeChat;
+      if (updatedActiveChat && updatedActiveChat.type !== 'channel') {
+        const actUid = (updatedActiveChat.userId || updatedActiveChat.id || '').toString().toLowerCase();
+        const actUname = (updatedActiveChat.username || updatedActiveChat.primaryUsername || '').toLowerCase().replace(/^@/, '');
+        const match = (cleanUid && actUid === cleanUid) || (cleanUname && actUname === cleanUname);
+        if (match) {
+          updatedActiveChat = { ...updatedActiveChat, status, online: isOnline };
+        }
+      }
+
+      return {
+        onlineUsers: updatedOnline,
+        contacts: updatedContacts,
+        activeChat: updatedActiveChat,
+      };
+    });
+  },
+
   setTyping: (roomId, userName, isTyping) => {
+    if (!roomId) return;
     set((state) => {
       const current = state.typingStatus[roomId] || [];
       const updated = isTyping
@@ -493,6 +579,22 @@ export const useChatStore = create((set, get) => ({
         },
       };
     });
+
+    // Auto safety cleanup: clear typing indicator after 5 seconds to prevent stuck states
+    if (isTyping && userName) {
+      setTimeout(() => {
+        set((state) => {
+          const current = state.typingStatus[roomId] || [];
+          if (!current.includes(userName)) return state;
+          return {
+            typingStatus: {
+              ...state.typingStatus,
+              [roomId]: current.filter((u) => u !== userName),
+            },
+          };
+        });
+      }, 5000);
+    }
   },
 }));
 
