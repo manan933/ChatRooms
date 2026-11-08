@@ -4,7 +4,12 @@ const getToken = () => localStorage.getItem('chatrooms_token') || localStorage.g
 
 export const getFileUrl = (url) => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:')
+  ) {
     return url;
   }
   return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;

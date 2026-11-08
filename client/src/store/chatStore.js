@@ -223,9 +223,27 @@ export const useChatStore = create((set, get) => ({
     }
     try {
       const res = await api.messages.byChat(chatId);
-      const list = res.ok && Array.isArray(res.data) && res.data.length > 0
+      const rawList = res.ok && Array.isArray(res.data) && res.data.length > 0
         ? res.data
         : (get().messages[chatId] || []);
+
+      const list = rawList.map((m) => {
+        if (m.attachment) {
+          const isImg =
+            m.attachment.type === 'image' ||
+            m.attachment.mimeType?.startsWith('image/') ||
+            /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)($|\?|#)/i.test(
+              m.attachment.name || m.attachment.url || ''
+            );
+          if (isImg && m.attachment.type !== 'image') {
+            return {
+              ...m,
+              attachment: { ...m.attachment, type: 'image' },
+            };
+          }
+        }
+        return m;
+      });
 
       set((state) => ({
         messages: {
@@ -387,15 +405,32 @@ export const useChatStore = create((set, get) => ({
     // Immediately join the room so subsequent updates flow seamlessly
     socketService.joinRoom(chatId);
 
+    // Normalize image attachment if received as file or missing type
+    let safeMsg = message;
+    if (message.attachment) {
+      const isImg =
+        message.attachment.type === 'image' ||
+        message.attachment.mimeType?.startsWith('image/') ||
+        /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)($|\?|#)/i.test(
+          message.attachment.name || message.attachment.url || ''
+        );
+      if (isImg && message.attachment.type !== 'image') {
+        safeMsg = {
+          ...message,
+          attachment: { ...message.attachment, type: 'image' },
+        };
+      }
+    }
+
     set((state) => {
       const existing = state.messages[chatId] || [];
-      if (existing.some((m) => m.id === message.id)) {
+      if (existing.some((m) => m.id === safeMsg.id)) {
         return state;
       }
       return {
         messages: {
           ...state.messages,
-          [chatId]: [...existing, message],
+          [chatId]: [...existing, safeMsg],
         },
       };
     });

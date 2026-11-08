@@ -131,15 +131,32 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
 
   const handleFileUpload = async (file) => {
     if (!file) return;
-    const isImage = file.type.startsWith('image/');
-    const localBlob = isImage ? URL.createObjectURL(file) : null;
+    const isImage =
+      file.type.startsWith('image/') ||
+      /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)$/i.test(file.name);
+
+    // Generate base64 Data URL immediately for local preview & offline/resilient fallback
+    let initialDataUrl = null;
+    if (isImage) {
+      try {
+        initialDataUrl = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result || null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        });
+      } catch {
+        initialDataUrl = null;
+      }
+    }
 
     setAttachment({
       name: file.name,
       size: formatSize(file.size),
       type: isImage ? 'image' : 'file',
-      mimeType: file.type,
-      url: localBlob,
+      mimeType: file.type || (isImage ? 'image/jpeg' : 'application/octet-stream'),
+      url: initialDataUrl,
+      dataUrl: initialDataUrl,
       isUploading: true,
     });
 
@@ -152,10 +169,13 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           name: res.data.name || file.name,
           size: res.data.size || formatSize(file.size),
           type: isImage ? 'image' : 'file',
-          mimeType: res.data.mimeType || file.type,
-          url: res.data.url,
+          mimeType: res.data.mimeType || file.type || (isImage ? 'image/jpeg' : 'application/octet-stream'),
+          url: res.data.url, // Points to /api/upload/media/:id stored in MongoDB Atlas!
+          dataUrl: res.data.dataUrl || initialDataUrl,
           isUploading: false,
         });
+      } else {
+        setAttachment((prev) => (prev ? { ...prev, isUploading: false } : null));
       }
     } catch {
       setAttachment((prev) => (prev ? { ...prev, isUploading: false } : null));
@@ -167,7 +187,27 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   const handleSend = () => {
     if ((!text.trim() && !attachment) || isUploading) return;
 
-    onSend?.(text.trim(), attachment);
+    // Ensure attachment never broadcasts an ephemeral blob: URL
+    let safeAttachment = null;
+    if (attachment) {
+      const isImg =
+        attachment.type === 'image' ||
+        attachment.mimeType?.startsWith('image/') ||
+        /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)$/i.test(attachment.name || '');
+
+      const finalUrl = (attachment.url && !attachment.url.startsWith('blob:'))
+        ? attachment.url
+        : (attachment.dataUrl || attachment.url);
+
+      safeAttachment = {
+        ...attachment,
+        type: isImg ? 'image' : (attachment.type || 'file'),
+        mimeType: attachment.mimeType || (isImg ? 'image/jpeg' : 'application/octet-stream'),
+        url: finalUrl,
+      };
+    }
+
+    onSend?.(text.trim(), safeAttachment);
     setText('');
     setAttachment(null);
     if (chatId) {
@@ -246,9 +286,9 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
       {attachment && (
         <div className="mb-2 flex items-center justify-between p-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] max-w-sm">
           <div className="flex items-center gap-2.5 min-w-0">
-            {attachment.type === 'image' && attachment.url ? (
+            {attachment.type === 'image' && (attachment.url || attachment.dataUrl) ? (
               <img
-                src={attachment.url}
+                src={getFileUrl(attachment.url || attachment.dataUrl)}
                 alt="Attachment preview"
                 className="w-10 h-10 rounded-lg object-cover border border-[var(--border)]"
               />

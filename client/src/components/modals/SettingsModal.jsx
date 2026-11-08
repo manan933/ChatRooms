@@ -163,15 +163,22 @@ export const SettingsModal = ({
     if (!file) return;
     setIsUploading(true);
     setErrorMsg(null);
+
+    // Immediate preview with base64 data URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) setAvatarUrl(e.target.result);
+    };
+    reader.readAsDataURL(file);
+
     try {
       const res = await api.upload.file(file);
       if (res.ok && res.data?.url) {
+        // Points to /api/upload/media/:id permanently stored in MongoDB Atlas!
         setAvatarUrl(res.data.url);
-      } else {
-        setErrorMsg('Failed to upload picture. Please try another file.');
       }
     } catch {
-      setErrorMsg('Failed to upload picture. Network error.');
+      // Keep base64 preview as reliable fallback so it saves to MongoDB directly via onUpdateProfile
     } finally {
       setIsUploading(false);
     }

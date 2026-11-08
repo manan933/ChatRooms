@@ -46,8 +46,20 @@ export const MessageBubble = ({
     setIsEditing(false);
   };
 
-  const isImage =
-    attachment && (attachment.type === 'image' || attachment.mimeType?.startsWith('image/'));
+  const isImageAttachment = (att) => {
+    if (!att) return false;
+    if (att.type === 'image') return true;
+    if (att.mimeType && att.mimeType.startsWith('image/')) return true;
+    const nameOrUrl = `${att.name || ''} ${att.url || ''}`.toLowerCase();
+    if (/\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)($|\?|#)/i.test(nameOrUrl)) return true;
+    if (typeof att.url === 'string' && (att.url.startsWith('data:image/') || att.url.includes('/api/upload/media/'))) {
+      if (att.name && /\.(pdf|doc|docx|zip|rar|txt|csv|xls|xlsx)$/i.test(att.name)) return false;
+      return true;
+    }
+    return false;
+  };
+
+  const isImage = isImageAttachment(attachment);
 
   return (
     <div
@@ -190,7 +202,7 @@ export const MessageBubble = ({
                     className="cursor-pointer overflow-hidden rounded-xl border border-white/10 max-w-[280px] max-h-[200px]"
                   >
                     <img
-                      src={getFileUrl(attachment.url)}
+                      src={getFileUrl(attachment.url || attachment.dataUrl)}
                       alt={attachment.name || 'Photo'}
                       className="w-full h-full object-cover hover:scale-102 transition-transform duration-200"
                       loading="lazy"
@@ -199,7 +211,7 @@ export const MessageBubble = ({
                   <ImageViewer
                     isOpen={imagePreviewOpen}
                     onClose={() => setImagePreviewOpen(false)}
-                    src={attachment.url}
+                    src={getFileUrl(attachment.url || attachment.dataUrl)}
                     title={attachment.name}
                   />
                 </>

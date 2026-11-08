@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { getFileUrl } from '../../api/api';
 
 const gradients = [
@@ -38,8 +38,16 @@ const sizes = {
 };
 
 export const Avatar = ({ src, name = 'User', size = 'md', status = null, className = '' }) => {
+  const [hasError, setHasError] = useState(false);
   const currentSize = sizes[size] || sizes.md;
-  const imageUrl = src ? getFileUrl(src) : null;
+
+  // Reset error state when src prop updates
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  const rawUrl = src && !hasError ? src : null;
+  const imageUrl = rawUrl ? getFileUrl(rawUrl) : null;
 
   return (
     <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
@@ -48,10 +56,8 @@ export const Avatar = ({ src, name = 'User', size = 'md', status = null, classNa
           src={imageUrl}
           alt={name}
           className={`${currentSize.box} rounded-full object-cover shadow-sm`}
-          onError={(e) => {
-            // Graceful fallback to initials if image fails to load
-            e.currentTarget.style.display = 'none';
-          }}
+          onError={() => setHasError(true)}
+          loading="lazy"
         />
       ) : (
         <div

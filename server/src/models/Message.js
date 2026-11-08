@@ -11,10 +11,12 @@ const ReactionSchema = new mongoose.Schema(
 
 const AttachmentSchema = new mongoose.Schema(
   {
-    type: { type: String, enum: ['image', 'file'], required: true },
+    type: { type: String, enum: ['image', 'file'], default: 'file' },
     name: { type: String, required: true },
     size: { type: String, default: '' },
     url: { type: String, default: '' },
+    mimeType: { type: String, default: '' },
+    dataUrl: { type: String, default: '' },
   },
   { _id: false }
 );
