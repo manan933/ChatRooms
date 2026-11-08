@@ -50,7 +50,14 @@ export const ChatArea = ({
   onCallEndedSummary,
 }) => {
   const scrollRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const isNearBottomRef = useRef(true);
+  const prevChatIdRef = useRef(chat?.id);
+  const prevLoadingRef = useRef(isLoadingMessages);
+  const prevMessagesLengthRef = useRef(messages.length);
+
+  const currentUserId = currentUser?.id || currentUser?._id;
 
   // Search & Drawer & Calls state
   const [searchOpen, setSearchOpen] = useState(false);
@@ -95,24 +102,89 @@ export const ChatArea = ({
     return groups;
   }, [filteredMessages]);
 
-  // Scroll to bottom on messages update
-  useEffect(() => {
-    if (scrollRef.current && !searchQuery.trim()) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages.length, searchQuery]);
-
   const handleScroll = () => {
     if (!scrollRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 180);
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    // Consider near bottom if within 140px of bottom
+    const nearBottom = distanceFromBottom <= 140;
+    isNearBottomRef.current = nearBottom;
+    setShowScrollBtn(!nearBottom);
   };
 
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  const scrollToBottom = (behavior = 'smooth') => {
+    if (!scrollRef.current) return;
+    if (behavior === 'auto') {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    } else {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
     }
   };
+
+  // 1. When switching chats: always snap to bottom immediately
+  useEffect(() => {
+    if (!chat?.id) return;
+    const isNewChat = chat.id !== prevChatIdRef.current;
+    prevChatIdRef.current = chat.id;
+
+    if (isNewChat) {
+      isNearBottomRef.current = true;
+      setShowScrollBtn(false);
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [chat?.id]);
+
+  // 2. When loading skeleton finishes and messages mount: snap to bottom
+  useEffect(() => {
+    const wasLoading = prevLoadingRef.current;
+    prevLoadingRef.current = isLoadingMessages;
+
+    if (wasLoading && !isLoadingMessages && !searchQuery.trim()) {
+      isNearBottomRef.current = true;
+      setShowScrollBtn(false);
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [isLoadingMessages, searchQuery]);
+
+  // 3. When messages update (new message, reaction, edit, auto-refresh, or background sync):
+  // Keeps at bottom if user was already near bottom or if user sent the message;
+  // preserves current scroll position if user was reading older history.
+  useEffect(() => {
+    if (!scrollRef.current || searchQuery.trim() || isLoadingMessages) return;
+
+    const currentLen = messages.length;
+    const prevLen = prevMessagesLengthRef.current;
+    prevMessagesLengthRef.current = currentLen;
+
+    const lastMsg = messages[messages.length - 1];
+    const isOwnLastMsg = Boolean(
+      lastMsg && (
+        (currentUserId && lastMsg.senderId === currentUserId) ||
+        (currentUser?.primaryUsername &&
+          lastMsg.senderUsername &&
+          lastMsg.senderUsername.toLowerCase() === currentUser.primaryUsername.toLowerCase())
+      )
+    );
+
+    if (isNearBottomRef.current || isOwnLastMsg || prevLen === 0) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
+    }
+  }, [messages, searchQuery, isLoadingMessages, currentUserId, currentUser?.primaryUsername]);
 
   const handleSendWrapper = (content, attachment) => {
     if (soundEnabled) playSentSound();
@@ -197,8 +269,6 @@ export const ChatArea = ({
       </div>
     );
   }
-
-  const currentUserId = currentUser?.id || currentUser?._id;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'row', flex: '1 1 0%', height: '100%', minHeight: 0, overflow: 'hidden', backgroundColor: 'transparent', position: 'relative' }}>
@@ -398,6 +468,9 @@ export const ChatArea = ({
               <span>{typingUsers.join(', ')} typing...</span>
             </div>
           )}
+
+          {/* Bottom scroll anchor */}
+          <div ref={messagesEndRef} className="h-0 w-full shrink-0" />
         </div>
 
         {/* Scroll to bottom button */}

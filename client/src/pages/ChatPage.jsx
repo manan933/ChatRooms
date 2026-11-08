@@ -108,11 +108,11 @@ export const ChatPage = () => {
     socketService.on('call_ended', handleCallEndedGlobal);
     socketService.on('call_rejected', handleCallEndedGlobal);
 
-    // Auto-sync on window focus & tab visibility
+    // Auto-sync on window focus & tab visibility (silent refresh)
     const handleFocusSync = () => {
       loadChats();
       if (activeChat?.id) {
-        loadMessages(activeChat.id);
+        loadMessages(activeChat.id, true);
       }
     };
 
@@ -127,6 +127,9 @@ export const ChatPage = () => {
     // Background sync timer every 15s to guarantee 100% accuracy without manual refresh
     const syncInterval = setInterval(() => {
       loadChats();
+      if (activeChat?.id) {
+        loadMessages(activeChat.id, true);
+      }
     }, 15000);
 
     return () => {

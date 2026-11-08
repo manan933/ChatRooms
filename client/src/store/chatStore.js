@@ -76,7 +76,14 @@ export const useChatStore = create((set, get) => ({
           rawContacts.find((c) => c.id === current.id) ||
           rawGroups.find((g) => g.id === current.id);
         if (found) {
-          set({ activeChat: { ...current, ...found } });
+          const hasChanged =
+            found.name !== current.name ||
+            found.avatar !== current.avatar ||
+            found.online !== current.online ||
+            found.lastMessage !== current.lastMessage;
+          if (hasChanged) {
+            set({ activeChat: { ...current, ...found } });
+          }
         }
       }
     } catch {
@@ -116,10 +123,14 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
-  // Load messages for a chat
-  loadMessages: async (chatId) => {
+  // Load messages for a chat (silent = true prevents clearing screen with skeleton)
+  loadMessages: async (chatId, silent = false) => {
     if (!chatId) return;
-    set({ isLoadingMessages: true });
+    const existing = get().messages[chatId];
+    const shouldShowLoading = !silent && (!existing || existing.length === 0);
+    if (shouldShowLoading) {
+      set({ isLoadingMessages: true });
+    }
     try {
       const res = await api.messages.byChat(chatId);
       const list = res.ok && Array.isArray(res.data) && res.data.length > 0
