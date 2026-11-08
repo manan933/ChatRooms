@@ -449,15 +449,30 @@ export const ChatPage = () => {
     // If workspace has nodes, automatically open the first channel (e.g. general)
     if (workspace.nodes && workspace.nodes.length > 0) {
       const channel = workspace.nodes[0];
+      const cleanName = (channel.name || 'general').replace(/^#/, '');
       selectChat({
         id: channel.id,
-        name: `#${channel.name}`,
-        rawName: channel.name,
+        name: `#${cleanName}`,
+        rawName: cleanName,
         workspaceName: workspace.name,
         type: 'channel',
         avatar: null,
         membersCount: channel.membersCount || workspace.membersCount || 1,
-        isAnnouncement: channel.isAnnouncement,
+        isAnnouncement: Boolean(channel.isAnnouncement),
+        joinCode: workspace.joinCode,
+      });
+    } else {
+      // Fallback default channel
+      const fallbackChannelId = workspace.defaultNodeId || `chan-general-${workspace.id}`;
+      selectChat({
+        id: fallbackChannelId,
+        name: '#general',
+        rawName: 'general',
+        workspaceName: workspace.name,
+        type: 'channel',
+        avatar: null,
+        membersCount: workspace.membersCount || 1,
+        isAnnouncement: false,
         joinCode: workspace.joinCode,
       });
     }

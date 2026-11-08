@@ -57,13 +57,48 @@ export const getWorkspaces = async (req, res, next) => {
       // Populate nodes and joinCode for each workspace
       const workspaces = await Promise.all(
         rawWorkspaces.map(async (ws) => {
-          const nodes = await WorkspaceNode.find({ workspaceId: ws.id }).lean();
+          let nodes = await WorkspaceNode.find({
+            $or: [
+              { workspaceId: ws.id },
+              ...(ws._id ? [{ workspaceId: ws._id.toString() }] : []),
+            ],
+          }).lean();
           let wsJoinCode = ws.joinCode;
           if (!wsJoinCode) {
             const shortCode = (ws.name || 'WS').substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
             wsJoinCode = 'WS-' + shortCode + '-' + Math.floor(1000 + Math.random() * 9000);
             await Workspace.updateOne({ id: ws.id }, { $set: { joinCode: wsJoinCode } });
           }
+
+          if (!nodes || nodes.length === 0) {
+            const defaultId = ws.defaultNodeId || `chan-general-${ws.id}`;
+            const fallbackNode = await WorkspaceNode.create({
+              id: defaultId,
+              workspaceId: ws.id,
+              name: 'General',
+              parentId: ws.rootNodeId || null,
+              children: [],
+              memberCount: ws.memberCount || 1,
+              hasConversation: true,
+              joinCode: wsJoinCode + '-GEN',
+              description: 'General discussions',
+            }).catch(() => null);
+
+            if (fallbackNode) {
+              nodes = [fallbackNode.toObject ? fallbackNode.toObject() : fallbackNode];
+            } else {
+              nodes = [
+                {
+                  id: defaultId,
+                  name: 'General',
+                  memberCount: ws.memberCount || 1,
+                  parentId: null,
+                  isAnnouncement: false,
+                },
+              ];
+            }
+          }
+
           return {
             ...ws,
             joinCode: wsJoinCode,
@@ -71,7 +106,7 @@ export const getWorkspaces = async (req, res, next) => {
               id: n.id,
               name: n.name,
               membersCount: n.memberCount || 1,
-              folder: n.parentId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
+              folder: n.parentId && n.parentId !== ws.rootNodeId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
               isAnnouncement: Boolean(n.isAnnouncement),
               joinCode: wsJoinCode,
             })),
@@ -300,10 +335,32 @@ export const createWorkspace = async (req, res, next) => {
         ],
       });
 
+      const formattedNewWs = {
+        ...(newWs.toObject ? newWs.toObject() : newWs),
+        nodes: [
+          {
+            id: generalNode.id,
+            name: generalNode.name,
+            membersCount: 1,
+            folder: null,
+            isAnnouncement: false,
+            joinCode: wsJoinCode,
+          },
+          {
+            id: rootNode.id,
+            name: rootNode.name,
+            membersCount: 1,
+            folder: null,
+            isAnnouncement: false,
+            joinCode: wsJoinCode,
+          },
+        ],
+      };
+
       return res.status(201).json({
         success: true,
         data: {
-          workspace: newWs,
+          workspace: formattedNewWs,
           rootNode,
           generalNode,
         },

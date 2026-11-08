@@ -127,27 +127,40 @@ export const Sidebar = ({
 
   // Group workspace channels by folder
   const groupedWorkspaceChannels = useMemo(() => {
-    if (!currentWorkspace || !currentWorkspace.nodes) return { root: [], folders: {} };
-    const nodes = currentWorkspace.nodes || [];
+    if (!currentWorkspace) return { root: [], folders: {} };
+    let nodes = currentWorkspace.nodes;
+    if (!Array.isArray(nodes) || nodes.length === 0) {
+      nodes = [
+        {
+          id: currentWorkspace.defaultNodeId || `chan-general-${currentWorkspace.id || 'ws'}`,
+          name: 'general',
+          rawName: 'general',
+          membersCount: currentWorkspace.membersCount || currentWorkspace.memberCount || 1,
+          folder: null,
+          isAnnouncement: false,
+        },
+      ];
+    }
     const q = search.trim().toLowerCase();
 
     const root = [];
     const folders = {};
 
     nodes.forEach((n) => {
-      if (q && !n.name.toLowerCase().includes(q) && !(n.folder && n.folder.toLowerCase().includes(q))) {
+      const cleanName = (n.name || 'general').replace(/^#/, '');
+      if (q && !cleanName.toLowerCase().includes(q) && !(n.folder && n.folder.toLowerCase().includes(q))) {
         return;
       }
 
       const item = {
         id: n.id,
-        name: `#${n.name}`,
-        rawName: n.name,
+        name: `#${cleanName}`,
+        rawName: cleanName,
         workspaceName: currentWorkspace.name,
         type: 'channel',
         avatar: null,
-        membersCount: n.membersCount || currentWorkspace.membersCount,
-        isAnnouncement: n.isAnnouncement,
+        membersCount: n.membersCount || currentWorkspace.membersCount || 1,
+        isAnnouncement: Boolean(n.isAnnouncement),
         joinCode: currentWorkspace.joinCode,
       };
 
@@ -530,81 +543,97 @@ export const Sidebar = ({
         ) : (
           /* ── WORKPLACES CHANNELS TREE ────────────────────────────── */
           <div className="space-y-1 select-none pt-1 font-heading">
-            {/* Root Channels */}
-            {groupedWorkspaceChannels.root.map((channel) => {
-              const isActive = activeChat?.id === channel.id;
-              return (
+            {groupedWorkspaceChannels.root.length === 0 && Object.keys(groupedWorkspaceChannels.folders).length === 0 ? (
+              <div className="text-center py-6 px-3 text-[var(--text-muted)] text-xs font-body">
+                <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No channels found</p>
+                <p className="text-[11px] mb-2.5">Create a channel in this workspace to get started.</p>
                 <button
-                  key={channel.id}
                   type="button"
-                  onClick={() => onSelectChat(channel)}
-                  className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
-                    isActive
-                      ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold border-l-3 border-[var(--accent-highlight)] pl-2'
-                      : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                  }`}
+                  onClick={handleOpenCreateChannel}
+                  className="py-1.5 px-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold rounded-lg border-none cursor-pointer"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {channel.isAnnouncement ? (
-                      <Megaphone size={14} className="text-[var(--accent-highlight)] shrink-0" />
-                    ) : (
-                      <Hash size={14} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
-                    )}
-                    <span className="text-sm sm:text-base font-medium truncate">{channel.rawName}</span>
-                  </div>
-                  <span className="text-xs text-[var(--text-muted)] shrink-0">
-                    {channel.membersCount}
-                  </span>
+                  + Create Channel
                 </button>
-              );
-            })}
+              </div>
+            ) : (
+              <>
+                {/* Root Channels */}
+                {groupedWorkspaceChannels.root.map((channel) => {
+                  const isActive = activeChat?.id === channel.id;
+                  return (
+                    <button
+                      key={channel.id}
+                      type="button"
+                      onClick={() => onSelectChat(channel)}
+                      className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer border-none text-left ${
+                        isActive
+                          ? 'bg-[var(--accent-subtle)] text-[var(--accent)] font-semibold border-l-3 border-[var(--accent-highlight)] pl-2'
+                          : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {channel.isAnnouncement ? (
+                          <Megaphone size={14} className="text-[var(--accent-highlight)] shrink-0" />
+                        ) : (
+                          <Hash size={14} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                        )}
+                        <span className="text-sm sm:text-base font-medium truncate">{channel.rawName}</span>
+                      </div>
+                      <span className="text-xs text-[var(--text-muted)] shrink-0">
+                        {channel.membersCount}
+                      </span>
+                    </button>
+                  );
+                })}
 
-            {/* Nested Folders & Categories */}
-            {Object.entries(groupedWorkspaceChannels.folders).map(([folderName, folderChannels]) => {
-              const isExpanded = expandedFolders[folderName] !== false;
-              return (
-                <div key={folderName} className="space-y-0.5">
-                  <div
-                    onClick={() => toggleFolder(folderName)}
-                    className="flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-1.5 truncate">
-                      {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                      <span className="truncate uppercase tracking-wider">{folderName}</span>
-                    </div>
-                    <span className="text-[9px] opacity-80">{folderChannels.length}</span>
-                  </div>
+                {/* Nested Folders & Categories */}
+                {Object.entries(groupedWorkspaceChannels.folders).map(([folderName, folderChannels]) => {
+                  const isExpanded = expandedFolders[folderName] !== false;
+                  return (
+                    <div key={folderName} className="space-y-0.5">
+                      <div
+                        onClick={() => toggleFolder(folderName)}
+                        className="flex items-center justify-between px-2 py-1 rounded-md text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5 truncate">
+                          {isExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                          <span className="truncate uppercase tracking-wider">{folderName}</span>
+                        </div>
+                        <span className="text-[9px] opacity-80">{folderChannels.length}</span>
+                      </div>
 
-                  {isExpanded && (
-                    <div className="pl-3 space-y-0.5 border-l border-[var(--border)] ml-2.5 my-0.5">
-                      {folderChannels.map((channel) => {
-                        const isActive = activeChat?.id === channel.id;
-                        return (
-                          <button
-                            key={channel.id}
-                            type="button"
-                            onClick={() => onSelectChat(channel)}
-                            className={`w-full px-2.5 py-1.5 rounded-xl flex items-center justify-between transition-all cursor-pointer border-none text-left ${
-                              isActive
-                                ? 'bg-[var(--accent-highlight-subtle)] text-[var(--accent-highlight)] font-bold border-l-4 border-[var(--accent-highlight)] pl-2 shadow-xs'
-                                : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <Hash size={14} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
-                              <span className="text-sm sm:text-base font-medium truncate">{channel.rawName}</span>
-                            </div>
-                            <span className="text-xs text-[var(--text-muted)] shrink-0">
-                              {channel.membersCount}
-                            </span>
-                          </button>
-                        );
-                      })}
+                      {isExpanded && (
+                        <div className="pl-3 space-y-0.5 border-l border-[var(--border)] ml-2.5 my-0.5">
+                          {folderChannels.map((channel) => {
+                            const isActive = activeChat?.id === channel.id;
+                            return (
+                              <button
+                                key={channel.id}
+                                type="button"
+                                onClick={() => onSelectChat(channel)}
+                                className={`w-full px-2.5 py-1.5 rounded-xl flex items-center justify-between transition-all cursor-pointer border-none text-left ${
+                                  isActive
+                                    ? 'bg-[var(--accent-highlight-subtle)] text-[var(--accent-highlight)] font-bold border-l-4 border-[var(--accent-highlight)] pl-2 shadow-xs'
+                                    : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Hash size={14} className={isActive ? 'text-[var(--accent)] shrink-0' : 'text-[var(--text-muted)] shrink-0'} />
+                                  <span className="text-sm sm:text-base font-medium truncate">{channel.rawName}</span>
+                                </div>
+                                <span className="text-xs text-[var(--text-muted)] shrink-0">
+                                  {channel.membersCount}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </div>
         )}
       </div>

@@ -11,6 +11,7 @@ import {
   Hash,
   BellOff,
   Ban,
+  Trash2,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import MessageBubble from './MessageBubble';
