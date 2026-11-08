@@ -376,17 +376,12 @@ class StorageService {
     const cleanUsername = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
     const uidStr = currentUserId ? currentUserId.toString() : '';
 
-    let filter = {};
-    if (uidStr && uidStr !== 'user-1') {
-      filter = {
-        $or: [
-          { ownerId: uidStr },
-          { ownerId: 'user-1' },
-        ],
-      };
+    if (!uidStr && !cleanUsername) {
+      return { contacts: [], groups: [] };
     }
 
-    const contacts = await Contact.find(filter).sort({ lastMessageTime: -1 }).lean();
+    // Only return contacts that belong specifically to this user
+    const contacts = await Contact.find({ ownerId: uidStr }).sort({ lastMessageTime: -1 }).lean();
 
     // Also look up any direct messages involving cleanUsername
     const dmMessages = await Message.find({
@@ -419,7 +414,7 @@ class StorageService {
             avatar: pUser.avatar,
             status: pUser.status || 'online',
             bio: pUser.bio || '',
-            lastMessage: lastMsg?.content || (lastMsg?.attachment ? '📎 Attachment' : 'Connected on Zyntra'),
+            lastMessage: lastMsg?.content || (lastMsg?.attachment ? '📎 Attachment' : 'Connected on ChatRooms'),
             lastMessageTime: lastMsg?.timestamp || new Date(),
             type: 'contact',
           });
@@ -445,7 +440,7 @@ class StorageService {
         avatar: u?.avatar || c.avatar,
         status: u?.status || c.status || 'offline',
         bio: u?.bio || c.bio || '',
-        lastMessage: c.lastMessage || 'Connected on Zyntra',
+        lastMessage: c.lastMessage || 'Connected on ChatRooms',
         lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toISOString() : new Date().toISOString(),
         type: 'contact',
       };
@@ -453,7 +448,7 @@ class StorageService {
 
     conversations.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
-    const groups = await PersonalGroup.find({}).sort({ lastMessageTime: -1 }).lean();
+    const groups = await PersonalGroup.find({ creatorId: uidStr }).sort({ lastMessageTime: -1 }).lean();
     const formattedGroups = groups.map((g) => ({
       id: g.id,
       name: g.name,
@@ -494,7 +489,7 @@ class StorageService {
         avatar: targetUser?.avatar || avatar || null,
         status: targetUser?.status || 'online',
         bio: targetUser?.bio || bio || '',
-        lastMessage: 'Connected on Zyntra',
+        lastMessage: 'Connected on ChatRooms',
         lastMessageTime: new Date(),
       });
     }
@@ -512,7 +507,7 @@ class StorageService {
           avatar: currentUser?.avatar || null,
           status: currentUser?.status || 'online',
           bio: currentUser?.bio || '',
-          lastMessage: 'Connected on Zyntra',
+          lastMessage: 'Connected on ChatRooms',
           lastMessageTime: new Date(),
         }).catch(() => {});
       }
@@ -526,7 +521,7 @@ class StorageService {
       avatar: contact.avatar,
       status: contact.status || 'online',
       bio: contact.bio || '',
-      lastMessage: contact.lastMessage || 'Connected on Zyntra',
+      lastMessage: contact.lastMessage || 'Connected on ChatRooms',
       lastMessageTime: new Date().toISOString(),
       type: 'contact',
     };

@@ -5,8 +5,16 @@ import storageService from '../services/storageService.js';
 // @access  Public / Private
 export const getContactsAndGroups = async (req, res, next) => {
   try {
-    const userId = req.user ? (req.user._id || req.user.id) : 'user-1';
-    const username = req.user ? (req.user.primaryUsername || req.user.username) : 'soumya';
+    const userId = req.user ? (req.user._id || req.user.id) : null;
+    const username = req.user ? (req.user.primaryUsername || req.user.username) : null;
+
+    if (!userId) {
+      return res.status(200).json({
+        success: true,
+        contacts: [],
+        groups: [],
+      });
+    }
 
     const data = await storageService.getUserConversations(userId, username);
 
