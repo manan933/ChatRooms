@@ -139,15 +139,16 @@ export const useChatStore = create((set, get) => ({
   },
 
   // Send message with instant optimistic update
-  sendMessage: async (chatId, content, attachment = null, currentUser) => {
-    if (!chatId || (!content?.trim() && !attachment)) return;
+  sendMessage: async (chatId, content, attachment = null, currentUser, extra = {}) => {
+    if (!chatId || (!content?.trim() && !attachment && !extra?.callDetails)) return;
 
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const optimisticMessage = {
       id: messageId,
       chatId,
       content: content ? content.trim() : '',
-      type: attachment?.type || 'text',
+      type: extra?.type || attachment?.type || 'text',
+      callDetails: extra?.callDetails || null,
       attachment: attachment || null,
       senderId: currentUser?.id || currentUser?._id || 'user-1',
       senderName: currentUser?.name || 'You',
@@ -175,7 +176,9 @@ export const useChatStore = create((set, get) => ({
     api.messages.send(chatId, optimisticMessage).catch((e) => { console.error('ignored', e); });
 
     // 4. Update last message preview
-    const previewText = optimisticMessage.content || (attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment');
+    const previewText = extra?.type === 'call'
+      ? (extra?.callDetails?.isVideo ? '📹 ' : '📞 ') + (optimisticMessage.content || 'Call')
+      : (optimisticMessage.content || (attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment'));
     set((state) => ({
       contacts: state.contacts.map((c) =>
         c.id === chatId ? { ...c, lastMessage: previewText, lastMessageTime: new Date().toISOString() } : c
@@ -207,7 +210,9 @@ export const useChatStore = create((set, get) => ({
       };
     });
 
-    const preview = message.content || (message.attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment');
+    const preview = message.type === 'call'
+      ? (message.callDetails?.isVideo ? '📹 ' : '📞 ') + (message.content || 'Call')
+      : (message.content || (message.attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment'));
     const hasChat = get().contacts.some((c) => c.id === chatId) || get().groups.some((g) => g.id === chatId);
 
     if (!hasChat) {

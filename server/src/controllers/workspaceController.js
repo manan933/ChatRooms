@@ -220,9 +220,10 @@ export const createWorkspace = async (req, res, next) => {
       const rootNodeId = `root-${wsId}`;
       const defaultChannelId = `chan-general-${wsId}`;
       const shortCode = trimmedName.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
-      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      const salt = Date.now().toString(36).slice(-3).toUpperCase();
+      const randomSuffix = `${Math.floor(1000 + Math.random() * 9000)}-${salt}`;
       const rootJoinCode = `ZYN-${shortCode}-${randomSuffix}`;
-      const generalJoinCode = `ZYN-${shortCode}-${randomSuffix + 1}`;
+      const generalJoinCode = `ZYN-${shortCode}-${randomSuffix}-GEN`;
 
       const creatorMember = {
         id: req.user?._id?.toString() || req.user?.id || 'user-1',
@@ -338,7 +339,8 @@ export const createGroup = async (req, res, next) => {
       const parent = parentNodeId ? await WorkspaceNode.findOne({ id: parentNodeId }) : null;
       const newId = `grp-${Date.now()}`;
       const cleanPrefix = name.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'GRP';
-      const joinCode = `ZYN-${cleanPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const salt = Date.now().toString(36).slice(-3).toUpperCase();
+      const joinCode = `ZYN-${cleanPrefix}-${Math.floor(1000 + Math.random() * 9000)}-${salt}`;
 
       const creatorMember = {
         id: req.user?._id?.toString() || req.user?.id || 'user-1',

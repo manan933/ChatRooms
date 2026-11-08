@@ -384,6 +384,20 @@ export const CallModal = ({
     };
   }, [isOpen]);
 
+  // Synchronize remote media tracks when call connects
+  useEffect(() => {
+    if (callStatus === 'connected' && remoteStreamRef.current) {
+      if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStreamRef.current) {
+        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+        remoteVideoRef.current.play().catch(() => {});
+      }
+      if (remoteAudioRef.current && remoteAudioRef.current.srcObject !== remoteStreamRef.current) {
+        remoteAudioRef.current.srcObject = remoteStreamRef.current;
+        remoteAudioRef.current.play().catch(() => {});
+      }
+    }
+  }, [callStatus]);
+
   if (!isOpen) return null;
 
   // ── Controls: Microphone Mute/Unmute ─────────────────────────
@@ -552,11 +566,11 @@ export const CallModal = ({
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className={`w-full h-full object-cover ${callStatus === 'connected' && !cameraOff ? 'block' : 'hidden'}`}
+            className={`w-full h-full object-cover ${callStatus === 'connected' && isVideo ? 'block' : 'hidden'}`}
           />
 
           {/* Voice Mode or Waiting / Ringing Placeholder */}
-          {(callStatus !== 'connected' || cameraOff) && (
+          {(callStatus !== 'connected' || !isVideo) && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-primary)] p-6 z-0">
               <div className="relative mb-4">
                 <Avatar name={contactName} src={contactAvatar} size="xl" />

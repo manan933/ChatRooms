@@ -168,8 +168,8 @@ export const MessageBubble = ({
           }}
           className={`relative px-3.5 py-2 rounded-2xl text-[14px] font-body leading-relaxed break-words transition-all ${
             isOwn
-              ? 'bg-[var(--bubble-sent)] text-[var(--bubble-sent-text)] rounded-br-xs shadow-md shadow-[var(--accent)]/30'
-              : 'bg-[var(--bubble-received)] text-[var(--bubble-received-text)] border border-[var(--border)] rounded-bl-xs backdrop-blur-md shadow-xs'
+              ? 'bubble-sent rounded-br-xs'
+              : 'bubble-received rounded-bl-xs'
           }`}
         >
           {/* Attachment Presentation */}
@@ -233,8 +233,12 @@ export const MessageBubble = ({
               <div
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
                   message.callDetails?.status === 'missed' || message.callDetails?.status === 'declined'
-                    ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                    : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                    ? isOwn
+                      ? 'bg-red-400/25 text-red-100 border border-red-300/40'
+                      : 'bg-red-500/15 text-red-400 border border-red-500/30'
+                    : isOwn
+                      ? 'bg-emerald-400/25 text-emerald-100 border border-emerald-300/40'
+                      : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                 }`}
               >
                 {message.callDetails?.isVideo ? (
@@ -247,16 +251,16 @@ export const MessageBubble = ({
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-[var(--text-primary)] truncate flex items-center gap-1.5">
+                <div className={`text-xs font-bold truncate flex items-center gap-1.5 ${isOwn ? 'text-white' : 'text-[var(--text-primary)]'}`}>
                   <span>{message.callDetails?.isVideo ? 'Video Call' : 'Voice Call'}</span>
                   {message.callDetails?.status === 'missed' && (
-                    <span className="text-[10px] text-red-400 font-semibold">(Missed)</span>
+                    <span className={`text-[10px] font-semibold ${isOwn ? 'text-red-200' : 'text-red-400'}`}>(Missed)</span>
                   )}
                   {message.callDetails?.status === 'declined' && (
-                    <span className="text-[10px] text-red-400 font-semibold">(Declined)</span>
+                    <span className={`text-[10px] font-semibold ${isOwn ? 'text-red-200' : 'text-red-400'}`}>(Declined)</span>
                   )}
                 </div>
-                <div className="text-[11px] font-body text-[var(--text-secondary)] truncate mt-0.5">
+                <div className={`text-[11px] font-body truncate mt-0.5 ${isOwn ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}>
                   {content}
                 </div>
               </div>
@@ -265,7 +269,11 @@ export const MessageBubble = ({
                 <button
                   type="button"
                   onClick={() => onCallBack?.(message.callDetails?.isVideo)}
-                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-current transition-all cursor-pointer border border-white/10 flex items-center justify-center shrink-0 active:scale-95"
+                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0 active:scale-95 ${
+                    isOwn
+                      ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30'
+                      : 'bg-[var(--accent-subtle)] hover:bg-[var(--accent)] text-[var(--accent)] hover:text-white border border-[var(--border)]'
+                  }`}
                   title={message.callDetails?.isVideo ? 'Call back with Video' : 'Call back'}
                 >
                   {message.callDetails?.isVideo ? <Video size={14} /> : <Phone size={14} />}
@@ -303,7 +311,7 @@ export const MessageBubble = ({
               </div>
             </div>
           ) : (
-            content && <div className="whitespace-pre-wrap">{renderContentWithEmojis(content)}</div>
+            content && <div className={`whitespace-pre-wrap ${isOwn ? 'text-white' : 'text-inherit'}`}>{renderContentWithEmojis(content)}</div>
           )}
 
           {/* Time & Read Status Indicator */}

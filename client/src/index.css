@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-:root {
+:root, [data-theme="dark"] {
   /* Theme 2 (Rank 1): Midnight Black + Electric Blue + Cantaloupe Orange */
   --bg-primary: #02070A; /* Midnight Black */
   --bg-secondary: rgba(6, 15, 23, 0.72);
@@ -46,8 +46,10 @@
   --gradient-hybrid: linear-gradient(135deg, #0297DE 0%, #FC734D 100%);
 
   --bubble-sent: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%);
+  --bubble-sent-bg: #0297DE;
   --bubble-sent-text: #FCFFFF;
   --bubble-received: rgba(12, 25, 38, 0.75);
+  --bubble-received-bg: #0C1926;
   --bubble-received-text: #FCFFFF;
 
   --online: #0297DE;
@@ -103,8 +105,10 @@
   --gradient-hybrid: linear-gradient(135deg, #0593C6 0%, #D83995 100%);
 
   --bubble-sent: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%);
+  --bubble-sent-bg: #0593C6;
   --bubble-sent-text: #FCFFFF;
   --bubble-received: rgba(240, 248, 252, 0.85);
+  --bubble-received-bg: #F0F8FC;
   --bubble-received-text: #02202C;
 
   --online: #0593C6;
@@ -266,4 +270,39 @@ button, a, input, textarea, select, [role="button"] {
 }
 .glow-highlight {
   box-shadow: var(--highlight-glow);
+}
+
+/* Sent and Received Chat Message Bubbles */
+.bubble-sent {
+  background-color: #0297DE !important;
+  background-image: linear-gradient(135deg, #0297DE 0%, #00B4D8 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(2, 151, 222, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+}
+
+[data-theme="light"] .bubble-sent {
+  background-color: #0593C6 !important;
+  background-image: linear-gradient(135deg, #0593C6 0%, #38BDF8 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(5, 147, 198, 0.30);
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+.bubble-received {
+  background-color: #0C1926 !important;
+  background-image: none !important;
+  color: #FCFFFF !important;
+  border: 1px solid var(--border) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .bubble-received {
+  background-color: #F0F8FC !important;
+  background-image: none !important;
+  color: #02202C !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 2px 10px rgba(5, 147, 198, 0.10);
 }

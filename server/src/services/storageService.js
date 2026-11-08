@@ -656,7 +656,8 @@ class StorageService {
   async createWorkspace(name, contextualUsername, userId) {
     const wsId = `ws-${Date.now()}`;
     const cleanPrefix = name.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
-    const code = `ZYN-${cleanPrefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const salt = Date.now().toString(36).slice(-3).toUpperCase();
+    const code = `ZYN-${cleanPrefix}-${Math.floor(1000 + Math.random() * 9000)}-${salt}`;
 
     const rootNodeId = `root-${wsId}`;
     const defaultNodeId = `${wsId}-general`;
@@ -700,7 +701,8 @@ class StorageService {
   async addNodeToWorkspace(workspaceId, { name, folder, description, isAnnouncement = false }) {
     const cleanName = (name || 'new-channel').replace(/^#/, '').toLowerCase().trim();
     const nodeId = `${workspaceId}-${cleanName}-${Date.now().toString(36)}`;
-    const joinCode = `ZYN-${cleanName.substring(0, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const salt = Date.now().toString(36).slice(-3).toUpperCase();
+    const joinCode = `ZYN-${cleanName.substring(0, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}-${salt}`;
 
     const node = await WorkspaceNode.create({
       id: nodeId,
