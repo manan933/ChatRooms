@@ -1,6 +1,20 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Loader2, ArrowRight, Lock, CheckCircle2 } from '../components/ui/Icons';
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  ArrowRight,
+  Lock,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
+  Phone,
+  Sun,
+  Moon,
+  MessageSquare,
+} from '../components/ui/Icons';
 import useAuthStore from '../store/authStore';
+import useThemeStore from '../store/themeStore';
 import LegalModal from '../components/modals/LegalModal';
 import BrandLogo from '../components/ui/BrandLogo';
 
@@ -15,10 +29,11 @@ export const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
 
-  // Validation errors state (Smart form validation - Item 4)
+  // Validation errors state
   const [validationErrors, setValidationErrors] = useState({});
 
   const { login, register, isLoading, error, clearError } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
 
   const validate = () => {
     const errs = {};
@@ -35,7 +50,7 @@ export const AuthPage = () => {
     }
 
     if (!email.trim()) {
-      errs.email = 'Email address is required';
+      errs.email = 'Email address or username is required';
     } else if (isRegister && !emailRegex.test(email.trim())) {
       errs.email = 'Please enter a valid email address';
     }
@@ -49,8 +64,6 @@ export const AuthPage = () => {
     setValidationErrors(errs);
     return Object.keys(errs).length === 0;
   };
-
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -69,297 +82,390 @@ export const AuthPage = () => {
   };
 
   return (
-    <div className="relative w-full h-full min-h-screen flex flex-col md:flex-row bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden select-none" style={{ background: 'var(--bg-app-gradient)' }}>
-      {/* Atmospheric Ambient Radiant Glows */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden select-none" aria-hidden="true">
+    <div
+      className="relative min-h-screen w-full flex flex-col justify-between overflow-x-hidden font-body text-[var(--text-primary)] transition-colors select-none"
+      style={{
+        background: 'var(--bg-app-gradient)',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      {/* ── Luminous Atmospheric Radiant Glows (Pelmatech & FluxEdit Auras) ── */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+        {/* Top-Left Electric Blue / Sky Blue Halo */}
         <div
-          className="absolute -top-[15%] left-1/4 w-[750px] h-[500px] rounded-full opacity-60 blur-3xl pointer-events-none"
-          style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }}
+          className="absolute -top-[12%] -left-[10%] w-[700px] sm:w-[900px] h-[500px] sm:h-[650px] rounded-full opacity-60 blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, var(--accent) 0%, transparent 68%)',
+          }}
         />
+        {/* Bottom-Right Cantaloupe Orange / Hot Pink Horizon Bloom */}
         <div
-          className="absolute -bottom-[20%] right-1/4 w-[850px] h-[550px] rounded-full opacity-55 blur-3xl pointer-events-none"
-          style={{ background: 'radial-gradient(circle, var(--accent-highlight) 0%, transparent 70%)' }}
+          className="absolute -bottom-[15%] -right-[10%] w-[750px] sm:w-[950px] h-[550px] sm:h-[700px] rounded-full opacity-55 blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, var(--accent-highlight) 0%, transparent 68%)',
+          }}
+        />
+        {/* Center Subdued Ambient Core */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20 blur-3xl"
+          style={{
+            background: 'radial-gradient(circle, var(--accent) 0%, var(--accent-highlight) 60%, transparent 80%)',
+          }}
         />
       </div>
 
-      {/* ── Left Showcase Panel (Desktop / Tablet) ─────────────────── */}
-      <div className="hidden md:flex md:w-[48%] lg:w-[50%] h-full flex-col justify-between p-10 lg:p-14 bg-[var(--bg-secondary)]/75 backdrop-blur-xl border-r border-[var(--border)] relative z-10 overflow-hidden shrink-0">
-        {/* Brand Header */}
-        <div>
-          <div className="mb-10">
-            <BrandLogo variant="lockup" size="lg" />
+      {/* ── Top Header Navigation Bar ──────────────────────────────── */}
+      <header className="relative z-20 w-full max-w-7xl mx-auto px-4 sm:px-8 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BrandLogo variant="lockup" size="md" />
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Live Platform Badge (Desktop) */}
+          <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-glass)] border border-[var(--border)] text-xs font-heading font-semibold text-[var(--text-secondary)] backdrop-blur-md shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Next-Gen Realtime Platform</span>
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-[var(--accent-subtle)] text-[var(--accent)]">
+              v2.0
+            </span>
           </div>
 
-          <div className="space-y-3 max-w-md">
-            {/* No gradient hero text - Item 30 */}
-            <h1 className="text-3xl lg:text-4xl font-heading font-bold tracking-tight text-[var(--text-primary)] leading-tight">
-              Fast, focused messaging for teams and creators.
+          {/* Quick Theme Switcher */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[var(--bg-secondary)] hover:bg-[var(--bg-hover)] border border-[var(--border)] text-xs font-heading font-bold cursor-pointer transition-all shadow-xs active:scale-95 text-[var(--text-primary)]"
+            title="Toggle Vibrant Theme"
+          >
+            {theme === 'dark' ? (
+              <>
+                <Sun size={15} className="text-amber-400" />
+                <span className="hidden xs:inline">Skyblue Light</span>
+              </>
+            ) : (
+              <>
+                <Moon size={15} className="text-[#0593C6]" />
+                <span className="hidden xs:inline">Midnight Dark</span>
+              </>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main Showcase & Control Center Grid ──────────────────────── */}
+      <main className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-8 py-4 sm:py-8 flex-1 flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-14 items-center">
+          {/* ── Left Editorial Showcase (FluxEdit & Pelmatech Style) ─── */}
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--accent-subtle)] border border-[var(--border)] text-xs font-heading font-bold text-[var(--accent)] w-fit backdrop-blur-md shadow-xs">
+              <Zap size={13} className="text-[var(--accent-highlight)]" />
+              <span>Ultra Low-Latency Channels & Direct Chat</span>
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-heading font-bold tracking-tight text-[var(--text-primary)] leading-[1.08] m-0">
+              Communicate at the speed of{' '}
+              <span className="font-body italic font-normal text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent)] via-[var(--accent-highlight)] to-[var(--accent)]">
+                thought.
+              </span>
             </h1>
-            <p className="text-sm lg:text-base font-body text-[var(--text-secondary)] leading-relaxed">
-              Organize projects into channels, send direct messages, and collaborate in real-time with zero friction.
+
+            <p className="text-base sm:text-lg font-body text-[var(--text-secondary)] leading-relaxed max-w-xl m-0">
+              Organize team channels, exchange real-time direct messages, and connect with instant audio & video—crafted with pure visual vibrancy.
             </p>
+
+            {/* Floating Glassmorphic Product Preview Card */}
+            <div className="relative max-w-lg hidden sm:block pt-2">
+              {/* Subtle ambient blur behind widget */}
+              <div className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-[var(--accent)]/20 via-[var(--accent-highlight)]/20 to-[var(--accent)]/10 blur-xl opacity-75 pointer-events-none" />
+
+              <div className="relative rounded-3xl bg-[var(--bg-glass)]/85 backdrop-blur-2xl border border-[var(--border)] p-5 shadow-2xl space-y-3.5">
+                {/* Live Channel Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--border)] flex items-center justify-center font-bold text-xs">
+                      #
+                    </div>
+                    <div>
+                      <div className="text-sm font-heading font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                        <span>general</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                      </div>
+                      <div className="text-[11px] font-body text-[var(--text-muted)]">Engineering Core · 12 members</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[var(--accent-highlight)]/15 text-[var(--accent-highlight)] border border-[var(--accent-highlight)]/30 text-xs font-bold font-heading">
+                    <Phone size={12} />
+                    <span>04:20 Call Active</span>
+                  </div>
+                </div>
+
+                {/* Mock Live Message Bubbles */}
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#0297DE] to-[#0593C6] text-white text-xs font-heading font-bold flex items-center justify-center shrink-0 shadow-sm">
+                      SC
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 text-xs font-heading">
+                        <span className="font-bold text-[var(--text-primary)]">Sarah Chen</span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-body">10:42 AM</span>
+                      </div>
+                      <div className="mt-1 p-3 rounded-2xl rounded-tl-sm bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs sm:text-[13px] font-body text-[var(--text-primary)] leading-relaxed shadow-xs">
+                        Database cluster connected. Latency dropped to sub-10ms across all websocket nodes! 🚀
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2.5 pl-6">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D83995] to-[#FC734D] text-white text-xs font-heading font-bold flex items-center justify-center shrink-0 shadow-sm">
+                      AP
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 text-xs font-heading">
+                        <span className="font-bold text-[var(--text-primary)]">Alex Patel</span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-body">10:43 AM</span>
+                      </div>
+                      <div className="mt-1 p-3 rounded-2xl rounded-tl-sm bg-[var(--accent)] text-white text-xs sm:text-[13px] font-body leading-relaxed shadow-md shadow-[var(--accent)]/20">
+                        Read receipts and audio calls verified. Ready for deployment. 👍
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Metric Footer Badges */}
+                <div className="pt-2 flex items-center justify-between text-xs font-heading text-[var(--text-muted)] border-t border-[var(--border-subtle)]">
+                  <span className="flex items-center gap-1">
+                    <ShieldCheck size={14} className="text-emerald-400" /> End-to-End Encrypted
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Zap size={14} className="text-[var(--accent-highlight)]" /> Zero Latency
+                  </span>
+                  <span>Hardware Accelerated</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Right Floating Glass Authentication Card ─────────────── */}
+          <div className="lg:col-span-5 w-full flex justify-center">
+            <div className="relative w-full max-w-[430px]">
+              {/* Outer Luminous Glow behind the Card */}
+              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[var(--accent)]/35 via-[var(--accent-highlight)]/35 to-[var(--accent)]/25 blur-xl opacity-75 pointer-events-none" />
+
+              <div className="relative rounded-3xl bg-[var(--bg-glass)]/95 backdrop-blur-2xl border border-[var(--border)] p-6 sm:p-8 shadow-2xl">
+                {/* Segmented Tab Switcher */}
+                <div className="flex items-center gap-1 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl mb-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRegister(false);
+                      clearError();
+                      setValidationErrors({});
+                    }}
+                    className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer border-none ${
+                      !isRegister
+                        ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/30'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
+                    }`}
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsRegister(true);
+                      clearError();
+                      setValidationErrors({});
+                    }}
+                    className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer border-none ${
+                      isRegister
+                        ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/30'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
+                    }`}
+                  >
+                    Create Account
+                  </button>
+                </div>
+
+                {/* Form Header */}
+                <div className="mb-5">
+                  <h2 className="text-2xl sm:text-3xl font-heading font-bold tracking-tight text-[var(--text-primary)] m-0">
+                    {isRegister ? 'Join ChatRooms' : 'Welcome back'}
+                  </h2>
+                  <p className="text-xs sm:text-sm font-body text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                    {isRegister
+                      ? 'Create your account to start collaborating in seconds.'
+                      : 'Enter your account details below to access your channels.'}
+                  </p>
+                </div>
+
+                {/* Error Banner */}
+                {error && (
+                  <div className="p-3.5 rounded-xl bg-[var(--danger)]/15 border border-[var(--danger)]/30 text-[var(--danger)] text-xs sm:text-sm mb-4 flex items-center gap-2 font-heading font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)] shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+                  {isRegister && (
+                    <>
+                      <div>
+                        <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Alex Morgan"
+                          value={name}
+                          onChange={(e) => {
+                            setName(e.target.value);
+                            if (validationErrors.name) setValidationErrors((p) => ({ ...p, name: null }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border ${
+                            validationErrors.name ? 'border-[var(--danger)] ring-1 ring-[var(--danger)]' : 'border-[var(--border)]'
+                          } rounded-xl text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-all`}
+                        />
+                        {validationErrors.name && (
+                          <span className="text-[11px] font-body text-[var(--danger)] mt-1 block">
+                            {validationErrors.name}
+                          </span>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                          Username
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. alex_m"
+                          value={username}
+                          onChange={(e) => {
+                            setUsername(e.target.value);
+                            if (validationErrors.username) setValidationErrors((p) => ({ ...p, username: null }));
+                          }}
+                          className={`w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border ${
+                            validationErrors.username ? 'border-[var(--danger)] ring-1 ring-[var(--danger)]' : 'border-[var(--border)]'
+                          } rounded-xl text-sm font-heading text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-all`}
+                        />
+                        {validationErrors.username && (
+                          <span className="text-[11px] font-body text-[var(--danger)] mt-1 block">
+                            {validationErrors.username}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  <div>
+                    <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                      {isRegister ? 'Email address' : 'Email or username'}
+                    </label>
+                    <input
+                      type={isRegister ? 'email' : 'text'}
+                      placeholder={isRegister ? 'alex@example.com' : 'Enter username or email'}
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (validationErrors.email) setValidationErrors((p) => ({ ...p, email: null }));
+                      }}
+                      className={`w-full px-3.5 py-2.5 bg-[var(--bg-secondary)] border ${
+                        validationErrors.email ? 'border-[var(--danger)] ring-1 ring-[var(--danger)]' : 'border-[var(--border)]'
+                      } rounded-xl text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-all`}
+                    />
+                    {validationErrors.email && (
+                      <span className="text-[11px] font-body text-[var(--danger)] mt-1 block">
+                        {validationErrors.email}
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs sm:text-sm font-heading font-bold text-[var(--text-secondary)] block mb-1">
+                      Password
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="••••••••••••"
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (validationErrors.password) setValidationErrors((p) => ({ ...p, password: null }));
+                        }}
+                        className={`w-full px-3.5 pr-10 py-2.5 bg-[var(--bg-secondary)] border ${
+                          validationErrors.password ? 'border-[var(--danger)] ring-1 ring-[var(--danger)]' : 'border-[var(--border)]'
+                        } rounded-xl text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-all`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer border-none bg-transparent flex items-center justify-center p-1"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {validationErrors.password && (
+                      <span className="text-[11px] font-body text-[var(--danger)] mt-1 block">
+                        {validationErrors.password}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Radiant CTA Submit Button */}
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="btn-cta-vibrant w-full h-12 mt-2 rounded-xl text-sm sm:text-base font-heading font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.98] shadow-lg shadow-[var(--accent-highlight)]/30"
+                  >
+                    {isLoading ? (
+                      <Loader2 size={18} className="animate-spin text-white" />
+                    ) : (
+                      <>
+                        <span>{isRegister ? 'Create Account' : 'Sign In'}</span>
+                        <ArrowRight size={17} />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Encrypted Protection Note */}
+                <div className="mt-6 flex items-center justify-center gap-1.5 text-xs font-body text-[var(--text-muted)] text-center">
+                  <Lock size={12} className="text-[var(--accent)] shrink-0" />
+                  <span>Encrypted with JWT & bcrypt · </span>
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalOpen(true)}
+                    className="text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer text-xs font-heading font-semibold p-0"
+                  >
+                    Privacy & Terms
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      </main>
 
-        {/* Realistic Interactive Product Preview Mockup */}
-        <div className="my-auto py-6 max-w-md w-full">
-          <div className="rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] p-4 shadow-sm space-y-3">
-            {/* Mock Channel Header */}
-            <div className="flex items-center justify-between pb-2.5 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-heading font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
-                  <span className="text-[var(--text-muted)]">#</span> general
-                </span>
-                <span className="text-[10px] text-[var(--online)] bg-[var(--accent-subtle)] px-2 py-0.5 rounded font-heading font-semibold border border-[var(--border-subtle)]">
-                  Active
-                </span>
-              </div>
-              <span className="text-xs font-heading text-[var(--text-muted)]">Engineering</span>
-            </div>
-
-            {/* Mock Message 1 */}
-            <div className="flex items-start gap-2.5 pt-1">
-              <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-[var(--text-primary)] text-[11px] font-heading font-bold flex items-center justify-center shrink-0">
-                SC
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-heading font-semibold text-[var(--text-primary)]">Sarah Chen</span>
-                  <span className="text-[10px] font-body text-[var(--text-muted)]">10:42 AM</span>
-                </div>
-                <div className="mt-1 text-xs font-body text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-2 rounded-xl rounded-tl-sm leading-relaxed">
-                  Database cluster connected and encrypted. Latency dropped to sub-20ms.
-                </div>
-              </div>
-            </div>
-
-            {/* Mock Message 2 */}
-            <div className="flex items-start gap-2.5">
-              <div className="w-7 h-7 rounded-full bg-[var(--accent-highlight)] text-[var(--text-primary)] text-[11px] font-heading font-bold flex items-center justify-center shrink-0">
-                AP
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-heading font-semibold text-[var(--text-primary)]">Alex Patel</span>
-                  <span className="text-[10px] font-body text-[var(--text-muted)]">10:43 AM</span>
-                </div>
-                <div className="mt-1 text-xs font-body text-[var(--text-secondary)] bg-[var(--bg-secondary)] border border-[var(--border-subtle)] p-2 rounded-xl rounded-tl-sm leading-relaxed">
-                  Real-time message synchronization verified across all devices.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Legal & Consent Trigger (Item 27) */}
-        <div className="pt-4 border-t border-[var(--border-subtle)] max-w-md flex items-center justify-between text-xs font-body text-[var(--text-muted)]">
-          <span>Protected with bcrypt & JWT auth</span>
+      {/* ── Page Footer ────────────────────────────────────────────── */}
+      <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-body text-[var(--text-muted)] border-t border-[var(--border-subtle)]">
+        <div>ChatRooms v2.0 · Focused Real-time Communications</div>
+        <div className="flex items-center gap-4">
           <button
             type="button"
             onClick={() => setLegalModalOpen(true)}
-            className="text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer text-xs font-heading font-semibold"
+            className="text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer text-xs transition-colors"
           >
-            Privacy & Terms
+            Privacy Policy & Terms
           </button>
+          <span>·</span>
+          <span>WebSocket Real-Time Sync</span>
         </div>
-      </div>
-
-      {/* ── Right Authentication Panel ─────────────────────────────── */}
-      <div className="flex-1 h-full min-h-0 overflow-y-auto custom-scrollbar flex flex-col justify-center items-center px-6 sm:px-12 lg:px-16 py-10">
-        <div className="w-full max-w-[420px] my-auto flex flex-col">
-          {/* Mobile Brand Header */}
-          <div className="md:hidden flex flex-col items-center text-center mb-6">
-            <BrandLogo variant="lockup" size="lg" className="mb-2" />
-            <p className="text-xs font-body text-[var(--text-muted)] mt-1">
-              Fast, focused messaging for teams and direct chats.
-            </p>
-          </div>
-
-          {/* Form Header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-heading font-bold tracking-tight text-[var(--text-primary)] m-0">
-              {isRegister ? 'Create an account' : 'Sign in to ChatRooms'}
-            </h2>
-            <p className="text-xs sm:text-sm font-body text-[var(--text-secondary)] mt-1 leading-relaxed">
-              {isRegister
-                ? 'Join to access channels and direct messaging.'
-                : 'Enter your account details below to continue.'}
-            </p>
-          </div>
-
-          {/* Clean Segmented Tab Switcher */}
-          <div className="flex items-center gap-1 p-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl mb-5">
-            <button
-              type="button"
-              onClick={() => {
-                setIsRegister(false);
-                clearError();
-                setValidationErrors({});
-              }}
-              className={`flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer border-none ${
-                !isRegister
-                  ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setIsRegister(true);
-                clearError();
-                setValidationErrors({});
-              }}
-              className={`flex-1 py-2 rounded-lg text-xs font-heading font-bold transition-all cursor-pointer border-none ${
-                isRegister
-                  ? 'bg-gradient-to-r from-[var(--accent)] to-[var(--accent-highlight)] text-white shadow-md shadow-[var(--accent-highlight)]/25'
-                  : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
-
-          {/* Server Error Banner */}
-          {error && (
-            <div className="p-3 rounded-xl bg-[var(--danger)]/10 border border-[var(--danger)]/25 text-[var(--danger)] text-xs mb-4 flex items-center gap-2 font-body">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--danger)] shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-            {isRegister && (
-              <>
-                <div>
-                  <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Alex Morgan"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      if (validationErrors.name) setValidationErrors((p) => ({ ...p, name: null }));
-                    }}
-                    className={`w-full h-10 px-3 bg-[var(--bg-secondary)] border ${
-                      validationErrors.name ? 'border-[var(--danger)]' : 'border-[var(--border)]'
-                    } rounded-lg text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
-                  />
-                  {validationErrors.name && (
-                    <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.name}</span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
-                    Username
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="alex"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      if (validationErrors.username) setValidationErrors((p) => ({ ...p, username: null }));
-                    }}
-                    className={`w-full h-10 px-3 bg-[var(--bg-secondary)] border ${
-                      validationErrors.username ? 'border-[var(--danger)]' : 'border-[var(--border)]'
-                    } rounded-lg text-sm font-heading text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
-                  />
-                  {validationErrors.username && (
-                    <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.username}</span>
-                  )}
-                </div>
-              </>
-            )}
-
-            <div>
-              <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
-                {isRegister ? 'Email address' : 'Email or username'}
-              </label>
-              <input
-                type={isRegister ? 'email' : 'text'}
-                placeholder={isRegister ? 'alex@example.com' : 'username or email'}
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (validationErrors.email) setValidationErrors((p) => ({ ...p, email: null }));
-                }}
-                className={`w-full h-10 px-3 bg-[var(--bg-secondary)] border ${
-                  validationErrors.email ? 'border-[var(--danger)]' : 'border-[var(--border)]'
-                } rounded-lg text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
-              />
-              {validationErrors.email && (
-                <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.email}</span>
-              )}
-            </div>
-
-            <div>
-              <label className="text-xs font-heading font-semibold text-[var(--text-secondary)] block mb-1">
-                Password
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (validationErrors.password) setValidationErrors((p) => ({ ...p, password: null }));
-                  }}
-                  className={`w-full h-10 pl-3 pr-10 bg-[var(--bg-secondary)] border ${
-                    validationErrors.password ? 'border-[var(--danger)]' : 'border-[var(--border)]'
-                  } rounded-lg text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] outline-none focus:border-[var(--border-focus)] transition-colors`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer border-none bg-transparent flex items-center justify-center p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {validationErrors.password && (
-                <span className="text-[11px] font-body text-[var(--danger)] mt-0.5 block">{validationErrors.password}</span>
-              )}
-            </div>
-
-            {/* Primary Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="btn-cta-vibrant w-full h-11 mt-1 rounded-xl text-sm font-heading font-bold transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
-            >
-              {isLoading ? (
-                <Loader2 size={16} />
-              ) : (
-                <>
-                  <span>{isRegister ? 'Create Account' : 'Sign In'}</span>
-                  <ArrowRight size={16} />
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Privacy & Legal Link on Mobile */}
-          <div className="mt-6 flex items-center justify-center gap-1.5 text-[11px] font-body text-[var(--text-muted)] text-center">
-            <Lock size={12} className="text-[var(--accent)] shrink-0" />
-            <span>Encrypted with JWT & bcrypt · </span>
-            <button
-              type="button"
-              onClick={() => setLegalModalOpen(true)}
-              className="text-[var(--accent)] hover:underline bg-transparent border-none cursor-pointer text-[11px] font-heading font-semibold p-0"
-            >
-              Privacy & Terms
-            </button>
-          </div>
-        </div>
-      </div>
+      </footer>
 
       {/* Legal & Consent Modal */}
       <LegalModal isOpen={legalModalOpen} onClose={() => setLegalModalOpen(false)} />
