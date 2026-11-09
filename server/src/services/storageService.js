@@ -460,17 +460,21 @@ class StorageService {
       return { contacts: [], groups: [] };
     }
 
-    // Only return contacts that belong specifically to this user
-    const contacts = await Contact.find({ ownerId: uidStr }).sort({ lastMessageTime: -1 }).lean();
-
-    // Also look up any direct messages involving cleanUsername
-    const dmMessages = await Message.find({
-      chatId: { $regex: `^dm_.*${cleanUsername}` },
-    }).lean();
+    // Fetch user contacts, DM chat IDs, and personal groups concurrently in parallel
+    const [contacts, dmChatIds, formattedGroups] = await Promise.all([
+      Contact.find({ ownerId: uidStr }).sort({ lastMessageTime: -1 }).lean(),
+      Message.distinct('chatId', {
+        $or: [
+          { chatId: new RegExp(`^dm_${cleanUsername}_`) },
+          { chatId: new RegExp(`_${cleanUsername}$`) },
+        ],
+      }),
+      groupService.getUserGroups(currentUserId, currentUsername),
+    ]);
 
     const partnerUsernames = new Set();
-    for (const m of dmMessages) {
-      const parts = m.chatId.replace('dm_', '').split('_');
+    for (const chatId of dmChatIds) {
+      const parts = chatId.replace('dm_', '').split('_');
       if (parts.length === 2) {
         const partner = parts[0] === cleanUsername ? parts[1] : (parts[1] === cleanUsername ? parts[0] : null);
         if (partner && partner !== cleanUsername) {
@@ -483,11 +487,13 @@ class StorageService {
     const missingPartners = Array.from(partnerUsernames).filter((u) => !existingUnames.has(u));
 
     if (missingPartners.length > 0) {
+      const canonicalIds = missingPartners.map((u) => this.getCanonicalDmId(cleanUsername, u));
       const [partnerUsers, latestDmMessages] = await Promise.all([
         User.find({ primaryUsername: { $in: missingPartners } }).lean(),
-        Message.find({
-          chatId: { $in: missingPartners.map((u) => this.getCanonicalDmId(cleanUsername, u)) },
-        }).sort({ timestamp: -1 }).lean(),
+        Message.find({ chatId: { $in: canonicalIds } })
+          .sort({ timestamp: -1 })
+          .limit(missingPartners.length * 5)
+          .lean(),
       ]);
 
       const lastMsgMap = new Map();
@@ -540,8 +546,6 @@ class StorageService {
     });
 
     conversations.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
-
-    const formattedGroups = await groupService.getUserGroups(currentUserId, currentUsername);
 
     return {
       contacts: conversations,
