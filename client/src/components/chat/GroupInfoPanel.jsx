@@ -13,6 +13,7 @@ import {
   Trash2,
   Loader2,
   Plus,
+  Pencil,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useChatStore from '../../store/chatStore';
@@ -36,6 +37,9 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
     isUserBlocked,
     groups = [],
     createGroup,
+    updateGroup,
+    addGroupMember,
+    removeGroupMember,
     setActiveChat,
   } = useChatStore();
   const { user } = useAuthStore();
@@ -50,6 +54,12 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   const [addError, setAddError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
 
+  // Group Editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(chat?.name || '');
+  const [editDesc, setEditDesc] = useState(chat?.description || '');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   // Subgroup creation state
   const [showCreateSubgroup, setShowCreateSubgroup] = useState(false);
   const [subgroupName, setSubgroupName] = useState('');
@@ -57,33 +67,45 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   const [creatingSubgroup, setCreatingSubgroup] = useState(false);
   const [subgroupError, setSubgroupError] = useState(null);
 
+  const isChannel = chat?.type === 'channel';
+  const isGroup = chat?.type === 'group' || chat?.type === 'personal-group' || Boolean(chat?.parentGroupId) || (Boolean(chat?.membersCount) && !isChannel);
+  const isDirect = !isChannel && !isGroup;
+
   const existingSubgroups = (groups || []).filter((g) => g.parentGroupId === chat?.id);
   const parentGroup = chat?.parentGroupId ? (groups || []).find((g) => g.id === chat.parentGroupId) : null;
 
   useEffect(() => {
     if (chat) {
       setMembers(chat.members || []);
+      setEditName(chat.name || '');
+      setEditDesc(chat.description || '');
+      setIsEditing(false);
       setShowAddMember(false);
       setAddUsername('');
       setAddError(null);
     }
-  }, [chat?.id, chat?.members]);
+  }, [chat?.id, chat?.members, chat?.name, chat?.description]);
 
   if (!chat) return null;
 
-  const isChannel = chat.type === 'channel';
-  const isDirect = !isChannel && chat.type !== 'group';
-  // Use real join code from chat or workspace, never fallback to fake CR-001
   const joinCode = chat.joinCode || chat.workspaceJoinCode || null;
   const muted = isChatMuted(chat.id);
   const contactBlocked = isDirect ? isUserBlocked(chat.userId || chat.id || chat.username) : false;
 
-  // Determine if current user is admin/owner of this channel or workspace
-  const isAdmin =
+  // Determine if current user is admin/owner
+  const isOwner =
     chat.owner === currentUserId ||
-    chat.owner?.toString() === currentUserId?.toString() ||
+    chat.creatorId === currentUserId ||
     chat.createdBy === currentUserId ||
     chat.creatorName?.includes('You') ||
+    (members || []).some(
+      (m) =>
+        ((m.id && m.id === currentUserId) || (m.username && m.username.toLowerCase().replace(/^@/, '') === currentUsername)) &&
+        m.role === 'owner'
+    );
+
+  const isAdmin =
+    isOwner ||
     (members || []).some(
       (m) =>
         ((m.id && m.id === currentUserId) || (m.username && m.username.toLowerCase().replace(/^@/, '') === currentUsername)) &&
@@ -95,6 +117,29 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
       navigator.clipboard?.writeText(joinCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editName.trim()) return;
+    setIsSavingEdit(true);
+    try {
+      const res = await updateGroup(chat.id, {
+        name: editName.trim(),
+        description: editDesc.trim(),
+      });
+      if (res?.success) {
+        setIsEditing(false);
+        setActionSuccess('Group details updated!');
+        setTimeout(() => setActionSuccess(null), 3000);
+      } else {
+        alert(res?.error || 'Failed to update group');
+      }
+    } catch {
+      alert('Error updating group');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -130,24 +175,37 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
     const cleanTarget = addUsername.trim().replace(/^@/, '').toLowerCase();
 
     try {
-      const res = await api.workspaces.addMembers(chat.id, [{ username: cleanTarget }]);
-      if (res.ok) {
-        setMembers((prev) => [
-          ...prev,
-          {
-            id: `mem-${Date.now()}`,
-            name: cleanTarget,
-            username: cleanTarget,
-            role: 'member',
-            joinedAt: new Date(),
-          },
-        ]);
-        setAddUsername('');
-        setShowAddMember(false);
-        setActionSuccess(`Added @${cleanTarget} to channel`);
-        setTimeout(() => setActionSuccess(null), 3000);
+      if (isChannel) {
+        const res = await api.workspaces.addMembers(chat.id, [{ username: cleanTarget }]);
+        if (res.ok) {
+          setMembers((prev) => [
+            ...prev,
+            {
+              id: `mem-${Date.now()}`,
+              name: cleanTarget,
+              username: cleanTarget,
+              role: 'member',
+              joinedAt: new Date(),
+            },
+          ]);
+          setAddUsername('');
+          setShowAddMember(false);
+          setActionSuccess(`Added @${cleanTarget} to channel`);
+          setTimeout(() => setActionSuccess(null), 3000);
+        } else {
+          setAddError(res.error || 'Failed to add member. Check username.');
+        }
       } else {
-        setAddError(res.error || 'Failed to add member. Check username.');
+        const res = await addGroupMember(chat.id, cleanTarget);
+        if (res.success) {
+          setMembers((prev) => [...prev, res.member]);
+          setAddUsername('');
+          setShowAddMember(false);
+          setActionSuccess(`Added @${cleanTarget} to group`);
+          setTimeout(() => setActionSuccess(null), 3000);
+        } else {
+          setAddError(res.error || 'Failed to add member. Check username.');
+        }
       }
     } catch {
       setAddError('Error connecting to server.');
@@ -160,13 +218,24 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
     if (!window.confirm(`Remove @${memberUsername} from this ${isChannel ? 'channel' : 'group'}?`)) return;
 
     try {
-      const res = await api.workspaces.removeMember(chat.id, memberId || memberUsername);
-      if (res.ok) {
-        setMembers((prev) => prev.filter((m) => m.id !== memberId && m.username !== memberUsername));
-        setActionSuccess(`Removed @${memberUsername}`);
-        setTimeout(() => setActionSuccess(null), 3000);
+      if (isChannel) {
+        const res = await api.workspaces.removeMember(chat.id, memberId || memberUsername);
+        if (res.ok) {
+          setMembers((prev) => prev.filter((m) => m.id !== memberId && m.username !== memberUsername));
+          setActionSuccess(`Removed @${memberUsername}`);
+          setTimeout(() => setActionSuccess(null), 3000);
+        } else {
+          alert(res.error || 'Could not remove member');
+        }
       } else {
-        alert(res.error || 'Could not remove member');
+        const res = await removeGroupMember(chat.id, memberId || memberUsername);
+        if (res.success) {
+          setMembers((prev) => prev.filter((m) => m.id !== memberId && m.username !== memberUsername));
+          setActionSuccess(`Removed @${memberUsername}`);
+          setTimeout(() => setActionSuccess(null), 3000);
+        } else {
+          alert(res.error || 'Could not remove member');
+        }
       }
     } catch {
       alert('Error connecting to server');
@@ -174,11 +243,11 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
   };
 
   return (
-    <aside className="w-80 h-full bg-[var(--bg-secondary)] border-l border-[var(--border)] flex flex-col shrink-0 overflow-hidden select-none z-20 font-heading">
+    <aside className="w-full h-full bg-[var(--bg-secondary)] border-l border-[var(--border)] flex flex-col shrink-0 overflow-hidden select-none z-20 font-heading">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-[var(--border)] shrink-0">
+      <div className="h-14 min-h-[56px] px-4 flex items-center justify-between border-b border-[var(--border)] shrink-0 pt-[env(safe-area-inset-top)]">
         <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-          {isChannel ? 'Channel Details' : isDirect ? 'Contact Details' : 'Group Info'}
+          {isChannel ? 'Channel Details' : isGroup ? 'Group Info' : 'Contact Details'}
         </span>
         <button
           type="button"
@@ -190,23 +259,77 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-4">
-        {/* ── Hero Info Card ────────────────────────────────────────── */}
-        <div className="flex flex-col items-center text-center p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)]">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 pb-[max(16px,env(safe-area-inset-bottom))] flex flex-col gap-4">
+        {/* ── Hero Info Card with Edit Option ───────────────────────── */}
+        <div className="flex flex-col items-center text-center p-4 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] relative">
+          {isGroup && isAdmin && !isEditing && (
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="absolute top-3 right-3 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg-hover)] border-none bg-transparent cursor-pointer transition-colors"
+              title="Edit Group Details"
+            >
+              <Pencil size={15} />
+            </button>
+          )}
+
           {isChannel ? (
             <div className="w-16 h-16 rounded-2xl bg-[var(--accent-subtle)] border border-[var(--border-subtle)] text-[var(--accent)] flex items-center justify-center font-bold mb-3">
               <Hash size={28} />
+            </div>
+          ) : isGroup ? (
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-[var(--accent)] to-[var(--accent-highlight)] text-white flex items-center justify-center font-bold mb-3 shadow-md">
+              <Users size={28} />
             </div>
           ) : (
             <Avatar name={chat.name} src={chat.avatar} size="lg" className="mb-3" />
           )}
 
-          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] m-0">
-            {chat.name}
-          </h3>
-          <p className="text-sm font-body text-[var(--text-muted)] mt-0.5 m-0">
-            {chat.workspaceName ? `${chat.workspaceName}` : chat.username ? `@${chat.username}` : `${members.length || chat.membersCount || 1} members`}
-          </p>
+          {isEditing ? (
+            <form onSubmit={handleSaveEdit} className="w-full flex flex-col gap-2 mt-1">
+              <input
+                type="text"
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Group name"
+                className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-sm font-bold text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] text-center"
+                autoFocus
+              />
+              <textarea
+                rows={2}
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                placeholder="Group description (optional)"
+                className="w-full px-2.5 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] resize-none"
+              />
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit || !editName.trim()}
+                  className="px-3 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer flex items-center gap-1"
+                >
+                  {isSavingEdit ? <Loader2 size={12} className="animate-spin" /> : <span>Save</span>}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] m-0">
+                {chat.name}
+              </h3>
+              <p className="text-xs font-body text-[var(--text-muted)] mt-1 m-0">
+                {chat.description || (isChannel ? chat.workspaceName : isGroup ? `${members.length} members` : `@${chat.username}`)}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Action feedback banner */}
@@ -242,7 +365,7 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
         )}
 
         {/* ── Subgroups Section (for groups) ─────────────────────────── */}
-        {chat.type === 'group' && (
+        {isGroup && (
           <div className="p-3.5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
@@ -304,7 +427,7 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
 
             {existingSubgroups.length === 0 ? (
               <p className="text-xs font-body text-[var(--text-muted)] m-0 italic">
-                No nested subgroups yet.
+                No nested subgroups yet. Click &ldquo;Add Subgroup&rdquo; to create one.
               </p>
             ) : (
               <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
@@ -332,140 +455,95 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
           </div>
         )}
 
-        {/* ── Join Code Card (if channel) ───────────────────────────── */}
-        {joinCode && (
-          <div className="p-3 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between">
-            <div className="min-w-0 flex-1 mr-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                Workspace Invite Code
+        {/* ── Members Section ────────────────────────────────────────── */}
+        {(isChannel || isGroup) && (
+          <div className="p-3.5 rounded-2xl bg-[var(--bg-primary)] border border-[var(--border)] flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                <Users size={16} className="text-[var(--accent)]" />
+                <span>Members ({members.length})</span>
               </span>
-              <span className="text-sm sm:text-base font-mono font-bold text-[var(--accent)] truncate block">
-                {joinCode}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyCode}
-              className="py-1 px-2.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-lg text-[11px] font-bold border-none cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
-            >
-              {copied ? <Check size={12} /> : <Copy size={12} />}
-              <span>{copied ? 'Copied' : 'Copy'}</span>
-            </button>
-          </div>
-        )}
 
-        {/* ── Quick Controls ────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-2">
-          <button
-            type="button"
-            onClick={() => toggleMuteChat(chat.id)}
-            className={`py-2.5 px-3.5 rounded-xl border text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors ${
-              muted
-                ? 'bg-[var(--accent-highlight)]/15 border-[var(--accent-highlight)]/30 text-[var(--accent-highlight)] font-bold'
-                : 'bg-[var(--bg-primary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-            }`}
-          >
-            {muted ? <BellOff size={14} /> : <Bell size={14} />}
-            <span>{muted ? 'Muted' : 'Mute Notifications'}</span>
-          </button>
-        </div>
-
-        {/* ── Members or Mutual Groups ────────────────────────────── */}
-        <div className="flex flex-col gap-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
-              <Users size={14} className="text-[var(--accent)]" />
-              <span>{isDirect ? 'Mutual Information' : `Participants (${members.length || 1})`}</span>
-            </span>
-
-            {/* Admin Add Member Trigger Button */}
-            {isAdmin && (isChannel || chat.type === 'group') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAddMember(!showAddMember);
-                  setAddError(null);
-                }}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer shadow-xs transition-colors"
-              >
-                <UserPlus size={12} />
-                <span>Add Member</span>
-              </button>
-            )}
-          </div>
-
-          {/* Inline Add Member Form (Admin only) */}
-          {showAddMember && (
-            <form onSubmit={handleAddMember} className="p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--accent)]/40 flex flex-col gap-2 animate-fadeIn">
-              <span className="text-[11px] font-bold text-[var(--text-secondary)]">Add User by Username</span>
-              <div className="flex items-center gap-1.5">
-                <input
-                  type="text"
-                  placeholder="username"
-                  value={addUsername}
-                  onChange={(e) => setAddUsername(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
-                  autoFocus
-                />
+              {isAdmin && (
                 <button
-                  type="submit"
-                  disabled={addLoading || !addUsername.trim()}
-                  className="py-1.5 px-3 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                  type="button"
+                  onClick={() => setShowAddMember(!showAddMember)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer shadow-xs transition-colors"
                 >
-                  {addLoading ? <Loader2 size={12} className="animate-spin" /> : <span>Add</span>}
+                  <UserPlus size={12} />
+                  <span>Add Member</span>
                 </button>
-              </div>
-              {addError && <span className="text-[10px] text-[var(--danger)] font-body">{addError}</span>}
-            </form>
-          )}
+              )}
+            </div>
 
-          <div className="space-y-1.5">
-            {isDirect ? (
-              <div className="p-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-center text-[11px] font-body text-[var(--text-secondary)]">
-                Direct encrypted room on <strong className="text-[var(--text-primary)] font-heading">ChatRooms</strong>.
-              </div>
-            ) : (
-              members.map((m) => {
-                const roleCfg = ROLE_CONFIG[m.role] || ROLE_CONFIG.member;
-                const isMemberAdmin = m.role === 'admin' || m.role === 'owner';
-                const canRemove = isAdmin && !isMemberAdmin && m.id !== currentUserId && m.username?.toLowerCase() !== currentUsername;
+            {/* Inline Add Member Form */}
+            {showAddMember && (
+              <form onSubmit={handleAddMember} className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--accent)]/40 flex flex-col gap-2 animate-fadeIn">
+                <span className="text-xs font-bold text-[var(--text-primary)]">Add by Username</span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    required
+                    placeholder="@username"
+                    value={addUsername}
+                    onChange={(e) => setAddUsername(e.target.value)}
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-[var(--bg-primary)] border border-[var(--border)] text-xs text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)] font-chat"
+                    autoFocus
+                  />
+                  <button
+                    type="submit"
+                    disabled={addLoading || !addUsername.trim()}
+                    className="px-3 py-1.5 rounded-lg bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-xs font-bold border-none cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                  >
+                    {addLoading ? <Loader2 size={12} className="animate-spin" /> : <span>Add</span>}
+                  </button>
+                </div>
+                {addError && <span className="text-[10px] text-[var(--danger)] font-body">{addError}</span>}
+              </form>
+            )}
+
+            {/* Member List */}
+            <div className="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+              {members.map((m, idx) => {
+                const memUsername = (m.username || '').toLowerCase().replace(/^@/, '');
+                const isCurrentMember = memUsername === currentUsername || m.id === currentUserId;
+                const roleConfig = ROLE_CONFIG[m.role] || ROLE_CONFIG.member;
 
                 return (
                   <div
-                    key={m.id || m._id || m.username}
-                    className="p-2 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] flex items-center justify-between"
+                    key={m.id || idx}
+                    className="p-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <Avatar name={m.name || m.username} size="sm" status={m.status} />
+                      <Avatar name={m.name || m.username} src={m.avatar} size="sm" />
                       <div className="min-w-0">
                         <div className="text-xs font-bold text-[var(--text-primary)] truncate">
-                          {m.name || m.username}
+                          {m.name || m.username} {isCurrentMember && '(You)'}
                         </div>
-                        <div className="text-[10px] text-[var(--text-muted)] truncate">
-                          @{m.username}
+                        <div className="text-[10px] text-[var(--text-muted)] font-chat truncate">
+                          @{memUsername || 'user'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <span
-                        className="px-1.5 py-0.5 rounded-md text-[9px] font-bold border shrink-0"
+                        className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border"
                         style={{
-                          backgroundColor: roleCfg.bg,
-                          color: roleCfg.text,
-                          borderColor: roleCfg.border,
+                          backgroundColor: roleConfig.bg,
+                          color: roleConfig.text,
+                          borderColor: roleConfig.border,
                         }}
                       >
-                        {roleCfg.label}
+                        {roleConfig.label}
                       </span>
 
-                      {/* Admin remove member button */}
-                      {canRemove && (
+                      {isAdmin && !isCurrentMember && m.role !== 'owner' && (
                         <button
                           type="button"
-                          onClick={() => handleRemoveMember(m.id, m.username)}
-                          className="p-1 rounded-md text-[var(--danger)] hover:bg-[var(--danger)]/15 border-none bg-transparent cursor-pointer transition-colors"
-                          title={`Remove @${m.username}`}
+                          onClick={() => handleRemoveMember(m.id, memUsername)}
+                          className="p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 cursor-pointer border-none bg-transparent transition-colors"
+                          title="Remove member"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -473,13 +551,13 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
                     </div>
                   </div>
                 );
-              })
-            )}
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* ── Leave / Delete / Block Action ────────────────────── */}
-        {(isChannel || chat.type === 'group') && (
+        {/* ── Leave / Delete / Clear Chat Actions ────────────────────── */}
+        {(isChannel || isGroup) && (
           <div className="grid grid-cols-2 gap-2 mt-2">
             <button
               type="button"
@@ -489,24 +567,27 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
                   onClose();
                 }
               }}
-              className="py-2 px-3 rounded-xl bg-[var(--accent-highlight)]/10 hover:bg-[var(--accent-highlight)]/20 text-[var(--accent-highlight)] border border-[var(--accent-highlight)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              className="py-2.5 px-3 rounded-xl bg-[var(--accent-highlight)]/10 hover:bg-[var(--accent-highlight)]/20 text-[var(--accent-highlight)] border border-[var(--accent-highlight)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
             >
               <LogOut size={14} />
               <span>Leave</span>
             </button>
-            
+
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`Permanently clear & delete chat history for ${chat.name}?`)) {
+                const promptText = isOwner
+                  ? `Permanently delete ${chat.name} and all its messages?`
+                  : `Clear all chat history for ${chat.name}?`;
+                if (window.confirm(promptText)) {
                   onLeaveChat?.(chat.id, 'delete');
                   onClose();
                 }
               }}
-              className="py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              className="py-2.5 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
             >
-              <X size={14} />
-              <span>Delete Chat</span>
+              <Trash2 size={14} />
+              <span>{isOwner ? 'Delete Group' : 'Delete Chat'}</span>
             </button>
           </div>
         )}
@@ -516,25 +597,25 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`Clear and delete chat history with ${chat.name}?`)) {
+                if (window.confirm(`Clear and delete conversation history with ${chat.name}?`)) {
                   onLeaveChat?.(chat.id, 'delete');
                   onClose();
                 }
               }}
-              className="w-full py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
             >
               <Trash2 size={14} />
-              <span>Delete Chat</span>
+              <span>Delete Conversation</span>
             </button>
 
             {contactBlocked ? (
               <button
                 type="button"
                 onClick={() => unblockUser(chat)}
-                className="w-full py-2 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
               >
                 <Check size={14} />
-                <span>Unblock User</span>
+                <span>Unblock Contact</span>
               </button>
             ) : (
               <button
@@ -544,10 +625,10 @@ export const GroupInfoPanel = ({ chat, onClose, onLeaveChat }) => {
                     blockUser(chat);
                   }
                 }}
-                className="w-full py-2 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
+                className="w-full py-2.5 px-3 rounded-xl bg-[var(--danger)]/10 hover:bg-[var(--danger)]/20 text-[var(--danger)] border border-[var(--danger)]/25 text-xs font-bold cursor-pointer transition-colors flex items-center justify-center gap-1.5"
               >
                 <Ban size={14} />
-                <span>Block User</span>
+                <span>Block Contact</span>
               </button>
             )}
           </div>

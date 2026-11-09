@@ -1,7 +1,7 @@
 {
-  "name": "zyntra-server",
+  "name": "chatrooms-server",
   "version": "1.0.0",
-  "description": "Backend API and Socket.io realtime server for Zyntra Chat Application",
+  "description": "Backend API and Socket.io realtime server for ChatRooms Application",
   "main": "src/server.js",
   "type": "module",
   "scripts": {

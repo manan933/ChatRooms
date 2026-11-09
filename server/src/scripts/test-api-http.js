@@ -61,7 +61,7 @@ async function put(endpoint, body, token) {
 
 async function runHttpTests() {
   console.log('----------------------------------------------------');
-  console.log('🌐 Starting Zyntra HTTP REST API Integration Test');
+  console.log('🌐 Starting ChatRooms HTTP REST API Integration Test');
   console.log('----------------------------------------------------');
 
   await connectDB(5, 2000);

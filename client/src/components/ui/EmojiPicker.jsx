@@ -290,7 +290,7 @@ export const EmojiPicker = ({ onSelect, onClose }) => {
   }, [search, activeCategory, recents]);
 
   return (
-    <div className="w-[310px] sm:w-[350px] bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl p-3 flex flex-col gap-2.5 z-50 select-none font-heading backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
+    <div className="w-[min(340px,calc(100vw-20px))] bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl shadow-2xl p-3 flex flex-col gap-2.5 z-50 select-none font-heading backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
       {/* Header with Title, Multi-select hint, and Close button */}
       <div className="flex items-center justify-between pb-1.5 border-b border-[var(--border-subtle)]">
         <div className="flex items-center gap-1.5">

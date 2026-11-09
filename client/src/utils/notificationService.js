@@ -44,19 +44,7 @@ class NotificationService {
       data: { chatId, url: '/' },
     };
 
-    // 1. Android PWA & Windows Service Worker registration (native system integration)
-    try {
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready;
-        if (registration && registration.showNotification) {
-          return await registration.showNotification(title || 'ChatRooms', notifOptions);
-        }
-      }
-    } catch (swErr) {
-      console.warn('[Notification] SW showNotification fallback:', swErr);
-    }
-
-    // 2. Direct browser notification fallback (desktop windows / mac)
+    // 1. Direct synchronous native browser notification (Instant on Windows 10/11, macOS, Linux, Desktop Chrome/Edge/Firefox)
     try {
       const notif = new Notification(title || 'ChatRooms', notifOptions);
       notif.onclick = () => {
@@ -64,8 +52,21 @@ class NotificationService {
         notif.close();
       };
       return notif;
-    } catch (e) {
-      console.warn('[Notification] notification fallback error:', e);
+    } catch {
+      // 2. Android Chrome requires ServiceWorkerRegistration.showNotification()
+      try {
+        if ('serviceWorker' in navigator) {
+          const swReg = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('SW ready timeout')), 250)),
+          ]);
+          if (swReg && swReg.showNotification) {
+            return await swReg.showNotification(title || 'ChatRooms', notifOptions);
+          }
+        }
+      } catch (swErr) {
+        console.warn('[Notification] SW showNotification fallback:', swErr);
+      }
       return null;
     }
   }

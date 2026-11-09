@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Lakki+Reddy&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
 @import "tailwindcss";
 
 :root, [data-theme="dark"] {
@@ -132,6 +133,14 @@
   font-family: 'Alegreya', serif !important;
 }
 
+.font-chat,
+.font-message,
+.bubble-sent,
+.bubble-received,
+.chat-composer {
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+}
+
 /* Base reset */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -139,6 +148,12 @@
 
 html {
   font-size: 18px;
+}
+
+@media screen and (max-width: 640px) {
+  html {
+    font-size: 16px;
+  }
 }
 
 html, body {

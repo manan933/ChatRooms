@@ -6,6 +6,7 @@ import { Contact, PersonalGroup } from '../models/Contact.js';
 import Workspace from '../models/Workspace.js';
 import WorkspaceNode from '../models/WorkspaceNode.js';
 import Media from '../models/Media.js';
+import groupService from './groupService.js';
 
 const SERVER_EMOJI_MAP = {
   '[fire]': '🔥',
@@ -527,17 +528,7 @@ class StorageService {
 
     conversations.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
-    const groups = await PersonalGroup.find({ creatorId: uidStr }).sort({ lastMessageTime: -1 }).lean();
-    const formattedGroups = groups.map((g) => ({
-      id: g.id,
-      name: g.name,
-      description: g.description || '',
-      membersCount: g.membersCount || 1,
-      parentGroupId: g.parentGroupId || null,
-      lastMessage: g.lastMessage || '',
-      lastMessageTime: g.lastMessageTime ? new Date(g.lastMessageTime).toISOString() : new Date().toISOString(),
-      type: 'group',
-    }));
+    const formattedGroups = await groupService.getUserGroups(currentUserId, currentUsername);
 
     return {
       contacts: conversations,
@@ -611,26 +602,24 @@ class StorageService {
     return this.addContact('user-1', 'user', username);
   }
 
-  async createGroup(name, description = '', userId = null, parentGroupId = null) {
-    const id = parentGroupId ? `subgroup-${Date.now()}` : `group-${Date.now()}`;
-    const group = await PersonalGroup.create({
-      id,
-      name: name.trim(),
-      description: description.trim(),
-      membersCount: 1,
-      parentGroupId: parentGroupId || null,
-      lastMessage: '',
-      lastMessageTime: new Date(),
-      creatorId: userId ? userId.toString() : 'user-1',
-    });
-    return {
-      id: group.id,
-      name: group.name,
-      description: group.description,
-      membersCount: 1,
-      parentGroupId: group.parentGroupId || null,
-      type: 'group',
-    };
+  async createGroup(name, description = '', userId = null, parentGroupId = null, memberUsernames = []) {
+    return groupService.createPersonalGroup(name, description, userId, parentGroupId, memberUsernames);
+  }
+
+  async updateGroup(groupId, updateData, userId) {
+    return groupService.updateGroup(groupId, updateData, userId);
+  }
+
+  async addGroupMember(groupId, usernameToAdd, currentUserId) {
+    return groupService.addGroupMember(groupId, usernameToAdd, currentUserId);
+  }
+
+  async removeGroupMember(groupId, memberIdOrUsername, currentUserId) {
+    return groupService.removeGroupMember(groupId, memberIdOrUsername, currentUserId);
+  }
+
+  async deleteOrLeaveGroup(groupId, currentUserId, currentUsername) {
+    return groupService.deleteOrLeaveGroup(groupId, currentUserId, currentUsername);
   }
 
   async getWorkspaces(userId) {

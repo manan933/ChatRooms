@@ -21,7 +21,12 @@ export const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'chatrooms_jwt_secret_dev_key_2026');
+    } catch {
+      decoded = jwt.verify(token, 'zyntra_jwt_secret_dev_key_2026');
+    }
 
     let user = null;
     if (mongoose.connection.readyState === 1) {
@@ -66,7 +71,12 @@ export const optionalProtect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET || 'chatrooms_jwt_secret_dev_key_2026');
+    } catch {
+      decoded = jwt.verify(token, 'zyntra_jwt_secret_dev_key_2026');
+    }
     let user = null;
     if (mongoose.connection.readyState === 1) {
       try {

@@ -2,8 +2,21 @@ import React, { useState } from 'react';
 import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check, Phone, PhoneOff, Video, Forward } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
-import { getFileUrl } from '../../api/api';
 import { normalizeEmoji, renderContentWithEmojis } from '../../utils/emojiMap';
+
+// Direct resilient URL resolver (guarantees getFileUrl is always in scope)
+const getFileUrl = (url) => {
+  if (!url) return '';
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:')
+  ) {
+    return url;
+  }
+  return url.startsWith('/') ? url : `/${url}`;
+};
 
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '😂', '⭐', '🤝', '🎉'];
 
@@ -200,7 +213,7 @@ export const MessageBubble = ({
             backgroundColor: isOwn ? 'var(--bubble-sent-bg)' : 'var(--bubble-received-bg)',
             color: isOwn ? '#FFFFFF' : 'var(--bubble-received-text)',
           }}
-          className={`relative px-4 py-2.5 rounded-2xl text-[17px] sm:text-[18px] font-body leading-relaxed break-words transition-all shadow-sm ${
+          className={`relative px-4 py-2.5 rounded-2xl text-[16px] sm:text-[17px] font-chat leading-relaxed break-words transition-all shadow-sm ${
             isOwn
               ? 'bubble-sent rounded-br-xs'
               : 'bubble-received rounded-bl-xs'
@@ -208,7 +221,7 @@ export const MessageBubble = ({
         >
           {/* WhatsApp-Style Forwarded Banner */}
           {message.isForwarded && (
-            <div className={`flex items-center gap-1 text-[11px] font-body italic mb-1.5 select-none ${isOwn ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
+            <div className={`flex items-center gap-1 text-[11px] font-chat italic mb-1.5 select-none ${isOwn ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
               <Forward size={12} className="shrink-0" />
               <span>Forwarded</span>
             </div>
@@ -306,7 +319,7 @@ export const MessageBubble = ({
                     <span className={`text-[10px] font-semibold ${isOwn ? 'text-red-200' : 'text-red-400'}`}>(Declined)</span>
                   )}
                 </div>
-                <div className={`text-[11px] font-body truncate mt-0.5 ${isOwn ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}>
+                <div className={`text-[11px] font-chat truncate mt-0.5 ${isOwn ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}>
                   {content}
                 </div>
               </div>
@@ -336,7 +349,7 @@ export const MessageBubble = ({
                   if (e.key === 'Enter') handleSaveEdit();
                   if (e.key === 'Escape') setIsEditing(false);
                 }}
-                className="w-full px-2.5 py-1 rounded-lg bg-white/20 text-white border border-white/30 outline-none text-xs font-body"
+                className="w-full px-2.5 py-1 rounded-lg bg-white/20 text-white border border-white/30 outline-none text-xs font-chat"
                 autoFocus
               />
               <div className="flex items-center justify-end gap-1.5 font-heading">
@@ -357,12 +370,12 @@ export const MessageBubble = ({
               </div>
             </div>
           ) : (
-            content && <div className={`whitespace-pre-wrap ${isOwn ? 'text-white' : 'text-inherit'}`}>{renderContentWithEmojis(content)}</div>
+            content && <div className={`whitespace-pre-wrap font-chat ${isOwn ? 'text-white' : 'text-inherit'}`}>{renderContentWithEmojis(content)}</div>
           )}
 
           {/* Time & Read Status Indicator */}
           <div
-            className={`flex items-center justify-end gap-1.5 mt-1 text-xs sm:text-[13px] select-none font-body ${
+            className={`flex items-center justify-end gap-1.5 mt-1 text-xs select-none font-chat ${
               isOwn ? 'text-white/85' : 'text-[var(--text-muted)]'
             }`}
           >

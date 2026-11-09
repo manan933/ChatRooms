@@ -89,7 +89,22 @@ const PersonalGroupSchema = new mongoose.Schema(
     creatorId: {
       type: String,
       default: null,
+      index: true,
     },
+    avatar: {
+      type: String,
+      default: null,
+    },
+    members: [
+      {
+        id: { type: String, default: '' },
+        username: { type: String, default: '' },
+        name: { type: String, default: '' },
+        avatar: { type: String, default: null },
+        role: { type: String, enum: ['owner', 'admin', 'member'], default: 'member' },
+        joinedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

@@ -210,6 +210,41 @@ export const deleteMessage = async (req, res, next) => {
   }
 };
 
+// @desc    Clear and delete all messages and history for a chat
+// @route   DELETE /api/messages/chat/:chatId
+// @access  Protected
+export const clearChat = async (req, res, next) => {
+  try {
+    const { chatId } = req.params;
+    const currentUserId = req.user?._id || req.user?.id;
+    const currentUsername = req.user?.primaryUsername || req.user?.username;
+
+    if (!chatId) {
+      return res.status(400).json({ success: false, message: 'Chat ID is required' });
+    }
+
+    await storageService.deleteChat(chatId, currentUserId, currentUsername);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(chatId).emit('chat_cleared', { chatId });
+      if (chatId.startsWith('dm_')) {
+        const parts = chatId.replace('dm_', '').split('_');
+        parts.forEach((p) => io.to(`user_${p.toLowerCase()}`).emit('chat_cleared', { chatId }));
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Chat history cleared successfully',
+      data: { chatId },
+    });
+  } catch (error) {
+    console.error('[Messages] Error in clearChat:', error);
+    next(error);
+  }
+};
+
 // @desc    Add or increment reaction on a message
 // @route   POST /api/messages/:id/reactions
 // @access  Protected

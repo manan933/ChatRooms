@@ -4,6 +4,19 @@ import EmojiPicker from '../ui/EmojiPicker';
 import socketService from '../../api/socket';
 import api from '../../api/api';
 
+const getFileUrl = (url) => {
+  if (!url) return '';
+  if (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('blob:') ||
+    url.startsWith('data:')
+  ) {
+    return url;
+  }
+  return url.startsWith('/') ? url : `/${url}`;
+};
+
 const formatSize = (bytes) => {
   if (!bytes) return '0 B';
   const k = 1024;
@@ -255,7 +268,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
   const hasContent = Boolean(text.trim() || attachment);
 
   return (
-    <div className="relative px-2.5 sm:px-4 py-2 sm:py-2.5 pb-[max(8px,env(safe-area-inset-bottom))] glass-panel border-t border-[var(--border)] shrink-0 font-body z-10">
+    <div className="relative px-2.5 sm:px-4 py-2 sm:py-2.5 pb-[max(8px,env(safe-area-inset-bottom))] glass-panel border-t border-[var(--border)] shrink-0 font-chat chat-composer z-10">
       {/* Hidden file inputs */}
       <input
         type="file"
@@ -381,7 +394,7 @@ export const Composer = ({ chatId, onSend, currentUser, policy = {} }) => {
           enterKeyHint="send"
           autoCapitalize="sentences"
           autoComplete="on"
-          className="flex-1 min-w-0 bg-transparent border-none outline-none resize-none py-1.5 sm:py-2 text-base sm:text-[18px] font-body text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[42px] max-h-[140px] leading-relaxed cursor-text"
+          className="flex-1 min-w-0 bg-transparent border-none outline-none resize-none py-1.5 sm:py-2 text-base font-chat text-[var(--text-primary)] placeholder-[var(--text-muted)] min-h-[42px] max-h-[140px] leading-relaxed cursor-text"
         />
 
         {/* Send Button */}

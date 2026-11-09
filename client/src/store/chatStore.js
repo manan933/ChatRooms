@@ -46,30 +46,40 @@ export const useChatStore = create((set, get) => ({
   }),
 
   // Initialize all chat streams (Contacts, Groups, Workspaces)
-  loadChats: async () => {
-    set({ isLoadingChats: true });
+  loadChats: async (silent = false) => {
+    const hasData =
+      (get().contacts && get().contacts.length > 0) ||
+      (get().groups && get().groups.length > 0) ||
+      (get().workspaces && get().workspaces.length > 0);
+
+    if (!silent && !hasData) {
+      set({ isLoadingChats: true });
+    }
     try {
       const [contactsRes, workspacesRes] = await Promise.all([
         api.contacts.list(),
         api.workspaces.list(),
       ]);
 
-      const contactsData = contactsRes.ok && contactsRes.data ? contactsRes.data : {};
-      const rawContacts = contactsData.contacts && contactsData.contacts.length > 0
-        ? contactsData.contacts
-        : [];
-      const rawGroups = contactsData.groups && contactsData.groups.length > 0
-        ? contactsData.groups
-        : [];
+      const prevContacts = get().contacts || [];
+      const prevGroups = get().groups || [];
+      const prevWorkspaces = get().workspaces || [];
 
-      const rawWorkspaces =
-        workspacesRes.ok && workspacesRes.data
-          ? Array.isArray(workspacesRes.data) && workspacesRes.data.length > 0
-            ? workspacesRes.data
-            : workspacesRes.data.workspaces && workspacesRes.data.workspaces.length > 0
-            ? workspacesRes.data.workspaces
-            : []
+      let rawContacts = prevContacts;
+      let rawGroups = prevGroups;
+      if (contactsRes.ok && contactsRes.data) {
+        rawContacts = Array.isArray(contactsRes.data.contacts) ? contactsRes.data.contacts : [];
+        rawGroups = Array.isArray(contactsRes.data.groups) ? contactsRes.data.groups : [];
+      }
+
+      let rawWorkspaces = prevWorkspaces;
+      if (workspacesRes.ok && workspacesRes.data) {
+        rawWorkspaces = Array.isArray(workspacesRes.data)
+          ? workspacesRes.data
+          : Array.isArray(workspacesRes.data.workspaces)
+          ? workspacesRes.data.workspaces
           : [];
+      }
 
       const activeOnline = (get().onlineUsers || []).map((x) => String(x).toLowerCase().replace(/^@/, ''));
       const contactsWithPresence = rawContacts.map((c) => {
@@ -141,12 +151,46 @@ export const useChatStore = create((set, get) => ({
     set({ activeChat: null });
   },
 
-  removeChat: (chatId, action = 'leave') => {
+  deleteChat: async (chatId) => {
+    if (!chatId) return;
+    set((state) => {
+      const nextMessages = { ...state.messages };
+      delete nextMessages[chatId];
+      return {
+        groups: state.groups.filter((g) => g.id !== chatId && g.parentGroupId !== chatId),
+        contacts: state.contacts.filter((c) => c.id !== chatId),
+        messages: nextMessages,
+        activeChat: (state.activeChat?.id === chatId || state.activeChat?.parentGroupId === chatId) ? null : state.activeChat,
+      };
+    });
+
+    try {
+      await Promise.allSettled([
+        api.messages.clearChat(chatId),
+        api.contacts.delete(chatId),
+        api.contacts.deleteGroup(chatId),
+      ]);
+    } catch (e) {
+      console.warn('[chatStore] Failed to delete chat on server:', e);
+    }
+  },
+
+  removeChat: async (chatId, action = 'leave') => {
+    if (action === 'delete') {
+      get().deleteChat(chatId);
+      return;
+    }
+    // Leave group or remove contact
     set((state) => ({
       groups: state.groups.filter((g) => g.id !== chatId),
       contacts: state.contacts.filter((c) => c.id !== chatId),
-      activeChat: state.activeChat?.id === chatId ? null : state.activeChat
+      activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
     }));
+    try {
+      await api.contacts.deleteGroup(chatId);
+    } catch (e) {
+      console.warn('[chatStore] Failed to leave group on server:', e);
+    }
   },
 
   toggleMuteChat: (chatId) => {
@@ -596,11 +640,12 @@ export const useChatStore = create((set, get) => ({
     return { success: false, error: res.error || res.data?.message || 'Failed to add contact' };
   },
 
-  createGroup: async (name, description = '', parentGroupId = null) => {
-    const res = await api.contacts.createGroup({ name, description, parentGroupId });
+  createGroup: async (name, description = '', parentGroupId = null, members = []) => {
+    const res = await api.contacts.createGroup({ name, description, parentGroupId, members });
     if (res.ok && res.data) {
+      const groupData = res.data.data || res.data;
       await get().loadChats();
-      return { success: true, group: res.data };
+      return { success: true, group: groupData };
     }
 
     // Local fallback creation
@@ -608,7 +653,7 @@ export const useChatStore = create((set, get) => ({
       id: parentGroupId ? `subgroup-${Date.now()}` : `group-${Date.now()}`,
       name,
       description,
-      membersCount: 1,
+      membersCount: Array.isArray(members) && members.length > 0 ? members.length + 1 : 1,
       parentGroupId: parentGroupId || null,
       lastMessage: parentGroupId ? 'Subgroup created' : 'Group created',
       lastMessageTime: new Date().toISOString(),
@@ -618,6 +663,80 @@ export const useChatStore = create((set, get) => ({
       groups: [newGroup, ...state.groups],
     }));
     return { success: true, group: newGroup };
+  },
+
+  updateGroup: async (groupId, updateData) => {
+    try {
+      const res = await api.contacts.updateGroup(groupId, updateData);
+      if (res.ok && res.data?.data) {
+        const updated = res.data.data;
+        set((state) => ({
+          groups: state.groups.map((g) => (g.id === groupId ? { ...g, ...updated } : g)),
+          activeChat: state.activeChat?.id === groupId ? { ...state.activeChat, ...updated } : state.activeChat,
+        }));
+        return { success: true, group: updated };
+      }
+      return { success: false, error: res.error || 'Failed to update group' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  addGroupMember: async (groupId, username) => {
+    try {
+      const res = await api.contacts.addGroupMember(groupId, username);
+      if (res.ok && res.data?.data) {
+        const { member } = res.data.data;
+        set((state) => ({
+          groups: state.groups.map((g) => {
+            if (g.id === groupId) {
+              const members = [...(g.members || []), member];
+              return { ...g, members, membersCount: members.length };
+            }
+            return g;
+          }),
+          activeChat: state.activeChat?.id === groupId ? {
+            ...state.activeChat,
+            members: [...(state.activeChat.members || []), member],
+            membersCount: (state.activeChat.members?.length || 0) + 1,
+          } : state.activeChat,
+        }));
+        return { success: true, member };
+      }
+      return { success: false, error: res.error || res.data?.message || 'Failed to add member' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  },
+
+  removeGroupMember: async (groupId, memberIdOrUsername) => {
+    try {
+      const res = await api.contacts.removeGroupMember(groupId, memberIdOrUsername);
+      if (res.ok) {
+        set((state) => ({
+          groups: state.groups.map((g) => {
+            if (g.id === groupId) {
+              const members = (g.members || []).filter(
+                (m) => m.id !== memberIdOrUsername && m.username !== memberIdOrUsername
+              );
+              return { ...g, members, membersCount: Math.max(1, members.length) };
+            }
+            return g;
+          }),
+          activeChat: state.activeChat?.id === groupId ? {
+            ...state.activeChat,
+            members: (state.activeChat.members || []).filter(
+              (m) => m.id !== memberIdOrUsername && m.username !== memberIdOrUsername
+            ),
+            membersCount: Math.max(1, (state.activeChat.members?.length || 1) - 1),
+          } : state.activeChat,
+        }));
+        return { success: true };
+      }
+      return { success: false, error: res.error || 'Failed to remove member' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   },
 
   createWorkspace: async (name, contextualUsername = '') => {

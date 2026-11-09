@@ -7,7 +7,7 @@ const generateToken = (userOrId) => {
   const primaryUsername = (userOrId && typeof userOrId === 'object') ? (userOrId.primaryUsername || userOrId.username || '') : '';
   return jwt.sign(
     { id: id ? id.toString() : '', primaryUsername },
-    process.env.JWT_SECRET || 'zyntra_jwt_secret_dev_key_2026',
+    process.env.JWT_SECRET || 'chatrooms_jwt_secret_dev_key_2026',
     { expiresIn: process.env.JWT_EXPIRE || '30d' }
   );
 };

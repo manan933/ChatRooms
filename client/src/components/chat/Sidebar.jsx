@@ -16,6 +16,7 @@ import {
   Check,
   Megaphone,
   BellOff,
+  Trash2,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import useThemeStore from '../../store/themeStore';
@@ -229,7 +230,7 @@ export const Sidebar = ({
   return (
     <aside style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%', backgroundColor: 'var(--bg-secondary)', borderRight: '1px solid var(--border)', flexShrink: 0, overflow: 'hidden', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
       {/* ── Top Brand Header (ChatRooms Horizontal Lockup) ───────────── */}
-      <div className="h-16 sm:h-17 px-4 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none">
+      <div className="h-16 sm:h-17 px-4 flex items-center justify-between border-b border-[var(--border)] shrink-0 select-none pt-[env(safe-area-inset-top)]">
         <div className="flex items-center">
           <BrandLogo variant="lockup" size="md" />
         </div>
@@ -417,7 +418,7 @@ export const Sidebar = ({
 
       {/* ── Conversation List Feed ─────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-2 py-1 space-y-0.5">
-        {isLoadingChats ? (
+        {isLoadingChats && directList.length === 0 ? (
           <ChatListSkeleton count={6} />
         ) : activeTab === 'direct' ? (
           directList.length === 0 ? (
@@ -454,7 +455,7 @@ export const Sidebar = ({
                       key={item.id}
                       type="button"
                       onClick={() => onSelectChat(item)}
-                      className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left ${
+                      className={`group w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left relative ${
                         isActive
                           ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
@@ -466,23 +467,37 @@ export const Sidebar = ({
                           <span className="text-sm sm:text-base truncate font-heading font-bold text-[var(--text-primary)]">
                             {item.name}
                           </span>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1 shrink-0">
                             {isChatMuted?.(item.id) && (
                               <BellOff size={13} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
                             )}
                             {item.lastMessageTime && (
-                              <span className="text-xs sm:text-[13px] font-body text-[var(--text-muted)] font-normal">
+                              <span className="text-xs sm:text-[13px] font-chat text-[var(--text-muted)] font-normal">
                                 {formatTime(item.lastMessageTime)}
                               </span>
                             )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete conversation with ${item.name}?`)) {
+                                  useChatStore.getState().deleteChat(item.id);
+                                }
+                              }}
+                              className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 transition-opacity shrink-0 border-none bg-transparent cursor-pointer"
+                              title="Delete conversation"
+                              aria-label="Delete conversation"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </div>
                         {isTyping ? (
-                          <p className="text-[13px] sm:text-sm font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                          <p className="text-[13px] sm:text-sm font-chat text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <p className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate m-0 leading-normal">
+                          <p className="text-[13px] sm:text-sm font-chat text-[var(--text-muted)] truncate m-0 leading-normal">
                             {item.lastMessage || (
                               isContactOnline ? 'Active now' : (
                                 <span>
@@ -523,7 +538,7 @@ export const Sidebar = ({
                     <button
                       type="button"
                       onClick={() => onSelectChat(item)}
-                      className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left ${
+                      className={`group w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left relative ${
                         isActive
                           ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
                           : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
@@ -535,20 +550,34 @@ export const Sidebar = ({
                           <span className="text-sm sm:text-base truncate font-heading font-bold text-[var(--text-primary)]">
                             {item.name}
                           </span>
-                          <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1 shrink-0">
                             {isChatMuted?.(item.id) && (
                               <BellOff size={13} className="text-[var(--accent-highlight)] shrink-0" title="Muted" />
                             )}
                             {item.lastMessageTime && (
-                              <span className="text-xs sm:text-[13px] font-body text-[var(--text-muted)] font-normal">
+                              <span className="text-xs sm:text-[13px] font-chat text-[var(--text-muted)] font-normal">
                                 {formatTime(item.lastMessageTime)}
                               </span>
                             )}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (window.confirm(`Delete or leave group ${item.name}?`)) {
+                                  useChatStore.getState().removeChat(item.id, 'delete');
+                                }
+                              }}
+                              className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 transition-opacity shrink-0 border-none bg-transparent cursor-pointer"
+                              title="Delete group"
+                              aria-label="Delete group"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                             {hasSubgroups && (
                               <button
                                 type="button"
                                 onClick={(e) => toggleGroupExpand(item.id, e)}
-                                className="p-1 rounded-md hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border-none bg-transparent cursor-pointer ml-1"
+                                className="p-1 rounded-md hover:bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)] border-none bg-transparent cursor-pointer ml-0.5"
                                 title={isExpanded ? 'Collapse subgroups' : 'Expand subgroups'}
                               >
                                 {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -557,11 +586,11 @@ export const Sidebar = ({
                           </div>
                         </div>
                         {isTyping ? (
-                          <p className="text-[13px] sm:text-sm font-body text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
+                          <p className="text-[13px] sm:text-sm font-chat text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <div className="flex items-center justify-between text-[13px] sm:text-sm font-body text-[var(--text-muted)]">
+                          <div className="flex items-center justify-between text-[13px] sm:text-sm font-chat text-[var(--text-muted)]">
                             <p className="truncate m-0 leading-normal min-w-0 flex-1">
                               {item.lastMessage || 'Active group conversation'}
                             </p>
@@ -585,25 +614,40 @@ export const Sidebar = ({
                               key={sub.id}
                               type="button"
                               onClick={() => onSelectChat(sub)}
-                              className={`w-full p-2 rounded-xl flex items-center gap-2.5 transition-all cursor-pointer border-none text-left ${
+                              className={`group w-full p-2 rounded-xl flex items-center justify-between gap-2 transition-all cursor-pointer border-none text-left ${
                                 isSubActive
                                   ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2 shadow-xs'
                                   : 'hover:bg-[var(--bg-hover)] text-[var(--text-secondary)]'
                               }`}
                             >
-                              <div className="w-6 h-6 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--border-subtle)] flex items-center justify-center font-bold text-xs shrink-0">
-                                #
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <span className="text-xs sm:text-sm font-heading font-semibold text-[var(--text-primary)] truncate block">
-                                  {sub.name}
-                                </span>
-                                {sub.lastMessage && (
-                                  <span className="text-[11px] font-body text-[var(--text-muted)] truncate block">
-                                    {sub.lastMessage}
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="w-6 h-6 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] border border-[var(--border-subtle)] flex items-center justify-center font-bold text-xs shrink-0">
+                                  #
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-xs sm:text-sm font-heading font-semibold text-[var(--text-primary)] truncate block">
+                                    {sub.name}
                                   </span>
-                                )}
+                                  {sub.lastMessage && (
+                                    <span className="text-[11px] font-chat text-[var(--text-muted)] truncate block">
+                                      {sub.lastMessage}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (window.confirm(`Delete subgroup #${sub.name}?`)) {
+                                    useChatStore.getState().removeChat(sub.id, 'delete');
+                                  }
+                                }}
+                                className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 transition-opacity shrink-0 border-none bg-transparent cursor-pointer"
+                                title="Delete subgroup"
+                              >
+                                <Trash2 size={12} />
+                              </button>
                             </button>
                           );
                         })}
@@ -728,7 +772,7 @@ export const Sidebar = ({
       </div>
 
       {/* ── Bottom Current User Bar ────────────────────────────────── */}
-      <div className="h-16 px-3.5 bg-[var(--bg-secondary)]/85 backdrop-blur-md border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none">
+      <div className="h-16 px-3.5 bg-[var(--bg-secondary)]/85 backdrop-blur-md border-t border-[var(--border)] flex items-center justify-between shrink-0 select-none pb-[env(safe-area-inset-bottom)]">
         <div
           onClick={onOpenSettings}
           className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity"

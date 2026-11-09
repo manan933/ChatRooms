@@ -345,13 +345,28 @@ export const setupChatSocket = (io) => {
       }
     });
 
+    // Helper to resolve clean target username from username, id, or canonical dm_ room
+    const resolvePeerTarget = (target) => {
+      if (!target) return '';
+      let clean = String(target).toLowerCase().trim().replace(/^@/, '');
+      if (clean.startsWith('dm_')) {
+        const parts = clean.replace('dm_', '').split('_');
+        const myU = (username || '').toLowerCase().replace(/^@/, '');
+        if (parts.length === 2 && myU) {
+          clean = parts[0] === myU ? parts[1] : parts[0];
+        }
+      }
+      return clean;
+    };
+
     // ── WebRTC Voice & Video Call Signaling ──────────────────────────
     socket.on('call_user', (data) => {
       try {
-        const { userToCall, signalData, isVideo, chatId } = data || {};
-        if (!userToCall) return;
-        const cleanTarget = String(userToCall).toLowerCase().replace(/^@/, '');
+        const { userToCall, signalData, isVideo, chatId, callId } = data || {};
+        if (!userToCall && !chatId) return;
+        const cleanTarget = resolvePeerTarget(userToCall);
         const callerInfo = {
+          callId: callId || `call_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           from: username || userId,
           callerId: userId,
           callerUsername: username,
@@ -362,8 +377,9 @@ export const setupChatSocket = (io) => {
           chatId,
         };
 
-        io.to(`user_${cleanTarget}`).emit('call_incoming', callerInfo);
-        io.to(`user_${userToCall}`).emit('call_incoming', callerInfo);
+        if (cleanTarget) {
+          io.to(`user_${cleanTarget}`).emit('call_incoming', callerInfo);
+        }
         if (chatId) {
           socket.to(chatId).emit('call_incoming', callerInfo);
         }
@@ -374,17 +390,20 @@ export const setupChatSocket = (io) => {
 
     socket.on('answer_call', (data) => {
       try {
-        const { to, signalData } = data || {};
-        if (!to) return;
-        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-        io.to(`user_${cleanTarget}`).emit('call_answered', {
+        const { to, signalData, callId, chatId } = data || {};
+        if (!to && !chatId) return;
+        const cleanTarget = resolvePeerTarget(to);
+        const payload = {
+          callId,
           from: username || userId,
           signalData,
-        });
-        io.to(`user_${to}`).emit('call_answered', {
-          from: username || userId,
-          signalData,
-        });
+        };
+        if (cleanTarget) {
+          io.to(`user_${cleanTarget}`).emit('call_answered', payload);
+        }
+        if (chatId) {
+          socket.to(chatId).emit('call_answered', payload);
+        }
       } catch (err) {
         console.error('[Socket.io] Error in answer_call:', err.message);
       }
@@ -392,14 +411,19 @@ export const setupChatSocket = (io) => {
 
     socket.on('ice_candidate', (data) => {
       try {
-        const { to, candidate, chatId } = data || {};
-        if (to) {
-          const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-          io.to(`user_${cleanTarget}`).emit('ice_candidate', { from: username || userId, candidate });
-          io.to(`user_${to}`).emit('ice_candidate', { from: username || userId, candidate });
+        const { to, candidate, callId, chatId } = data || {};
+        if (!candidate) return;
+        const cleanTarget = resolvePeerTarget(to);
+        const payload = {
+          callId,
+          from: username || userId,
+          candidate,
+        };
+        if (cleanTarget) {
+          io.to(`user_${cleanTarget}`).emit('ice_candidate', payload);
         }
         if (chatId) {
-          socket.to(chatId).emit('ice_candidate', { from: username || userId, candidate });
+          socket.to(chatId).emit('ice_candidate', payload);
         }
       } catch (err) {
         console.error('[Socket.io] Error in ice_candidate:', err.message);
@@ -408,14 +432,17 @@ export const setupChatSocket = (io) => {
 
     socket.on('end_call', (data) => {
       try {
-        const { to, chatId } = data || {};
-        if (to) {
-          const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-          io.to(`user_${cleanTarget}`).emit('call_ended', { from: username || userId });
-          io.to(`user_${to}`).emit('call_ended', { from: username || userId });
+        const { to, chatId, callId } = data || {};
+        const cleanTarget = resolvePeerTarget(to);
+        const payload = {
+          callId,
+          from: username || userId,
+        };
+        if (cleanTarget) {
+          io.to(`user_${cleanTarget}`).emit('call_ended', payload);
         }
         if (chatId) {
-          socket.to(chatId).emit('call_ended', { from: username || userId });
+          socket.to(chatId).emit('call_ended', payload);
         }
       } catch (err) {
         console.error('[Socket.io] Error in end_call:', err.message);
@@ -424,11 +451,18 @@ export const setupChatSocket = (io) => {
 
     socket.on('reject_call', (data) => {
       try {
-        const { to } = data || {};
-        if (!to) return;
-        const cleanTarget = String(to).toLowerCase().replace(/^@/, '');
-        io.to(`user_${cleanTarget}`).emit('call_rejected', { from: username || userId });
-        io.to(`user_${to}`).emit('call_rejected', { from: username || userId });
+        const { to, chatId, callId } = data || {};
+        const cleanTarget = resolvePeerTarget(to);
+        const payload = {
+          callId,
+          from: username || userId,
+        };
+        if (cleanTarget) {
+          io.to(`user_${cleanTarget}`).emit('call_rejected', payload);
+        }
+        if (chatId) {
+          socket.to(chatId).emit('call_rejected', payload);
+        }
       } catch (err) {
         console.error('[Socket.io] Error in reject_call:', err.message);
       }

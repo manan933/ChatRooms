@@ -52,7 +52,7 @@ const UserSchema = new mongoose.Schema(
     },
     bio: {
       type: String,
-      default: 'Zyntra user · Exploring contextual communication',
+      default: 'ChatRooms user · Exploring contextual communication',
     },
     contexts: {
       type: [ContextSchema],

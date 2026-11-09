@@ -42,6 +42,12 @@ export const useThemeStore = create((set, get) => {
       localStorage.setItem('chatrooms_sound', String(soundEnabled));
       set({ soundEnabled });
     },
+
+    toggleSound: () => {
+      const next = !get().soundEnabled;
+      localStorage.setItem('chatrooms_sound', String(next));
+      set({ soundEnabled: next });
+    },
   };
 });
 

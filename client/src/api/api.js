@@ -82,6 +82,28 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(groupData),
       }),
+    updateGroup: (groupId, data) =>
+      request(`/api/contacts/groups/${groupId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    addGroupMember: (groupId, username) =>
+      request(`/api/contacts/groups/${groupId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ username }),
+      }),
+    removeGroupMember: (groupId, memberId) =>
+      request(`/api/contacts/groups/${groupId}/members/${memberId}`, {
+        method: 'DELETE',
+      }),
+    deleteGroup: (groupId) =>
+      request(`/api/contacts/groups/${groupId}`, {
+        method: 'DELETE',
+      }),
+    delete: (chatId) =>
+      request(`/api/contacts/${chatId}`, {
+        method: 'DELETE',
+      }),
   },
 
   workspaces: {
@@ -115,6 +137,10 @@ export const api = {
 
   messages: {
     byChat: (chatId) => request(`/api/messages/${chatId}`),
+    clearChat: (chatId) =>
+      request(`/api/messages/chat/${chatId}`, {
+        method: 'DELETE',
+      }),
     markRead: (chatId) =>
       request(`/api/messages/${chatId}/read`, {
         method: 'POST',
@@ -152,5 +178,10 @@ export const api = {
     },
   },
 };
+
+api.getFileUrl = getFileUrl;
+if (typeof window !== 'undefined') {
+  window.getFileUrl = getFileUrl;
+}
 
 export default api;

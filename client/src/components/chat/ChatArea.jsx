@@ -17,11 +17,10 @@ import Avatar from '../ui/Avatar';
 import MessageBubble from './MessageBubble';
 import Composer from './Composer';
 import GroupInfoPanel from './GroupInfoPanel';
-import CallModal from '../modals/CallModal';
 import { MessageFeedSkeleton } from '../ui/Skeleton';
 import useThemeStore from '../../store/themeStore';
 import useChatStore from '../../store/chatStore';
-import { playSentSound, playReactionSound } from '../../utils/zyntraSound';
+import { playSentSound, playReactionSound } from '../../utils/chatroomsSound';
 import BrandLogo from '../ui/BrandLogo';
 
 const formatDate = (iso) => {
@@ -53,6 +52,7 @@ export const ChatArea = ({
   onForwardMessage,
   onLeaveChat,
   onCallEndedSummary,
+  onStartCall,
 }) => {
   const scrollRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -64,12 +64,10 @@ export const ChatArea = ({
 
   const currentUserId = currentUser?.id || currentUser?._id;
 
-  // Search & Drawer & Calls state
+  // Search & Drawer state
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [infoOpen, setInfoOpen] = useState(false);
-  const [callModalOpen, setCallModalOpen] = useState(false);
-  const [isVideoCall, setIsVideoCall] = useState(false);
 
   // Mobile Back button support for Group Info Drawer
   const handleCloseInfo = () => {
@@ -233,8 +231,7 @@ export const ChatArea = ({
   };
 
   const handleCallBack = (isVideo = false) => {
-    setIsVideoCall(Boolean(isVideo));
-    setCallModalOpen(true);
+    onStartCall?.(chat, Boolean(isVideo));
   };
 
   // If no conversation is active (Workspace Dashboard)
@@ -311,8 +308,47 @@ export const ChatArea = ({
       {/* ── Main Chat Stream Column ─────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', height: '100%', minHeight: 0, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
         {/* ── Chat Header ────────────────────────────────────────────── */}
-        <header className="h-16 sm:h-17 min-h-[58px] px-3.5 sm:px-5 glass-panel border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none">
-          <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+        <header className="relative h-16 sm:h-17 min-h-[58px] px-3 sm:px-5 glass-panel border-b border-[var(--border)] flex items-center justify-between shrink-0 z-10 select-none pt-[env(safe-area-inset-top)]">
+          {/* Search Full-Width Overlay (WhatsApp / Telegram style) */}
+          {searchOpen && (
+            <div className="absolute inset-0 bg-[var(--bg-primary)] px-3 sm:px-5 flex items-center gap-2 z-20">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchOpen(false);
+                  setSearchQuery('');
+                }}
+                className="p-2 -ml-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-xl bg-transparent border-none cursor-pointer shrink-0 flex items-center justify-center"
+                aria-label="Back from search"
+                title="Close search"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              <div className="flex-1 flex items-center gap-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-3 py-1.5 min-w-0">
+                <Search size={16} className="text-[var(--text-muted)] shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Find in chat..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none outline-none text-sm font-chat text-[var(--text-primary)] placeholder-[var(--text-muted)]"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer shrink-0 flex items-center justify-center"
+                    aria-label="Clear search query"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2">
             {/* Back button (Mobile only) */}
             <button
               type="button"
@@ -326,7 +362,7 @@ export const ChatArea = ({
 
             {/* Conversation Avatar / Channel Icon */}
             {chat.type === 'channel' ? (
-              <div className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shrink-0 font-heading shadow-xs">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shrink-0 font-heading shadow-xs">
                 <Hash size={18} />
               </div>
             ) : (() => {
@@ -349,17 +385,17 @@ export const ChatArea = ({
 
             {/* Title & Status */}
             <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setInfoOpen(!infoOpen)}>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg md:text-xl font-heading font-bold text-[var(--text-primary)] truncate tracking-tight m-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-base md:text-lg font-heading font-bold text-[var(--text-primary)] truncate tracking-tight m-0">
                   {chat.name}
                 </h2>
                 {isMuted && (
                   <span title="Notifications muted">
-                    <BellOff size={15} className="text-[var(--accent-highlight)] shrink-0" />
+                    <BellOff size={14} className="text-[var(--accent-highlight)] shrink-0" />
                   </span>
                 )}
               </div>
-              <div className="text-[13px] sm:text-sm font-body text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
+              <div className="text-[12px] sm:text-sm font-chat text-[var(--text-muted)] truncate flex items-center gap-1.5 mt-0.5">
                 {typingUsers.length > 0 ? (
                   <span className="text-[var(--accent)] flex items-center gap-1 font-medium animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> {typingUsers.join(', ')} typing...
@@ -389,42 +425,17 @@ export const ChatArea = ({
           </div>
 
           {/* Action Toolbar on Right */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Search Input Popover */}
-            {searchOpen ? (
-              <div className="flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-2.5 py-1.5 mr-1">
-                <Search size={15} className="text-[var(--text-muted)]" />
-                <input
-                  type="text"
-                  placeholder="Find in chat..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-32 sm:w-48 bg-transparent border-none outline-none text-xs sm:text-sm font-body text-[var(--text-primary)] placeholder-[var(--text-muted)]"
-                  autoFocus
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchOpen(false);
-                    setSearchQuery('');
-                  }}
-                  className="p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] bg-transparent border-none cursor-pointer"
-                  aria-label="Clear search"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
-                title="Search Messages"
-                aria-label="Search Messages"
-              >
-                <Search size={19} />
-              </button>
-            )}
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            {/* Search Trigger */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
+              title="Search Messages"
+              aria-label="Search Messages"
+            >
+              <Search size={18} />
+            </button>
 
             {/* Voice & Video Calls (Direct & Group chats, not channels, not blocked) */}
             {chat.type !== 'channel' && !isBlocked && (
@@ -432,32 +443,30 @@ export const ChatArea = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsVideoCall(false);
-                    setCallModalOpen(true);
+                    onStartCall?.(chat, false);
                   }}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
                   title="Voice Call"
                   aria-label="Voice Call"
                 >
-                  <Phone size={19} />
+                  <Phone size={18} />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setIsVideoCall(true);
-                    setCallModalOpen(true);
+                    onStartCall?.(chat, true);
                   }}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center shrink-0"
                   title="Video Call"
                   aria-label="Video Call"
                 >
-                  <Video size={19} />
+                  <Video size={18} />
                 </button>
               </>
             )}
 
-            {/* Delete / Clear Chat (WhatsApp style) */}
+            {/* Delete / Clear Chat (Desktop only; on mobile accessible via Info drawer) */}
             <button
               type="button"
               onClick={() => {
@@ -465,11 +474,11 @@ export const ChatArea = ({
                   onLeaveChat?.(chat.id, 'delete');
                 }
               }}
-              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
+              className="hidden sm:flex p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--danger)] hover:bg-red-500/10 transition-colors cursor-pointer border-none bg-transparent items-center justify-center shrink-0"
               title="Delete / Clear Chat"
               aria-label="Delete / Clear Chat"
             >
-              <Trash2 size={19} />
+              <Trash2 size={18} />
             </button>
 
             {/* Toggle Info Drawer */}
@@ -493,7 +502,7 @@ export const ChatArea = ({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 py-4 flex flex-col relative bg-transparent font-body"
+          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 py-4 flex flex-col relative bg-transparent font-chat"
         >
           {isLoadingMessages ? (
             <MessageFeedSkeleton count={6} />
@@ -612,18 +621,6 @@ export const ChatArea = ({
         </div>
       )}
 
-      {/* ── Voice & Video Call Modal ────────────────────────────────── */}
-      {callModalOpen && (
-        <CallModal
-          isOpen={callModalOpen}
-          onClose={() => setCallModalOpen(false)}
-          onCallEndedSummary={onCallEndedSummary}
-          chat={chat}
-          isVideo={isVideoCall}
-          isInitiator={true}
-          currentUser={currentUser}
-        />
-      )}
     </div>
   );
 };

@@ -41,7 +41,7 @@ export const getWorkspaces = async (req, res, next) => {
     try {
       let query = {};
       if (req.user) {
-        const isDemoOwner = req.user.primaryUsername === 'soumya' || req.user.email === 'soumya@zyntra.com';
+        const isDemoOwner = req.user.primaryUsername === 'soumya' || req.user.email === 'soumya@chatrooms.com' || req.user.email === 'soumya@zyntra.com';
         if (!isDemoOwner) {
           query = {
             $or: [

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Phone, PhoneOff, Video } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import BrandLogo from '../ui/BrandLogo';
-import { playCallStartSound, playCallEndSound } from '../../utils/zyntraSound';
+import { playCallStartSound, playCallEndSound } from '../../utils/chatroomsSound';
 
 export const IncomingCallModal = ({
   incomingCall,

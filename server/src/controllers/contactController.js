@@ -108,12 +108,12 @@ export const createContact = async (req, res, next) => {
   }
 };
 
-// @desc    Create a new personal group
+// @desc    Create a new personal group or subgroup
 // @route   POST /api/contacts/groups
 // @access  Private
 export const createPersonalGroup = async (req, res, next) => {
   try {
-    const { name, description, parentGroupId } = req.body;
+    const { name, description, parentGroupId, members } = req.body;
 
     if (!name?.trim()) {
       return res.status(400).json({
@@ -127,8 +127,16 @@ export const createPersonalGroup = async (req, res, next) => {
       name.trim(),
       description?.trim() || '',
       currentUserId,
-      parentGroupId || null
+      parentGroupId || null,
+      members || []
     );
+
+    const io = req.app.get('io');
+    if (io && group) {
+      (group.members || []).forEach((m) => {
+        if (m.username) io.to(`user_${m.username.toLowerCase()}`).emit('group_created', group);
+      });
+    }
 
     return res.status(201).json({
       success: true,
@@ -136,6 +144,170 @@ export const createPersonalGroup = async (req, res, next) => {
     });
   } catch (error) {
     console.error('[CreateGroup] Error in createPersonalGroup:', error);
+    next(error);
+  }
+};
+
+// @desc    Edit personal group info (name, description, avatar)
+// @route   PATCH /api/contacts/groups/:groupId
+// @access  Protected
+export const updatePersonalGroup = async (req, res, next) => {
+  try {
+    const { groupId } = req.params;
+    const currentUserId = req.user?._id || req.user?.id;
+
+    const updated = await storageService.updateGroup(groupId, req.body, currentUserId);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Group not found' });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(groupId).emit('group_updated', updated);
+      (updated.members || []).forEach((m) => {
+        if (m.username) io.to(`user_${m.username.toLowerCase()}`).emit('group_updated', updated);
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: updated,
+    });
+  } catch (error) {
+    console.error('[UpdateGroup] Error in updatePersonalGroup:', error);
+    next(error);
+  }
+};
+
+// @desc    Add member to group
+// @route   POST /api/contacts/groups/:groupId/members
+// @access  Protected
+export const addGroupMemberController = async (req, res, next) => {
+  try {
+    const { groupId } = req.params;
+    const { username } = req.body;
+    const currentUserId = req.user?._id || req.user?.id;
+
+    if (!username?.trim()) {
+      return res.status(400).json({ success: false, message: 'Username is required' });
+    }
+
+    const result = await storageService.addGroupMember(groupId, username.trim(), currentUserId);
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.error });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(groupId).emit('group_member_added', { groupId, member: result.member, group: result.group });
+      const cleanUname = username.trim().toLowerCase().replace(/^@/, '');
+      io.to(`user_${cleanUname}`).emit('group_created', result.group);
+      io.to(`user_${cleanUname}`).emit('new_conversation', result.group);
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('[AddMember] Error in addGroupMemberController:', error);
+    next(error);
+  }
+};
+
+// @desc    Remove member from group
+// @route   DELETE /api/contacts/groups/:groupId/members/:memberId
+// @access  Protected
+export const removeGroupMemberController = async (req, res, next) => {
+  try {
+    const { groupId, memberId } = req.params;
+    const currentUserId = req.user?._id || req.user?.id;
+
+    const result = await storageService.removeGroupMember(groupId, memberId, currentUserId);
+    if (!result.success) {
+      return res.status(400).json({ success: false, message: result.error });
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(groupId).emit('group_member_removed', { groupId, memberId, group: result.group });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('[RemoveMember] Error in removeGroupMemberController:', error);
+    next(error);
+  }
+};
+
+// @desc    Delete group (creator) or Leave group (member)
+// @route   DELETE /api/contacts/groups/:groupId
+// @access  Protected
+export const deleteOrLeaveGroupController = async (req, res, next) => {
+  try {
+    const { groupId } = req.params;
+    const currentUserId = req.user?._id || req.user?.id;
+    const currentUsername = req.user?.primaryUsername || req.user?.username;
+
+    const result = await storageService.deleteOrLeaveGroup(groupId, currentUserId, currentUsername);
+
+    const io = req.app.get('io');
+    if (io) {
+      if (result.action === 'deleted') {
+        io.to(groupId).emit('group_deleted', { groupId });
+        io.to(groupId).emit('chat_cleared', { chatId: groupId });
+      } else {
+        io.to(groupId).emit('group_member_removed', { groupId, memberId: currentUserId, memberUsername: currentUsername });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    console.error('[DeleteLeaveGroup] Error in deleteOrLeaveGroupController:', error);
+    next(error);
+  }
+};
+
+// @desc    Delete a contact or clear personal group history
+// @route   DELETE /api/contacts/:chatId
+// @access  Protected
+export const deleteContactOrGroup = async (req, res, next) => {
+  try {
+    const { chatId } = req.params;
+    const currentUserId = req.user?._id || req.user?.id;
+    const currentUsername = req.user?.primaryUsername || req.user?.username;
+
+    if (!chatId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chat ID is required',
+      });
+    }
+
+    await storageService.deleteChat(chatId, currentUserId, currentUsername);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(chatId).emit('chat_cleared', { chatId });
+      if (chatId.startsWith('dm_')) {
+        const parts = chatId.replace('dm_', '').split('_');
+        parts.forEach((p) => io.to(`user_${p.toLowerCase()}`).emit('chat_cleared', { chatId }));
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Chat and contact deleted successfully',
+      data: { chatId },
+    });
+  } catch (error) {
+    console.error('[DeleteContact] Error in deleteContactOrGroup:', error);
     next(error);
   }
 };

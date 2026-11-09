@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../components/chat/Sidebar';
 import ChatArea from '../components/chat/ChatArea';
-import NewChatModal from '../components/modals/NewChatModal';
+import { NewChatPanel } from '../components/chat/NewChatPanel';
+import { SettingsPanel } from '../components/chat/SettingsPanel';
 import WorkspaceModal from '../components/modals/WorkspaceModal';
-import SettingsModal from '../components/modals/SettingsModal';
 import CallModal from '../components/modals/CallModal';
 import IncomingCallModal from '../components/modals/IncomingCallModal';
 import ForwardModal from '../components/modals/ForwardModal';
@@ -13,7 +13,7 @@ import ErrorBoundary from '../components/ui/ErrorBoundary';
 import useChatStore from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
-import { playReceivedSound } from '../utils/zyntraSound';
+import { playReceivedSound } from '../utils/chatroomsSound';
 import notificationService from '../utils/notificationService';
 
 export const ChatPage = () => {
@@ -53,9 +53,9 @@ export const ChatPage = () => {
     handleMessagesRead,
   } = useChatStore();
 
-  const [newChatModalOpen, setNewChatModalOpen] = useState(false);
+  // Navigation views: 'chats' (Sidebar) | 'settings' (WhatsApp Settings Panel) | 'newChat' (WhatsApp New Chat Panel)
+  const [leftView, setLeftView] = useState('chats');
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeCallSession, setActiveCallSession] = useState(null);
@@ -71,10 +71,10 @@ export const ChatPage = () => {
 
   // ── Mobile Hardware & Gesture Back Navigation ────────────────────
   const activeChatRef = React.useRef(activeChat);
+  const leftViewRef = React.useRef(leftView);
   const modalsRef = React.useRef({
-    settings: false,
-    newChat: false,
     workspace: false,
+    forward: false,
     incomingCall: false,
   });
 
@@ -83,13 +83,16 @@ export const ChatPage = () => {
   }, [activeChat]);
 
   useEffect(() => {
+    leftViewRef.current = leftView;
+  }, [leftView]);
+
+  useEffect(() => {
     modalsRef.current = {
-      settings: settingsModalOpen,
-      newChat: newChatModalOpen,
       workspace: workspaceModalOpen,
+      forward: forwardModalOpen,
       incomingCall: Boolean(incomingCall),
     };
-  }, [settingsModalOpen, newChatModalOpen, workspaceModalOpen, incomingCall]);
+  }, [workspaceModalOpen, forwardModalOpen, incomingCall]);
 
   const chatPushedRef = React.useRef(false);
 
@@ -106,26 +109,24 @@ export const ChatPage = () => {
   }, [activeChat?.id]);
 
   const handleOpenSettings = () => {
-    window.history.pushState({ chatroomsView: 'modal', name: 'settings' }, '');
-    setSettingsModalOpen(true);
+    setLeftView('settings');
+    window.history.pushState({ chatroomsView: 'settings' }, '');
   };
   const handleCloseSettings = () => {
-    if (window.history.state?.chatroomsView === 'modal') {
+    setLeftView('chats');
+    if (window.history.state?.chatroomsView === 'settings') {
       window.history.back();
-    } else {
-      setSettingsModalOpen(false);
     }
   };
 
   const handleOpenNewChat = () => {
-    window.history.pushState({ chatroomsView: 'modal', name: 'newChat' }, '');
-    setNewChatModalOpen(true);
+    setLeftView('newChat');
+    window.history.pushState({ chatroomsView: 'newChat' }, '');
   };
   const handleCloseNewChat = () => {
-    if (window.history.state?.chatroomsView === 'modal') {
+    setLeftView('chats');
+    if (window.history.state?.chatroomsView === 'newChat') {
       window.history.back();
-    } else {
-      setNewChatModalOpen(false);
     }
   };
 
@@ -134,6 +135,7 @@ export const ChatPage = () => {
     setWorkspaceModalOpen(true);
   };
   const handleCloseWorkspace = () => {
+    sessionStorage.setItem('chatrooms_workspace_prompted', 'true');
     if (window.history.state?.chatroomsView === 'modal') {
       window.history.back();
     } else {
@@ -142,38 +144,49 @@ export const ChatPage = () => {
   };
 
   const handleCloseChat = () => {
-    if (chatPushedRef.current && window.history.state?.chatroomsView === 'chat') {
+    closeChat();
+    chatPushedRef.current = false;
+    if (window.history.state?.chatroomsView === 'chat') {
       window.history.back();
-    } else {
-      closeChat();
     }
   };
 
   useEffect(() => {
+    // 1. Establish initial root entry to trap back button inside PWA/mobile browser
+    if (!window.history.state?.chatroomsRoot) {
+      window.history.replaceState({ chatroomsRoot: true, view: 'home' }, '');
+      window.history.pushState({ chatroomsRoot: true, view: 'home' }, '');
+    }
+
     const handlePopState = () => {
-      // 1. Close open modal first
-      if (modalsRef.current.settings) {
-        setSettingsModalOpen(false);
-        return;
-      }
-      if (modalsRef.current.newChat) {
-        setNewChatModalOpen(false);
-        return;
-      }
-      if (modalsRef.current.workspace) {
-        setWorkspaceModalOpen(false);
-        return;
-      }
+      // 1. Dismiss active / incoming call
       if (modalsRef.current.incomingCall) {
         setIncomingCall(null);
         return;
       }
-
-      // 2. Close active chat on mobile and return to chat list
+      // 2. Dismiss open workspace or forward modal
+      if (modalsRef.current.workspace) {
+        sessionStorage.setItem('chatrooms_workspace_prompted', 'true');
+        setWorkspaceModalOpen(false);
+        return;
+      }
+      if (modalsRef.current.forward) {
+        setForwardModalOpen(false);
+        return;
+      }
+      // 3. Close WhatsApp-style left panels (Settings / New Chat) and return to chats list
+      if (leftViewRef.current !== 'chats') {
+        setLeftView('chats');
+        return;
+      }
+      // 4. Close active chat on mobile and return to chat list
       if (activeChatRef.current) {
         chatPushedRef.current = false;
         closeChat();
+        return;
       }
+      // 5. Already at the chat list (home) - trap back button to keep user inside the app
+      window.history.pushState({ chatroomsRoot: true, view: 'home' }, '');
     };
 
     window.addEventListener('popstate', handlePopState);
@@ -184,6 +197,7 @@ export const ChatPage = () => {
   useEffect(() => {
     const prompted = sessionStorage.getItem('chatrooms_workspace_prompted');
     if (promptWorkspaceOnLogin || prompted !== 'true') {
+      sessionStorage.setItem('chatrooms_workspace_prompted', 'true');
       setWorkspaceModalOpen(true);
     }
   }, [promptWorkspaceOnLogin]);
@@ -289,10 +303,25 @@ export const ChatPage = () => {
       }
     };
 
-    const handleCallEndedGlobal = () => {
-      setIncomingCall(null);
-      setActiveCallSession(null);
+    const handleCallEndedGlobal = (data) => {
+      const endedCallId = data?.callId;
+      setIncomingCall((prev) => {
+        if (!prev) return null;
+        if (!endedCallId || prev.callId === endedCallId) return null;
+        return prev;
+      });
+      setActiveCallSession((prev) => {
+        if (!prev) return null;
+        if (!endedCallId || prev.callId === endedCallId) return null;
+        return prev;
+      });
       bufferedIceCandidatesRef.current = [];
+    };
+
+    const handleChatCleared = ({ chatId }) => {
+      if (chatId) {
+        useChatStore.getState().deleteChat(chatId);
+      }
     };
 
     socketService.on('receive_message', handleReceive);
@@ -302,6 +331,7 @@ export const ChatPage = () => {
     socketService.on('online_users_list', handleOnlineList);
     socketService.on('contact_added', handleConversationUpdate);
     socketService.on('new_conversation', handleConversationUpdate);
+    socketService.on('chat_cleared', handleChatCleared);
     socketService.on('call_incoming', handleIncomingCall);
     socketService.on('ice_candidate', handleGlobalIceCandidate);
     socketService.on('call_ended', handleCallEndedGlobal);
@@ -313,11 +343,11 @@ export const ChatPage = () => {
 
     // Auto-sync on window focus & tab visibility (silent refresh)
     const handleFocusSync = () => {
-      loadChats();
+      loadChats(true);
       socketService.getOnlineUsers();
-      if (activeChat?.id) {
-        loadMessages(activeChat.id, true);
-        markMessagesAsRead(activeChat.id);
+      if (activeChatRef.current?.id) {
+        loadMessages(activeChatRef.current.id, true);
+        markMessagesAsRead(activeChatRef.current.id);
       }
     };
 
@@ -331,11 +361,11 @@ export const ChatPage = () => {
 
     // Background sync timer every 15s to guarantee 100% accuracy without manual refresh
     const syncInterval = setInterval(() => {
-      loadChats();
+      loadChats(true);
       socketService.getOnlineUsers();
-      if (activeChat?.id) {
-        loadMessages(activeChat.id, true);
-        markMessagesAsRead(activeChat.id);
+      if (activeChatRef.current?.id) {
+        loadMessages(activeChatRef.current.id, true);
+        markMessagesAsRead(activeChatRef.current.id);
       }
     }, 15000);
 
@@ -347,6 +377,7 @@ export const ChatPage = () => {
       socketService.off('online_users_list', handleOnlineList);
       socketService.off('contact_added', handleConversationUpdate);
       socketService.off('new_conversation', handleConversationUpdate);
+      socketService.off('chat_cleared', handleChatCleared);
       socketService.off('call_incoming', handleIncomingCall);
       socketService.off('ice_candidate', handleGlobalIceCandidate);
       socketService.off('call_ended', handleCallEndedGlobal);
@@ -356,11 +387,27 @@ export const ChatPage = () => {
       document.removeEventListener('visibilitychange', handleVisibility);
       clearInterval(syncInterval);
     };
-  }, [loadChats, loadMessages, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername, activeChat?.id, markMessagesAsRead, handleMessagesRead]);
+  }, [loadChats, loadMessages, receiveMessage, updateReaction, setTyping, user?.id, user?.primaryUsername, markMessagesAsRead, handleMessagesRead]);
+
+  const handleStartCall = (callChat, isVideo = false) => {
+    const targetChat = callChat || activeChatRef.current;
+    if (!targetChat) return;
+    const newCallId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    bufferedIceCandidatesRef.current = [];
+    setActiveCallSession({
+      callId: newCallId,
+      chat: targetChat,
+      isVideo,
+      isInitiator: true,
+      initialIceCandidates: [],
+    });
+  };
 
   const handleAcceptIncomingCall = () => {
     if (!incomingCall) return;
+    const newCallId = incomingCall.callId || `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     setActiveCallSession({
+      callId: newCallId,
       chat: {
         name: incomingCall.callerName || 'Participant',
         avatar: incomingCall.callerAvatar,
@@ -520,7 +567,7 @@ export const ChatPage = () => {
           />
         </div>
 
-        {/* ── Sidebar ──────────────────────────────────────────────── */}
+        {/* ── Sidebar / Left Navigation Panel (WhatsApp style) ────── */}
         <div
           style={{
             display: activeChat ? 'none' : 'flex',
@@ -534,21 +581,40 @@ export const ChatPage = () => {
           }}
           className="md:!flex md:!w-[320px] lg:!w-[340px]"
         >
-          <Sidebar
-            contacts={contacts}
-            groups={groups}
-            workspaces={workspaces}
-            activeChat={activeChat}
-            currentUser={user}
-            selectedWorkspace={selectedWorkspace}
-            isLoadingChats={isLoadingChats}
-            onSelectChat={(chat) => selectChat(chat)}
-            onOpenNewChat={handleOpenNewChat}
-            onOpenWorkspaceModal={handleOpenWorkspace}
-            onOpenSettings={handleOpenSettings}
-            onLogout={logout}
-            onAddChannel={addChannelToWorkspace}
-          />
+          {leftView === 'settings' ? (
+            <SettingsPanel
+              user={user}
+              onClose={handleCloseSettings}
+              onUpdateProfile={updateProfile}
+              onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
+            />
+          ) : leftView === 'newChat' ? (
+            <NewChatPanel
+              onClose={handleCloseNewChat}
+              onAddContact={addContact}
+              onCreateGroup={createGroup}
+              onStartDirectChat={(contact) => {
+                selectChat(contact);
+                setLeftView('chats');
+              }}
+            />
+          ) : (
+            <Sidebar
+              contacts={contacts}
+              groups={groups}
+              workspaces={workspaces}
+              activeChat={activeChat}
+              currentUser={user}
+              selectedWorkspace={selectedWorkspace}
+              isLoadingChats={isLoadingChats}
+              onSelectChat={(chat) => selectChat(chat)}
+              onOpenNewChat={handleOpenNewChat}
+              onOpenWorkspaceModal={handleOpenWorkspace}
+              onOpenSettings={handleOpenSettings}
+              onLogout={logout}
+              onAddChannel={addChannelToWorkspace}
+            />
+          )}
         </div>
 
         {/* ── Chat Area ────────────────────────────────────────────── */}
@@ -577,6 +643,7 @@ export const ChatPage = () => {
               onOpenWorkspaceModal={handleOpenWorkspace}
               onSelectWorkspace={handleSelectWorkspace}
               onBack={handleCloseChat}
+              onStartCall={handleStartCall}
               onSend={(content, attachment) =>
                 activeChat && sendMessage(activeChat.id, content, attachment, user)
               }
@@ -614,7 +681,7 @@ export const ChatPage = () => {
               <span className="text-xs font-bold text-[var(--accent)] truncate block">
                 {inAppToast.senderName}
               </span>
-              <p className="text-[11px] font-body text-[var(--text-primary)] truncate m-0">
+              <p className="text-[11px] font-chat text-[var(--text-primary)] truncate m-0">
                 {inAppToast.text}
               </p>
             </div>
@@ -640,14 +707,6 @@ export const ChatPage = () => {
         onForward={handleForwardMessage}
       />
 
-      <NewChatModal
-        isOpen={newChatModalOpen}
-        onClose={handleCloseNewChat}
-        onAddContact={addContact}
-        onCreateGroup={createGroup}
-        onStartDirectChat={(chat) => selectChat(chat)}
-      />
-
       <WorkspaceModal
         isOpen={workspaceModalOpen}
         onClose={handleCloseWorkspace}
@@ -658,14 +717,6 @@ export const ChatPage = () => {
         onJoinWorkspace={joinWorkspace}
       />
 
-      <SettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
-        user={user}
-        onUpdateProfile={updateProfile}
-        onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
-      />
-
       {/* ── Incoming Call Prompt Modal ─────────────────────────────── */}
       <IncomingCallModal
         incomingCall={incomingCall}
@@ -673,15 +724,17 @@ export const ChatPage = () => {
         onDecline={handleDeclineIncomingCall}
       />
 
-      {/* ── Active Callee WebRTC Session Modal ───────────────────────── */}
+      {/* ── Active WebRTC Call Session Modal (Caller & Callee) ──────── */}
       {activeCallSession && (
         <CallModal
+          key={activeCallSession.callId}
+          callId={activeCallSession.callId}
           isOpen={Boolean(activeCallSession)}
           onClose={() => setActiveCallSession(null)}
           onCallEndedSummary={handleCallEndedSummary}
           chat={activeCallSession.chat}
           isVideo={activeCallSession.isVideo}
-          isInitiator={false}
+          isInitiator={activeCallSession.isInitiator}
           incomingSignal={activeCallSession.incomingSignal}
           callerInfo={activeCallSession.callerInfo}
           initialIceCandidates={activeCallSession.initialIceCandidates || []}
