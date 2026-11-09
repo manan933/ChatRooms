@@ -479,27 +479,40 @@ class StorageService {
       }
     }
 
-    for (const uname of partnerUsernames) {
-      if (!contacts.some((c) => c.username?.toLowerCase() === uname)) {
-        const pUser = await User.findOne({ primaryUsername: uname }).lean();
-        if (pUser) {
-          const dmId = this.getCanonicalDmId(cleanUsername, uname);
-          const lastMsg = await Message.findOne({ chatId: dmId }).sort({ timestamp: -1 }).lean();
-          contacts.push({
-            id: dmId,
-            ownerId: uidStr,
-            userId: pUser._id.toString(),
-            username: pUser.primaryUsername,
-            name: pUser.name,
-            avatar: pUser.avatar,
-            status: pUser.status || 'online',
-            bio: pUser.bio || '',
-            lastMessage: lastMsg?.content || (lastMsg?.attachment ? '📎 Attachment' : 'Connected on ChatRooms'),
-            lastMessageTime: lastMsg?.timestamp || new Date(),
-            type: 'contact',
-          });
-        }
-      }
+    const existingUnames = new Set(contacts.map((c) => c.username?.toLowerCase()).filter(Boolean));
+    const missingPartners = Array.from(partnerUsernames).filter((u) => !existingUnames.has(u));
+
+    if (missingPartners.length > 0) {
+      const [partnerUsers, latestDmMessages] = await Promise.all([
+        User.find({ primaryUsername: { $in: missingPartners } }).lean(),
+        Message.find({
+          chatId: { $in: missingPartners.map((u) => this.getCanonicalDmId(cleanUsername, u)) },
+        }).sort({ timestamp: -1 }).lean(),
+      ]);
+
+      const lastMsgMap = new Map();
+      latestDmMessages.forEach((m) => {
+        if (!lastMsgMap.has(m.chatId)) lastMsgMap.set(m.chatId, m);
+      });
+
+      partnerUsers.forEach((pUser) => {
+        const uname = pUser.primaryUsername.toLowerCase();
+        const dmId = this.getCanonicalDmId(cleanUsername, uname);
+        const lastMsg = lastMsgMap.get(dmId);
+        contacts.push({
+          id: dmId,
+          ownerId: uidStr,
+          userId: pUser._id.toString(),
+          username: pUser.primaryUsername,
+          name: pUser.name,
+          avatar: pUser.avatar,
+          status: pUser.status || 'online',
+          bio: pUser.bio || '',
+          lastMessage: lastMsg?.content || (lastMsg?.attachment ? '📎 Attachment' : 'Connected on ChatRooms'),
+          lastMessageTime: lastMsg?.timestamp || new Date(),
+          type: 'contact',
+        });
+      });
     }
 
     // Populate user profile info for latest avatars
@@ -621,6 +634,64 @@ class StorageService {
   async deleteOrLeaveGroup(groupId, currentUserId, currentUsername) {
     return groupService.deleteOrLeaveGroup(groupId, currentUserId, currentUsername);
   }
+
+  async deleteChat(chatId, currentUserId, currentUsername) {
+    if (!chatId) return { success: false };
+
+    const uidStr = currentUserId ? currentUserId.toString() : '';
+    const cleanUsername = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
+
+    // 1. Delete all messages for this chat from MongoDB
+    try {
+      const chatIdsToDelete = [chatId];
+      if (chatId.startsWith('dm_')) {
+        const parts = chatId.replace('dm_', '').split('_');
+        if (parts.length === 2) {
+          chatIdsToDelete.push(`dm_${parts[1]}_${parts[0]}`);
+        }
+      }
+      await Message.deleteMany({ chatId: { $in: chatIdsToDelete } });
+    } catch (e) {
+      console.warn('[storageService] Error deleting messages for chat:', e);
+    }
+
+    // 2. Personal group or subgroup:
+    if (chatId.startsWith('group-') || chatId.startsWith('subgroup-')) {
+      try {
+        await groupService.deleteOrLeaveGroup(chatId, currentUserId, currentUsername);
+      } catch (e) {
+        console.warn('[storageService] Error deleting group:', e);
+      }
+    } else {
+      // 3. Direct Message or Contact deletion:
+      try {
+        const deleteConditions = [
+          { id: chatId, ownerId: uidStr },
+        ];
+
+        if (chatId.startsWith('dm_')) {
+          const parts = chatId.replace('dm_', '').split('_');
+          deleteConditions.push({ id: `dm_${parts[1]}_${parts[0]}`, ownerId: uidStr });
+          parts.forEach((p) => {
+            if (p && p !== cleanUsername) {
+              deleteConditions.push({ username: p.toLowerCase(), ownerId: uidStr });
+            }
+          });
+        }
+
+        if (mongoose.Types.ObjectId.isValid(chatId)) {
+          deleteConditions.push({ _id: chatId, ownerId: uidStr });
+        }
+
+        await Contact.deleteMany({ $or: deleteConditions });
+      } catch (e) {
+        console.warn('[storageService] Error deleting contact:', e);
+      }
+    }
+
+    return { success: true, chatId };
+  }
+
 
   async getWorkspaces(userId) {
     let workspaces = await Workspace.find({}).sort({ createdAt: 1 }).lean();

@@ -504,7 +504,7 @@ export const ChatArea = ({
           onScroll={handleScroll}
           className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-3 sm:px-6 py-4 flex flex-col relative bg-transparent font-chat"
         >
-          {isLoadingMessages ? (
+          {isLoadingMessages && groupedMessages.length === 0 ? (
             <MessageFeedSkeleton count={6} />
           ) : groupedMessages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 select-none my-auto">

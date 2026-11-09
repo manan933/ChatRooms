@@ -1,18 +1,6 @@
 import React, { useEffect } from 'react';
 import { X, Download, ZoomIn, ZoomOut } from './Icons';
-
-const getFileUrl = (url) => {
-  if (!url) return '';
-  if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('blob:') ||
-    url.startsWith('data:')
-  ) {
-    return url;
-  }
-  return url.startsWith('/') ? url : `/${url}`;
-};
+import { getFileUrl } from '../../utils/fileUrl';
 
 export const ImageViewer = ({ isOpen, onClose, src, title }) => {
   const [scale, setScale] = React.useState(1);

@@ -19,6 +19,7 @@ import {
   Trash2,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
+import api from '../../api/api';
 import useThemeStore from '../../store/themeStore';
 import useChatStore from '../../store/chatStore';
 import CreateChannelModal from '../modals/CreateChannelModal';
@@ -85,9 +86,77 @@ export const Sidebar = ({
   });
   const [expandedGroups, setExpandedGroups] = useState({});
   const [copiedWsCode, setCopiedWsCode] = useState(false);
+  const [globalUsers, setGlobalUsers] = useState([]);
+  const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
+
+  // Search registered users directory when typing in search bar
+  React.useEffect(() => {
+    const q = search.trim().replace(/^@/, '');
+    if (!q || q.length < 2) {
+      setGlobalUsers([]);
+      setIsSearchingGlobal(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingGlobal(true);
+      try {
+        const res = await api.contacts.search(q);
+        if (res.ok) {
+          const raw = Array.isArray(res.data) ? res.data : (res.data?.users || []);
+          const existingIds = new Set(contacts.map((c) => (c.userId || c.id || '').toString().toLowerCase()));
+          const existingUnames = new Set(contacts.map((c) => (c.username || c.primaryUsername || '').toLowerCase().replace(/^@/, '')));
+          const filtered = raw.filter((u) => {
+            const uid = (u._id || u.id || '').toString().toLowerCase();
+            const uname = (u.primaryUsername || u.username || '').toLowerCase().replace(/^@/, '');
+            const isMe = (currentUser?._id && uid === currentUser._id.toString().toLowerCase()) ||
+              (currentUser?.primaryUsername && uname === currentUser.primaryUsername.toLowerCase().replace(/^@/, ''));
+            return !isMe && !existingIds.has(uid) && !existingUnames.has(uname);
+          });
+          setGlobalUsers(filtered);
+        } else {
+          setGlobalUsers([]);
+        }
+      } catch {
+        setGlobalUsers([]);
+      } finally {
+        setIsSearchingGlobal(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search, contacts, currentUser]);
+
+  const handleStartChatWithGlobalUser = async (u) => {
+    try {
+      const username = u.primaryUsername || u.username;
+      const res = await useChatStore.getState().addContact(username);
+      if (res.success && res.contact) {
+        onSelectChat(res.contact);
+        setSearch('');
+      } else {
+        const myUname = (currentUser?.primaryUsername || '').toLowerCase().replace(/^@/, '');
+        const targetUname = (username || '').toLowerCase().replace(/^@/, '');
+        const dmId = 'dm_' + [myUname, targetUname].sort().join('_');
+        const fallback = {
+          id: dmId,
+          userId: u._id || u.id,
+          username: targetUname,
+          name: u.name || targetUname,
+          avatar: u.avatar || null,
+          status: u.status || 'online',
+          type: 'contact',
+        };
+        onSelectChat(fallback);
+        setSearch('');
+      }
+    } catch (e) {
+      console.warn('Error starting chat with user:', e);
+    }
+  };
 
   const { theme, toggleTheme } = useThemeStore();
-  const { typingStatus = {}, onlineUsers = [], isChatMuted } = useChatStore();
+  const { typingStatus = {}, onlineUsers = [], isChatMuted, unreadCounts = {}, getUnreadCount } = useChatStore();
 
   // Sync selected workspace from external selection
   React.useEffect(() => {
@@ -422,9 +491,60 @@ export const Sidebar = ({
           <ChatListSkeleton count={6} />
         ) : activeTab === 'direct' ? (
           directList.length === 0 ? (
-            <div className="text-center py-8 px-4 text-[var(--text-muted)] text-xs font-body">
-              <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No conversations found</p>
-              <p>Click &ldquo;New Chat&rdquo; to start a conversation.</p>
+            <div className="text-center py-6 px-4 text-[var(--text-muted)] text-xs font-body">
+              {search.trim() ? (
+                <>
+                  <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No conversations matching &ldquo;{search}&rdquo;</p>
+                  {search.trim().length >= 2 ? (
+                    <div className="mt-3 pt-2 border-t border-[var(--border-subtle)] text-left">
+                      <div className="px-1 py-1 flex items-center justify-between font-heading">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">
+                          Directory Users {globalUsers.length > 0 ? `(${globalUsers.length})` : ''}
+                        </span>
+                        {isSearchingGlobal && (
+                          <span className="text-[10px] text-[var(--text-muted)] animate-pulse">Searching directory...</span>
+                        )}
+                      </div>
+                      {globalUsers.length > 0 ? (
+                        <div className="space-y-1 mt-1">
+                          {globalUsers.map((u) => (
+                            <button
+                              key={u.id || u._id}
+                              type="button"
+                              onClick={() => handleStartChatWithGlobalUser(u)}
+                              className="group w-full p-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-all flex items-center justify-between gap-3 cursor-pointer border-none bg-transparent text-left"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Avatar name={u.name} src={u.avatar} size="md" status={u.status || 'online'} />
+                                <div className="min-w-0">
+                                  <div className="text-sm font-bold text-[var(--text-primary)] truncate">{u.name}</div>
+                                  <div className="text-xs text-[var(--text-muted)] font-chat truncate">
+                                    @{u.primaryUsername || u.username}
+                                  </div>
+                                </div>
+                              </div>
+                              <span className="btn-cta-vibrant px-3 py-1 rounded-lg text-xs font-bold shrink-0">
+                                Chat
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : !isSearchingGlobal && (
+                        <div className="text-center py-4 text-xs text-[var(--text-muted)]">
+                          No registered user found matching &ldquo;{search}&rdquo;
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p>Type at least 2 characters to search directory users.</p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No conversations found</p>
+                  <p>Click &ldquo;New Chat&rdquo; to start a conversation.</p>
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -449,6 +569,7 @@ export const Sidebar = ({
 
                   const typers = typingStatus[item.id] || [];
                   const isTyping = typers.length > 0;
+                  const unreadCount = getUnreadCount ? getUnreadCount(item.id, item) : (unreadCounts[item.id] || 0);
 
                   return (
                     <button
@@ -481,7 +602,7 @@ export const Sidebar = ({
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (window.confirm(`Delete conversation with ${item.name}?`)) {
-                                  useChatStore.getState().deleteChat(item.id);
+                                  useChatStore.getState().deleteChat(item.id, item);
                                 }
                               }}
                               className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/15 transition-opacity shrink-0 border-none bg-transparent cursor-pointer"
@@ -492,27 +613,34 @@ export const Sidebar = ({
                             </button>
                           </div>
                         </div>
-                        {isTyping ? (
-                          <p className="text-[13px] sm:text-sm font-chat text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
-                          </p>
-                        ) : (
-                          <p className="text-[13px] sm:text-sm font-chat text-[var(--text-muted)] truncate m-0 leading-normal">
-                            {item.lastMessage || (
-                              isContactOnline ? 'Active now' : (
-                                <span>
-                                  Connected on{' '}
-                                  <span
-                                    className="font-brand font-normal text-[1.05em] text-[var(--text-secondary)]"
-                                    style={{ fontFamily: "'Lakki Reddy', cursive" }}
-                                  >
-                                    ChatRooms
+                        <div className="flex items-center justify-between gap-1.5 mt-0.5">
+                          {isTyping ? (
+                            <p className="text-[13px] sm:text-sm font-chat text-[var(--accent)] truncate m-0 leading-tight italic flex items-center gap-1 animate-pulse min-w-0 flex-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
+                            </p>
+                          ) : (
+                            <p className="text-[13px] sm:text-sm font-chat text-[var(--text-muted)] truncate m-0 leading-normal min-w-0 flex-1">
+                              {item.lastMessage || (
+                                isContactOnline ? 'Active now' : (
+                                  <span>
+                                    Connected on{' '}
+                                    <span
+                                      className="font-brand font-normal text-[1.05em] text-[var(--text-secondary)]"
+                                      style={{ fontFamily: "'Lakki Reddy', cursive" }}
+                                    >
+                                      ChatRooms
+                                    </span>
                                   </span>
-                                </span>
-                              )
-                            )}
-                          </p>
-                        )}
+                                )
+                              )}
+                            </p>
+                          )}
+                          {unreadCount > 0 && (
+                            <span className="bg-[#25D366] text-black text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center shrink-0 shadow-sm">
+                              {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   );
@@ -532,6 +660,7 @@ export const Sidebar = ({
                 const subgroups = subgroupsMap[item.id] || [];
                 const hasSubgroups = subgroups.length > 0;
                 const isExpanded = expandedGroups[item.id] !== false;
+                const unreadCount = getUnreadCount ? getUnreadCount(item.id, item) : (unreadCounts[item.id] || 0);
 
                 return (
                   <div key={item.id} className="flex flex-col">
@@ -590,15 +719,22 @@ export const Sidebar = ({
                             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" /> typing...
                           </p>
                         ) : (
-                          <div className="flex items-center justify-between text-[13px] sm:text-sm font-chat text-[var(--text-muted)]">
+                          <div className="flex items-center justify-between gap-1.5 text-[13px] sm:text-sm font-chat text-[var(--text-muted)] mt-0.5">
                             <p className="truncate m-0 leading-normal min-w-0 flex-1">
                               {item.lastMessage || 'Active group conversation'}
                             </p>
-                            {hasSubgroups && (
-                              <span className="text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] px-1.5 py-0.5 rounded-md shrink-0 ml-1">
-                                {subgroups.length} {subgroups.length === 1 ? 'subgroup' : 'subgroups'}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {hasSubgroups && (
+                                <span className="text-[10px] font-semibold text-[var(--accent)] bg-[var(--accent-subtle)] px-1.5 py-0.5 rounded-md">
+                                  {subgroups.length} {subgroups.length === 1 ? 'subgroup' : 'subgroups'}
+                                </span>
+                              )}
+                              {unreadCount > 0 && (
+                                <span className="bg-[#25D366] text-black text-[11px] font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center shadow-sm">
+                                  {unreadCount > 99 ? '99+' : unreadCount}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -609,6 +745,7 @@ export const Sidebar = ({
                       <div className="ml-6 pl-3 border-l-2 border-[var(--border)] flex flex-col gap-1 my-1">
                         {subgroups.map((sub) => {
                           const isSubActive = activeChat?.id === sub.id;
+                          const subUnreadCount = getUnreadCount ? getUnreadCount(sub.id, sub) : (unreadCounts[sub.id] || 0);
                           return (
                             <button
                               key={sub.id}
@@ -625,11 +762,18 @@ export const Sidebar = ({
                                   #
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <span className="text-xs sm:text-sm font-heading font-semibold text-[var(--text-primary)] truncate block">
-                                    {sub.name}
-                                  </span>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="text-xs sm:text-sm font-heading font-semibold text-[var(--text-primary)] truncate block">
+                                      {sub.name}
+                                    </span>
+                                    {subUnreadCount > 0 && (
+                                      <span className="bg-[#25D366] text-black text-[10px] font-bold rounded-full min-w-[18px] h-4.5 px-1 flex items-center justify-center shadow-sm shrink-0">
+                                        {subUnreadCount > 99 ? '99+' : subUnreadCount}
+                                      </span>
+                                    )}
+                                  </div>
                                   {sub.lastMessage && (
-                                    <span className="text-[11px] font-chat text-[var(--text-muted)] truncate block">
+                                    <span className="text-[11px] font-chat text-[var(--text-muted)] truncate block mt-0.5">
                                       {sub.lastMessage}
                                     </span>
                                   )}
@@ -656,6 +800,50 @@ export const Sidebar = ({
                   </div>
                 );
               })}
+
+              {/* ── Global Directory Search Results when searching ── */}
+              {search.trim().length >= 2 && (
+                <div className="mt-3 pt-2 border-t border-[var(--border-subtle)]">
+                  <div className="px-2 py-1 flex items-center justify-between font-heading">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">
+                      Directory Users {globalUsers.length > 0 ? `(${globalUsers.length})` : ''}
+                    </span>
+                    {isSearchingGlobal && (
+                      <span className="text-[10px] text-[var(--text-muted)] animate-pulse">Searching directory...</span>
+                    )}
+                  </div>
+
+                  {globalUsers.length > 0 ? (
+                    <div className="space-y-1 mt-1">
+                      {globalUsers.map((u) => (
+                        <button
+                          key={u.id || u._id}
+                          type="button"
+                          onClick={() => handleStartChatWithGlobalUser(u)}
+                          className="group w-full p-2.5 rounded-xl hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] transition-all flex items-center justify-between gap-3 cursor-pointer border-none bg-transparent text-left"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar name={u.name} src={u.avatar} size="md" status={u.status || 'online'} />
+                            <div className="min-w-0">
+                              <div className="text-sm font-bold text-[var(--text-primary)] truncate">{u.name}</div>
+                              <div className="text-xs text-[var(--text-muted)] font-chat truncate">
+                                @{u.primaryUsername || u.username}
+                              </div>
+                            </div>
+                          </div>
+                          <span className="btn-cta-vibrant px-3 py-1 rounded-lg text-xs font-bold shrink-0">
+                            Chat
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : !isSearchingGlobal && (
+                    <div className="text-center py-2 text-xs text-[var(--text-muted)] font-body">
+                      No additional users found
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )
         ) : workspaces.length === 0 ? (

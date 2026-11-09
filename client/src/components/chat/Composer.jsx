@@ -3,19 +3,7 @@ import { Paperclip, Image as ImageIcon, Smile, SendHorizontal, X, Loader2, FileT
 import EmojiPicker from '../ui/EmojiPicker';
 import socketService from '../../api/socket';
 import api from '../../api/api';
-
-const getFileUrl = (url) => {
-  if (!url) return '';
-  if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('blob:') ||
-    url.startsWith('data:')
-  ) {
-    return url;
-  }
-  return url.startsWith('/') ? url : `/${url}`;
-};
+import { getFileUrl } from '../../utils/fileUrl';
 
 const formatSize = (bytes) => {
   if (!bytes) return '0 B';

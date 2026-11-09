@@ -1,19 +1,10 @@
+import { getFileUrl } from '../utils/fileUrl';
+
 const API_BASE = '';
 
 const getToken = () => localStorage.getItem('chatrooms_token') || localStorage.getItem('zyntra_token');
 
-export const getFileUrl = (url) => {
-  if (!url) return '';
-  if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('blob:') ||
-    url.startsWith('data:')
-  ) {
-    return url;
-  }
-  return `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
-};
+export { getFileUrl };
 
 export async function request(endpoint, options = {}) {
   const token = getToken();

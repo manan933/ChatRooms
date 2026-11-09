@@ -68,17 +68,23 @@ export const NewChatPanel = ({
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await onAddContact(user.primaryUsername || user.username);
+      const targetUsername = user.primaryUsername || user.username;
+      const res = await onAddContact(targetUsername);
       if (res?.success) {
-        onClose();
-        if (res.contact) {
-          onStartDirectChat?.(res.contact);
-        }
+        const contactToOpen = res.contact || {
+          id: `dm_${targetUsername}`,
+          username: targetUsername,
+          name: user.name || targetUsername,
+          avatar: user.avatar || null,
+          status: user.status || 'online',
+          type: 'contact',
+        };
+        onStartDirectChat?.(contactToOpen);
       } else {
         setError(res?.error || 'Failed to add contact');
       }
-    } catch {
-      setError('An error occurred');
+    } catch (e) {
+      setError(e?.message || 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -276,7 +282,6 @@ export const NewChatPanel = ({
                     type="button"
                     onClick={() => {
                       onStartDirectChat?.(c);
-                      onClose();
                     }}
                     className="w-full p-2.5 rounded-xl hover:bg-[var(--bg-hover)] transition-colors flex items-center gap-3 cursor-pointer border-none bg-transparent text-left"
                   >

@@ -3,20 +3,7 @@ import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check,
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
 import { normalizeEmoji, renderContentWithEmojis } from '../../utils/emojiMap';
-
-// Direct resilient URL resolver (guarantees getFileUrl is always in scope)
-const getFileUrl = (url) => {
-  if (!url) return '';
-  if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('blob:') ||
-    url.startsWith('data:')
-  ) {
-    return url;
-  }
-  return url.startsWith('/') ? url : `/${url}`;
-};
+import { getFileUrl } from '../../utils/fileUrl';
 
 const QUICK_REACTIONS = ['👍', '❤️', '🔥', '😂', '⭐', '🤝', '🎉'];
 
@@ -383,9 +370,11 @@ export const MessageBubble = ({
             <span>{time}</span>
             {isOwn && (
               isRead ? (
-                <CheckCheck size={16} className="text-white/95 inline-block shrink-0" title="Seen" />
+                <CheckCheck size={16} className="text-[#53bdeb] drop-shadow-[0_0_4px_rgba(83,189,235,0.6)] inline-block shrink-0" title="Read" />
+              ) : message.status === 'delivered' || message.isDelivered ? (
+                <CheckCheck size={16} className="text-white/70 inline-block shrink-0" title="Delivered" />
               ) : (
-                <Check size={15} className="text-white/70 inline-block shrink-0" title="Sent (not seen yet)" />
+                <Check size={15} className="text-white/70 inline-block shrink-0" title="Sent" />
               )
             )}
           </div>

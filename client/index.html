@@ -39,6 +39,28 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&family=Karla:ital,wght@0,200..800;1,200..800&family=Lakki+Reddy&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet" />
 
+    <!-- Synchronous Global URL Helper Safeguard -->
+    <script>
+      (function() {
+        var resolve = function(u) {
+          if (!u) return '';
+          if (typeof u === 'object') {
+            if (u.url) return resolve(u.url);
+            if (u.dataUrl) return resolve(u.dataUrl);
+            if (u.src) return resolve(u.src);
+            return '';
+          }
+          if (typeof u !== 'string') return String(u);
+          var s = u.trim();
+          if (!s) return '';
+          if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('blob:') || s.startsWith('data:')) return s;
+          return s.startsWith('/') ? s : '/' + s;
+        };
+        window.getFileUrl = resolve;
+        if (typeof globalThis !== 'undefined') globalThis.getFileUrl = resolve;
+      })();
+    </script>
+
     <title>ChatRooms</title>
   </head>
   <body>

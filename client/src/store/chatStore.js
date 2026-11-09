@@ -3,30 +3,89 @@ import api from '../api/api';
 import socketService from '../api/socket';
 import { normalizeEmoji } from '../utils/emojiMap';
 
-const getInitialMutedChats = () => {
+const getCachedData = (key, fallback) => {
   try {
-    const raw = localStorage.getItem('chatrooms_muted_chats');
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
   } catch {
-    return [];
+    return fallback;
   }
 };
 
-const getInitialBlockedUsers = () => {
+const setCachedData = (key, data) => {
   try {
-    const raw = localStorage.getItem('chatrooms_blocked_users');
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+};
+
+const getInitialMutedChats = () => {
+  return getCachedData('chatrooms_muted_chats', []);
+};
+
+const getInitialBlockedUsers = () => {
+  return getCachedData('chatrooms_blocked_users', []);
+};
+
+export const matchesChatId = (c, targetId) => {
+  if (!c || !targetId) return false;
+  const tid = String(targetId).toLowerCase().trim();
+  const cid = String(c.id || '').toLowerCase().trim();
+  const cUid = String(c.userId || c._id || '').toLowerCase().trim();
+  const cUname = String(c.username || c.primaryUsername || '').toLowerCase().trim().replace(/^@/, '');
+
+  if (cid === tid || cUid === tid || (cUname && cUname === tid)) {
+    return true;
   }
+
+  // Handle DM permutations: dm_u1_u2 vs dm_u2_u1
+  if (tid.startsWith('dm_')) {
+    const tParts = tid.replace('dm_', '').split('_');
+    if (tParts.length === 2) {
+      const reversedTid = `dm_${tParts[1]}_${tParts[0]}`;
+      if (cid === reversedTid) return true;
+      if (cUname && (cUname === tParts[0] || cUname === tParts[1])) return true;
+      if (cid.startsWith('dm_')) {
+        const cParts = cid.replace('dm_', '').split('_');
+        if (cParts.length === 2) {
+          const sortedT = [...tParts].sort().join('_');
+          const sortedC = [...cParts].sort().join('_');
+          if (sortedT === sortedC) return true;
+        }
+      }
+    }
+  }
+
+  if (cid.startsWith('dm_')) {
+    const cParts = cid.replace('dm_', '').split('_');
+    if (cParts.length === 2 && (cParts[0] === tid || cParts[1] === tid)) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const getFilteredInitialContacts = () => {
+  const cached = getCachedData('chatrooms_cached_contacts', []);
+  const deleted = getCachedData('chatrooms_deleted_chats', []);
+  if (!deleted || deleted.length === 0) return cached;
+  return cached.filter((c) => !deleted.some((d) => matchesChatId(c, d)));
+};
+
+const getFilteredInitialGroups = () => {
+  const cached = getCachedData('chatrooms_cached_groups', []);
+  const deleted = getCachedData('chatrooms_deleted_chats', []);
+  if (!deleted || deleted.length === 0) return cached;
+  return cached.filter((g) => !deleted.some((d) => matchesChatId(g, d)));
 };
 
 export const useChatStore = create((set, get) => ({
   activeChat: null,
-  contacts: [],
-  groups: [],
-  workspaces: [],
-  messages: {},
+  contacts: getFilteredInitialContacts(),
+  groups: getFilteredInitialGroups(),
+  workspaces: getCachedData('chatrooms_cached_workspaces', []),
+  messages: getCachedData('chatrooms_cached_messages', {}),
+  unreadCounts: getCachedData('chatrooms_unread_counts', {}),
   typingStatus: {},
   onlineUsers: [],
   mutedChats: getInitialMutedChats(),
@@ -35,15 +94,26 @@ export const useChatStore = create((set, get) => ({
   isLoadingMessages: false,
 
   // Reset store for logout
-  resetStore: () => set({
-    activeChat: null,
-    contacts: [],
-    groups: [],
-    workspaces: [],
-    messages: {},
-    typingStatus: {},
-    onlineUsers: [],
-  }),
+  resetStore: () => {
+    try {
+      localStorage.removeItem('chatrooms_cached_contacts');
+      localStorage.removeItem('chatrooms_cached_groups');
+      localStorage.removeItem('chatrooms_cached_workspaces');
+      localStorage.removeItem('chatrooms_cached_messages');
+      localStorage.removeItem('chatrooms_unread_counts');
+      localStorage.removeItem('chatrooms_deleted_chats');
+    } catch {}
+    set({
+      activeChat: null,
+      contacts: [],
+      groups: [],
+      workspaces: [],
+      messages: {},
+      unreadCounts: {},
+      typingStatus: {},
+      onlineUsers: [],
+    });
+  },
 
   // Initialize all chat streams (Contacts, Groups, Workspaces)
   loadChats: async (silent = false) => {
@@ -52,6 +122,7 @@ export const useChatStore = create((set, get) => ({
       (get().groups && get().groups.length > 0) ||
       (get().workspaces && get().workspaces.length > 0);
 
+    // Never show skeleton or blank screen if we already have chats
     if (!silent && !hasData) {
       set({ isLoadingChats: true });
     }
@@ -68,8 +139,8 @@ export const useChatStore = create((set, get) => ({
       let rawContacts = prevContacts;
       let rawGroups = prevGroups;
       if (contactsRes.ok && contactsRes.data) {
-        rawContacts = Array.isArray(contactsRes.data.contacts) ? contactsRes.data.contacts : [];
-        rawGroups = Array.isArray(contactsRes.data.groups) ? contactsRes.data.groups : [];
+        rawContacts = Array.isArray(contactsRes.data.contacts) ? contactsRes.data.contacts : prevContacts;
+        rawGroups = Array.isArray(contactsRes.data.groups) ? contactsRes.data.groups : prevGroups;
       }
 
       let rawWorkspaces = prevWorkspaces;
@@ -78,11 +149,20 @@ export const useChatStore = create((set, get) => ({
           ? workspacesRes.data
           : Array.isArray(workspacesRes.data.workspaces)
           ? workspacesRes.data.workspaces
-          : [];
+          : prevWorkspaces;
       }
 
+      const deletedList = getCachedData('chatrooms_deleted_chats', []);
+      const isBlacklisted = (item) => {
+        if (!item || !deletedList || deletedList.length === 0) return false;
+        return deletedList.some((d) => matchesChatId(item, d));
+      };
+
+      const safeContacts = rawContacts.filter((c) => !isBlacklisted(c));
+      const safeGroups = rawGroups.filter((g) => !isBlacklisted(g));
+
       const activeOnline = (get().onlineUsers || []).map((x) => String(x).toLowerCase().replace(/^@/, ''));
-      const contactsWithPresence = rawContacts.map((c) => {
+      const contactsWithPresence = safeContacts.map((c) => {
         const uid = (c.userId || c.id || '').toString().toLowerCase();
         const uname = (c.username || c.primaryUsername || '').toLowerCase().replace(/^@/, '');
         const isOnline = activeOnline.includes(uid) || activeOnline.includes(uname);
@@ -95,10 +175,15 @@ export const useChatStore = create((set, get) => ({
 
       set({
         contacts: contactsWithPresence,
-        groups: rawGroups,
+        groups: safeGroups,
         workspaces: rawWorkspaces,
         isLoadingChats: false,
       });
+
+      // Cache locally for instant loading without disappearing on future auto-reloads
+      setCachedData('chatrooms_cached_contacts', contactsWithPresence);
+      setCachedData('chatrooms_cached_groups', safeGroups);
+      setCachedData('chatrooms_cached_workspaces', rawWorkspaces);
 
       // Auto-subscribe to all active contact and channel rooms for instant real-time message delivery
       rawContacts.forEach((c) => {
@@ -144,23 +229,129 @@ export const useChatStore = create((set, get) => ({
     socketService.joinRoom(chat.id);
 
     set({ activeChat: chat });
+    get().clearUnreadCount(chat.id, chat);
+    get().markMessagesAsRead(chat.id);
+
     await get().loadMessages(chat.id);
+  },
+
+  clearUnreadCount: (chatId, item = null) => {
+    if (!chatId) return;
+    set((state) => {
+      const keys = [String(chatId).toLowerCase()];
+      if (item) {
+        if (item.id) keys.push(String(item.id).toLowerCase());
+        if (item.username) keys.push(String(item.username).toLowerCase().replace(/^@/, ''));
+        if (item.userId) keys.push(String(item.userId).toLowerCase());
+        if (item.primaryUsername) keys.push(String(item.primaryUsername).toLowerCase().replace(/^@/, ''));
+      }
+      if (String(chatId).startsWith('dm_')) {
+        const parts = String(chatId).replace('dm_', '').split('_');
+        if (parts.length === 2) {
+          keys.push(`dm_${parts[1]}_${parts[0]}`.toLowerCase());
+          keys.push(parts[0].toLowerCase(), parts[1].toLowerCase());
+        }
+      }
+      const next = { ...state.unreadCounts };
+      let changed = false;
+      Object.keys(next).forEach((k) => {
+        if (keys.includes(k.toLowerCase())) {
+          delete next[k];
+          changed = true;
+        }
+      });
+      if (!changed) return state;
+      setCachedData('chatrooms_unread_counts', next);
+      return { unreadCounts: next };
+    });
+  },
+
+  getUnreadCount: (chatId, item = null) => {
+    const counts = get().unreadCounts || {};
+    if (!counts) return 0;
+    if (counts[chatId]) return counts[chatId];
+    const keys = [String(chatId).toLowerCase()];
+    if (item) {
+      if (item.id) keys.push(String(item.id).toLowerCase());
+      if (item.username) keys.push(String(item.username).toLowerCase().replace(/^@/, ''));
+      if (item.userId) keys.push(String(item.userId).toLowerCase());
+      if (item.primaryUsername) keys.push(String(item.primaryUsername).toLowerCase().replace(/^@/, ''));
+    }
+    if (String(chatId).startsWith('dm_')) {
+      const parts = String(chatId).replace('dm_', '').split('_');
+      if (parts.length === 2) {
+        keys.push(`dm_${parts[1]}_${parts[0]}`.toLowerCase());
+        keys.push(parts[0].toLowerCase(), parts[1].toLowerCase());
+      }
+    }
+    for (const k of keys) {
+      if (counts[k]) return counts[k];
+    }
+    return 0;
   },
 
   closeChat: () => {
     set({ activeChat: null });
   },
 
-  deleteChat: async (chatId) => {
+  deleteChat: async (chatId, target = null) => {
     if (!chatId) return;
+
+    // Collect all identifiers to blacklist and evict
+    const deletedList = getCachedData('chatrooms_deleted_chats', []);
+    const newDeleted = new Set(deletedList);
+    newDeleted.add(String(chatId).toLowerCase());
+
+    if (target) {
+      if (target.id) newDeleted.add(String(target.id).toLowerCase());
+      if (target.userId) newDeleted.add(String(target.userId).toLowerCase());
+      if (target._id) newDeleted.add(String(target._id).toLowerCase());
+      if (target.username) newDeleted.add(String(target.username).toLowerCase().replace(/^@/, ''));
+    }
+
+    if (String(chatId).startsWith('dm_')) {
+      const parts = String(chatId).replace('dm_', '').split('_');
+      if (parts.length === 2) {
+        newDeleted.add(`dm_${parts[1]}_${parts[0]}`);
+        newDeleted.add(`dm_${[...parts].sort().join('_')}`);
+        newDeleted.add(parts[0].toLowerCase());
+        newDeleted.add(parts[1].toLowerCase());
+      }
+    }
+
+    setCachedData('chatrooms_deleted_chats', Array.from(newDeleted));
+
     set((state) => {
       const nextMessages = { ...state.messages };
       delete nextMessages[chatId];
+      if (String(chatId).startsWith('dm_')) {
+        const parts = String(chatId).replace('dm_', '').split('_');
+        if (parts.length === 2) {
+          delete nextMessages[`dm_${parts[1]}_${parts[0]}`];
+          delete nextMessages[`dm_${[...parts].sort().join('_')}`];
+        }
+      }
+
+      const nextContacts = state.contacts.filter(
+        (c) => !matchesChatId(c, chatId) && (!target || !matchesChatId(c, target.id || target.username))
+      );
+      const nextGroups = state.groups.filter(
+        (g) => !matchesChatId(g, chatId) && g.parentGroupId !== chatId
+      );
+      const nextActiveChat =
+        matchesChatId(state.activeChat, chatId) || state.activeChat?.parentGroupId === chatId
+          ? null
+          : state.activeChat;
+
+      setCachedData('chatrooms_cached_contacts', nextContacts);
+      setCachedData('chatrooms_cached_groups', nextGroups);
+      setCachedData('chatrooms_cached_messages', nextMessages);
+
       return {
-        groups: state.groups.filter((g) => g.id !== chatId && g.parentGroupId !== chatId),
-        contacts: state.contacts.filter((c) => c.id !== chatId),
+        groups: nextGroups,
+        contacts: nextContacts,
         messages: nextMessages,
-        activeChat: (state.activeChat?.id === chatId || state.activeChat?.parentGroupId === chatId) ? null : state.activeChat,
+        activeChat: nextActiveChat,
       };
     });
 
@@ -181,11 +372,18 @@ export const useChatStore = create((set, get) => ({
       return;
     }
     // Leave group or remove contact
-    set((state) => ({
-      groups: state.groups.filter((g) => g.id !== chatId),
-      contacts: state.contacts.filter((c) => c.id !== chatId),
-      activeChat: state.activeChat?.id === chatId ? null : state.activeChat,
-    }));
+    set((state) => {
+      const nextGroups = state.groups.filter((g) => !matchesChatId(g, chatId));
+      const nextContacts = state.contacts.filter((c) => !matchesChatId(c, chatId));
+      const nextActiveChat = matchesChatId(state.activeChat, chatId) ? null : state.activeChat;
+      setCachedData('chatrooms_cached_contacts', nextContacts);
+      setCachedData('chatrooms_cached_groups', nextGroups);
+      return {
+        groups: nextGroups,
+        contacts: nextContacts,
+        activeChat: nextActiveChat,
+      };
+    });
     try {
       await api.contacts.deleteGroup(chatId);
     } catch (e) {
@@ -289,13 +487,17 @@ export const useChatStore = create((set, get) => ({
         return m;
       });
 
-      set((state) => ({
-        messages: {
+      set((state) => {
+        const next = {
           ...state.messages,
           [chatId]: list,
-        },
-        isLoadingMessages: false,
-      }));
+        };
+        setCachedData('chatrooms_cached_messages', next);
+        return {
+          messages: next,
+          isLoadingMessages: false,
+        };
+      });
     } catch {
       set({ isLoadingMessages: false });
     }
@@ -486,9 +688,33 @@ export const useChatStore = create((set, get) => ({
       : (message.content || (message.attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment'));
     const hasChat = get().contacts.some((c) => c.id === chatId) || get().groups.some((g) => g.id === chatId);
 
+    // Unread count & instant mark read reconciliation
+    const activeChat = get().activeChat;
+    const isActive = Boolean(
+      activeChat && (
+        activeChat.id === chatId ||
+        matchesChatId(activeChat, chatId)
+      )
+    );
+
+    if (isActive) {
+      get().clearUnreadCount(chatId);
+      get().markMessagesAsRead(chatId);
+    } else {
+      set((state) => {
+        const prevCount = state.unreadCounts[chatId] || 0;
+        const next = {
+          ...state.unreadCounts,
+          [chatId]: prevCount + 1,
+        };
+        setCachedData('chatrooms_unread_counts', next);
+        return { unreadCounts: next };
+      });
+    }
+
     if (!hasChat) {
       // New conversation initiated by another user: immediately load chats into sidebar!
-      get().loadChats();
+      get().loadChats(true);
     } else {
       set((state) => ({
         contacts: state.contacts
@@ -633,8 +859,15 @@ export const useChatStore = create((set, get) => ({
     const cleanUsername = username.replace(/^@/, '').trim();
     const res = await api.contacts.add(cleanUsername);
     if (res.ok && res.data) {
-      await get().loadChats();
-      return { success: true, contact: res.data };
+      const contactData = res.data.data || res.data;
+      set((state) => {
+        const existing = state.contacts.find((c) => c.id === contactData.id || c.username === contactData.username);
+        const nextContacts = existing ? state.contacts : [contactData, ...state.contacts];
+        setCachedData('chatrooms_cached_contacts', nextContacts);
+        return { contacts: nextContacts };
+      });
+      await get().loadChats(true);
+      return { success: true, contact: contactData };
     }
 
     return { success: false, error: res.error || res.data?.message || 'Failed to add contact' };
@@ -644,7 +877,7 @@ export const useChatStore = create((set, get) => ({
     const res = await api.contacts.createGroup({ name, description, parentGroupId, members });
     if (res.ok && res.data) {
       const groupData = res.data.data || res.data;
-      await get().loadChats();
+      await get().loadChats(true);
       return { success: true, group: groupData };
     }
 
@@ -743,7 +976,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await api.workspaces.create({ name, contextualUsername });
       if (res.ok && res.data) {
-        await get().loadChats();
+        await get().loadChats(true);
         const ws = res.data.workspace || res.data;
         return { success: true, workspace: ws };
       }
@@ -758,7 +991,7 @@ export const useChatStore = create((set, get) => ({
       const clean = code.trim().toUpperCase();
       const res = await api.workspaces.join(clean);
       if (res.ok && res.data) {
-        await get().loadChats();
+        await get().loadChats(true);
         const ws = res.data.workspace || res.data;
         return { success: true, workspace: ws };
       }
@@ -773,7 +1006,7 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await api.workspaces.createNode(workspaceId, { name: cleanName, folder });
       if (res.ok && res.data) {
-        await get().loadChats();
+        await get().loadChats(true);
         return { success: true, channel: res.data };
       }
     } catch (e) {

@@ -1,17 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const getFileUrl = (url) => {
-  if (!url) return '';
-  if (
-    url.startsWith('http://') ||
-    url.startsWith('https://') ||
-    url.startsWith('blob:') ||
-    url.startsWith('data:')
-  ) {
-    return url;
-  }
-  return url.startsWith('/') ? url : `/${url}`;
-};
+import { getFileUrl } from '../../utils/fileUrl';
 
 const gradients = [
   'linear-gradient(135deg, #0297DE 0%, #FC734D 100%)', // Electric Blue to Cantaloupe Orange

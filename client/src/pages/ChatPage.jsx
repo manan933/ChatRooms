@@ -209,7 +209,7 @@ export const ChatPage = () => {
   }, [user]);
 
   useEffect(() => {
-    loadChats();
+    loadChats(true);
 
     const handleReceive = (msg) => {
       if (!msg) return;
@@ -268,7 +268,7 @@ export const ChatPage = () => {
     };
 
     const handleConversationUpdate = () => {
-      loadChats();
+      loadChats(true);
     };
 
     const handleIncomingCall = (callData) => {
@@ -594,8 +594,11 @@ export const ChatPage = () => {
               onAddContact={addContact}
               onCreateGroup={createGroup}
               onStartDirectChat={(contact) => {
-                selectChat(contact);
                 setLeftView('chats');
+                selectChat(contact);
+                try {
+                  window.history.replaceState({ chatroomsView: 'chat', id: contact.id }, '');
+                } catch {}
               }}
             />
           ) : (
