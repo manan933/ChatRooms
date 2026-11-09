@@ -327,7 +327,10 @@ export const ChatArea = ({
               <div className="flex-1 flex items-center gap-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl px-3 py-1.5 min-w-0">
                 <Search size={16} className="text-[var(--text-muted)] shrink-0" />
                 <input
+                  id="chat-area-search-messages"
+                  name="searchMessages"
                   type="text"
+                  aria-label="Find in chat"
                   placeholder="Find in chat..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}

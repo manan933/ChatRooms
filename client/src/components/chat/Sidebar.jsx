@@ -442,7 +442,10 @@ export const Sidebar = ({
         <div className="relative flex items-center">
           <Search size={17} className="absolute left-3 text-[var(--text-muted)] pointer-events-none" />
           <input
+            id="sidebar-conversations-search"
+            name="conversationsSearch"
             type="text"
+            aria-label={activeTab === 'direct' ? 'Search conversations' : 'Search channels'}
             placeholder={activeTab === 'direct' ? 'Search conversations...' : 'Search channels...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}

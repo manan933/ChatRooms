@@ -160,6 +160,15 @@ class SocketService {
     }
   }
 
+  emit(event, ...args) {
+    if (!this.socket || !this.socket.connected) {
+      this.connect();
+    }
+    if (this.socket) {
+      this.socket.emit(event, ...args);
+    }
+  }
+
   on(event, handler) {
     if (!this.socket) this.connect();
     this.socket.on(event, handler);

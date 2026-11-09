@@ -341,8 +341,12 @@ export const ChatPage = () => {
     // Initial query for online presence
     socketService.getOnlineUsers();
 
-    // Auto-sync on window focus & tab visibility (silent refresh)
+    // Auto-sync on window focus & tab visibility (silent refresh, throttled to 10s)
+    let lastFocusSync = 0;
     const handleFocusSync = () => {
+      const now = Date.now();
+      if (now - lastFocusSync < 10000) return;
+      lastFocusSync = now;
       loadChats(true);
       socketService.getOnlineUsers();
       if (activeChatRef.current?.id) {
@@ -359,15 +363,12 @@ export const ChatPage = () => {
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // Background sync timer every 15s to guarantee 100% accuracy without manual refresh
+    // Background sync timer every 30s (when visible) to guarantee accuracy without triggering rate limits
     const syncInterval = setInterval(() => {
-      loadChats(true);
-      socketService.getOnlineUsers();
-      if (activeChatRef.current?.id) {
-        loadMessages(activeChatRef.current.id, true);
-        markMessagesAsRead(activeChatRef.current.id);
+      if (document.visibilityState === 'visible') {
+        handleFocusSync();
       }
-    }, 15000);
+    }, 30000);
 
     return () => {
       socketService.off('receive_message', handleReceive);
