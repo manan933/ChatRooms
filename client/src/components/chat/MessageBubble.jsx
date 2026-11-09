@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CheckCheck, Download, FileText, SmilePlus, Pencil, Trash2, Copy, Check, Phone, PhoneOff, Video, Forward } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import ImageViewer from '../ui/ImageViewer';
@@ -20,10 +20,13 @@ export const MessageBubble = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message?.content || '');
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const hoverTimeoutRef = useRef(null);
+  const bubbleRef = useRef(null);
 
   if (!message || !message.id) return null;
 
@@ -32,6 +35,45 @@ export const MessageBubble = ({
   const time = timestamp
     ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : '';
+
+  const handleMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    // WhatsApp/Telegram UX: 350ms grace window so cursor movement between bubble and buttons never cancels hover
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+      if (!showEmojiPicker) {
+        setShowMenu(false);
+      }
+    }, 350);
+  };
+
+  // Close menus and popovers on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (bubbleRef.current && !bubbleRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+        setShowMenu(false);
+        setIsHovered(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleCopy = () => {
     if (content) {
@@ -64,16 +106,17 @@ export const MessageBubble = ({
   };
 
   const isImage = isImageAttachment(attachment);
+  const isToolbarVisible = isHovered || showMenu || showEmojiPicker;
 
   return (
     <div
-      className={`group relative flex items-end gap-2 w-full my-1 ${
+      ref={bubbleRef}
+      id={`msg-${id}`}
+      className={`group relative flex items-end gap-2 w-full my-0.5 pt-6 -mt-5 ${
         isOwn ? 'flex-row-reverse' : 'flex-row'
       }`}
-      onMouseLeave={() => {
-        setShowMenu(false);
-        setShowEmojiPicker(false);
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Sender Avatar (received only) */}
       {!isOwn && (
@@ -100,39 +143,46 @@ export const MessageBubble = ({
           </div>
         )}
 
-        {/* Floating Quick Action Toolbar */}
+        {/* Floating Quick Action Toolbar with invisible hover tunnel */}
         <div
-          className={`absolute -top-7 ${
+          className={`absolute -top-5 ${
             isOwn ? 'right-0' : 'left-0'
-          } flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full px-1.5 py-0.5 shadow-md z-20 transition-opacity ${
-            showMenu || showEmojiPicker ? 'opacity-100 pointer-events-auto' : 'opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto'
+          } flex items-center gap-1 bg-[var(--bg-primary)] border border-[var(--border)] rounded-full px-1.5 py-0.5 shadow-md z-20 transition-all duration-150 before:content-[''] before:absolute before:-inset-x-3 before:-top-3 before:-bottom-4 before:z-[-1] ${
+            isToolbarVisible
+              ? 'opacity-100 pointer-events-auto translate-y-0'
+              : 'opacity-0 pointer-events-none translate-y-1 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0'
           }`}
         >
           {/* Reaction Trigger */}
           <div className="relative">
             <button
               type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEmojiPicker((prev) => !prev);
+              }}
               className="p-1 rounded-full text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--bg-hover)] transition-colors cursor-pointer border-none bg-transparent flex items-center justify-center"
               title="Add Reaction"
             >
               <SmilePlus size={14} />
             </button>
 
-            {/* Quick Reaction Popover */}
+            {/* Quick Reaction Popover with invisible hover bridge */}
             {showEmojiPicker && (
               <div
                 className={`absolute bottom-full mb-1.5 ${
                   isOwn ? 'right-0' : 'left-0'
-                } flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-full px-2.5 py-1 shadow-xl z-30 font-heading backdrop-blur-md animate-in fade-in zoom-in-95 duration-100`}
+                } flex items-center gap-1.5 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-full px-2.5 py-1 shadow-xl z-30 font-heading backdrop-blur-md animate-in fade-in zoom-in-95 duration-100 before:content-[''] before:absolute before:-inset-x-3 before:-bottom-3 before:top-0 before:z-[-1]`}
               >
                 {QUICK_REACTIONS.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       onReaction?.(id, normalizeEmoji(emoji));
                       setShowEmojiPicker(false);
+                      setIsHovered(false);
                     }}
                     title={emoji}
                     className="p-1 rounded-full text-sm leading-none hover:bg-[var(--bg-hover)] hover:scale-125 transition-transform cursor-pointer border-none bg-transparent flex items-center justify-center"
