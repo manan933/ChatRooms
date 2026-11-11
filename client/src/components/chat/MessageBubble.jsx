@@ -28,6 +28,24 @@ export const MessageBubble = ({
   const hoverTimeoutRef = useRef(null);
   const bubbleRef = useRef(null);
 
+  // Close menus and popovers on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (bubbleRef.current && !bubbleRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+        setShowMenu(false);
+        setIsHovered(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (!message || !message.id) return null;
 
   const { id = '', senderName = 'Member', senderAvatar = null, content = '', timestamp = null, attachment = null, reactions = [], isEdited = false, isRead = false } = message;
@@ -56,24 +74,6 @@ export const MessageBubble = ({
       }
     }, 350);
   };
-
-  // Close menus and popovers on outside click
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (bubbleRef.current && !bubbleRef.current.contains(e.target)) {
-        setShowEmojiPicker(false);
-        setShowMenu(false);
-        setIsHovered(false);
-      }
-    };
-    document.addEventListener('pointerdown', handleOutsideClick);
-    return () => {
-      document.removeEventListener('pointerdown', handleOutsideClick);
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleCopy = () => {
     if (content) {

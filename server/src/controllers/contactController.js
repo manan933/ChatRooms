@@ -134,7 +134,11 @@ export const createPersonalGroup = async (req, res, next) => {
     const io = req.app.get('io');
     if (io && group) {
       (group.members || []).forEach((m) => {
-        if (m.username) io.to(`user_${m.username.toLowerCase()}`).emit('group_created', group);
+        if (m.username) {
+          const room = `user_${m.username.toLowerCase()}`;
+          io.in(room).socketsJoin(group.id);
+          io.to(room).emit('group_created', group);
+        }
       });
     }
 
@@ -199,8 +203,9 @@ export const addGroupMemberController = async (req, res, next) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.to(groupId).emit('group_member_added', { groupId, member: result.member, group: result.group });
       const cleanUname = username.trim().toLowerCase().replace(/^@/, '');
+      io.in(`user_${cleanUname}`).socketsJoin(groupId);
+      io.to(groupId).emit('group_member_added', { groupId, member: result.member, group: result.group });
       io.to(`user_${cleanUname}`).emit('group_created', result.group);
       io.to(`user_${cleanUname}`).emit('new_conversation', result.group);
     }

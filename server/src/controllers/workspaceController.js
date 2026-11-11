@@ -53,16 +53,32 @@ export const getWorkspaces = async (req, res, next) => {
       }
 
       const rawWorkspaces = await Workspace.find(query).sort({ createdAt: 1 }).lean();
-      
+
+      // Batch fetch all workspace nodes in ONE query instead of N+1 per-workspace queries
+      const wsIds = rawWorkspaces.map((ws) => ws.id).filter(Boolean);
+      const wsObjIds = rawWorkspaces.map((ws) => ws._id?.toString()).filter(Boolean);
+      const allLookupIds = Array.from(new Set([...wsIds, ...wsObjIds]));
+      const allNodes = allLookupIds.length > 0
+        ? await WorkspaceNode.find({ workspaceId: { $in: allLookupIds } }).lean()
+        : [];
+
+      const nodesByWsId = new Map();
+      for (const n of allNodes) {
+        if (!nodesByWsId.has(n.workspaceId)) {
+          nodesByWsId.set(n.workspaceId, []);
+        }
+        nodesByWsId.get(n.workspaceId).push(n);
+      }
+
       // Populate nodes and joinCode for each workspace
       const workspaces = await Promise.all(
         rawWorkspaces.map(async (ws) => {
-          let nodes = await WorkspaceNode.find({
-            $or: [
-              { workspaceId: ws.id },
-              ...(ws._id ? [{ workspaceId: ws._id.toString() }] : []),
-            ],
-          }).lean();
+          const byCustomId = ws.id ? (nodesByWsId.get(ws.id) || []) : [];
+          const byObjId = ws._id ? (nodesByWsId.get(ws._id.toString()) || []) : [];
+          let nodes = byCustomId.length > 0 || byObjId.length > 0
+            ? Array.from(new Map([...byCustomId, ...byObjId].map((n) => [n.id || n._id?.toString(), n])).values())
+            : [];
+
           let wsJoinCode = ws.joinCode;
           if (!wsJoinCode) {
             const shortCode = (ws.name || 'WS').substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
@@ -99,6 +115,7 @@ export const getWorkspaces = async (req, res, next) => {
             }
           }
 
+          const nodeById = new Map(nodes.map((n) => [n.id, n]));
           return {
             ...ws,
             joinCode: wsJoinCode,
@@ -106,7 +123,7 @@ export const getWorkspaces = async (req, res, next) => {
               id: n.id,
               name: n.name,
               membersCount: n.memberCount || 1,
-              folder: n.parentId && n.parentId !== ws.rootNodeId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
+              folder: n.parentId && n.parentId !== ws.rootNodeId ? (nodeById.get(n.parentId)?.name || null) : null,
               isAnnouncement: Boolean(n.isAnnouncement),
               joinCode: wsJoinCode,
             })),

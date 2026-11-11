@@ -81,19 +81,23 @@ export const SettingsPanel = ({
     setIsUploading(true);
     setErrorMsg(null);
 
+    let uploadedUrl = null;
     const reader = new FileReader();
     reader.onload = (e) => {
-      if (e.target?.result) setAvatarUrl(e.target.result);
+      if (!uploadedUrl && e.target?.result) {
+        setAvatarUrl(e.target.result);
+      }
     };
     reader.readAsDataURL(file);
 
     try {
       const res = await api.upload.file(file);
       if (res.ok && res.data?.url) {
+        uploadedUrl = res.data.url;
         setAvatarUrl(res.data.url);
       }
     } catch {
-      // Fallback to data URL
+      // Fallback to preview data URL if upload fails (server still offloads to Media on save)
     } finally {
       setIsUploading(false);
     }

@@ -1,4 +1,5 @@
 import storageService from '../services/storageService.js';
+import { emitToChatTargets } from '../utils/dmHelper.js';
 
 // @desc    Get all messages for a specific chat (channel, contact, or personal group)
 // @route   GET /api/messages/:chatId
@@ -19,7 +20,7 @@ export const getMessagesByChat = async (req, res, next) => {
         if (hasRead) {
           const io = req.app.get('io');
           if (io) {
-            io.to(chatId).emit('messages_read', { chatId, readerId: userId, readerUsername: username });
+            emitToChatTargets(io, chatId, 'messages_read', { chatId, readerId: userId, readerUsername: username }, { knownUser: username });
           }
         }
       }).catch(() => {});
@@ -50,7 +51,7 @@ export const markMessagesAsRead = async (req, res, next) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.to(chatId).emit('messages_read', { chatId, readerId: userId, readerUsername: username });
+      emitToChatTargets(io, chatId, 'messages_read', { chatId, readerId: userId, readerUsername: username }, { knownUser: username });
     }
 
     return res.status(200).json({ success: true, updated: hasRead });
@@ -90,14 +91,16 @@ export const sendMessage = async (req, res, next) => {
     const newId = id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const finalContent = content ? content.trim() : '';
 
+    const senderUsernameClean = req.user?.primaryUsername || senderUsername || '';
     const saved = await storageService.saveMessage({
       id: newId,
       chatId,
       chatType: chatType || 'direct',
       senderId: req.user?._id?.toString() || req.user?.id || senderId || 'user',
       senderName: req.user?.name || senderName || 'User',
-      senderUsername: req.user?.primaryUsername || senderUsername || '',
-      senderAvatar: req.user?.avatar || senderAvatar || null,
+      senderUsername: senderUsernameClean,
+      senderAvatar: storageService.sanitizeAvatar(req.user?.avatar || senderAvatar),
+      recipientUsername: req.body?.recipientUsername,
       content: finalContent,
       type: type || (attachment?.type || 'text'),
       callDetails: callDetails || null,
@@ -106,17 +109,13 @@ export const sendMessage = async (req, res, next) => {
       timestamp: timestamp || new Date().toISOString(),
     });
 
-    // Realtime broadcast via Socket.io if available
+    // Realtime broadcast via Socket.io if available (handles underscored DM usernames too)
     const io = req.app?.get('io');
     if (io) {
-      io.to(chatId).emit('receive_message', saved);
-      if (chatId.startsWith('dm_')) {
-        const parts = chatId.replace('dm_', '').split('_');
-        if (parts.length === 2) {
-          io.to(`user_${parts[0].toLowerCase()}`).emit('receive_message', saved);
-          io.to(`user_${parts[1].toLowerCase()}`).emit('receive_message', saved);
-        }
-      }
+      emitToChatTargets(io, chatId, 'receive_message', saved, {
+        knownUser: senderUsernameClean,
+        recipientHint: req.body?.recipientUsername,
+      });
     }
 
     return res.status(201).json({
@@ -227,11 +226,7 @@ export const clearChat = async (req, res, next) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.to(chatId).emit('chat_cleared', { chatId });
-      if (chatId.startsWith('dm_')) {
-        const parts = chatId.replace('dm_', '').split('_');
-        parts.forEach((p) => io.to(`user_${p.toLowerCase()}`).emit('chat_cleared', { chatId }));
-      }
+      emitToChatTargets(io, chatId, 'chat_cleared', { chatId }, { knownUser: currentUsername });
     }
 
     return res.status(200).json({
@@ -272,7 +267,9 @@ export const addReaction = async (req, res, next) => {
           chatId: updated.chatId,
           reactions: updated.reactions || [],
         };
-        io.to(updated.chatId).emit('update_reaction', reactionPayload);
+        emitToChatTargets(io, updated.chatId, 'update_reaction', reactionPayload, {
+          knownUser: req.user?.primaryUsername || req.user?.username || '',
+        });
       }
     }
 

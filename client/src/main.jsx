@@ -11,5 +11,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register service worker for Progressive Web App (PWA) offline shell and fast caching
-serviceWorkerRegistration.register();
+// Only register SW in production builds; in dev mode actively unregister so cached bundles never mask fixes
+if (import.meta.env.PROD) {
+  serviceWorkerRegistration.register();
+} else {
+  serviceWorkerRegistration.unregister();
+}

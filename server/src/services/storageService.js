@@ -7,6 +7,18 @@ import Workspace from '../models/Workspace.js';
 import WorkspaceNode from '../models/WorkspaceNode.js';
 import Media from '../models/Media.js';
 import groupService from './groupService.js';
+import {
+  extractDmParticipants,
+  getCanonicalDmId as buildCanonicalDmId,
+  normalizeUsername,
+  registerKnownUsernames,
+} from '../utils/dmHelper.js';
+import {
+  getCachedUserById,
+  getCachedUserByUsername,
+  setCachedUser,
+  invalidateCachedUser,
+} from '../utils/userCache.js';
 
 const SERVER_EMOJI_MAP = {
   '[fire]': '🔥',
@@ -79,52 +91,185 @@ class StorageService {
     return this.mapUser(row);
   }
 
+  sanitizeAvatar(avatar) {
+    if (typeof avatar === 'string' && avatar.startsWith('data:') && avatar.length > 4096) {
+      return null;
+    }
+    return avatar || null;
+  }
+
+  async offloadDataUrlToMedia(url, { filename = 'upload.jpg', uploadedBy = null, minLength = 2048 } = {}) {
+    if (typeof url !== 'string' || !url.startsWith('data:') || url.length <= minLength) {
+      return url;
+    }
+    try {
+      const matches = url.match(/^data:([^;,]+);base64,(.+)$/);
+      if (!matches) return url;
+      const contentType = matches[1] || 'application/octet-stream';
+      const buffer = Buffer.from(matches[2], 'base64');
+      const mediaDoc = await Media.create({
+        filename,
+        contentType,
+        data: buffer,
+        size: buffer.length,
+        uploadedBy: uploadedBy || null,
+      });
+      if (mediaDoc?._id) {
+        return `/api/upload/media/${mediaDoc._id}`;
+      }
+    } catch (mediaErr) {
+      console.warn('[Storage] Auto-persist base64 to Media skipped:', mediaErr.message);
+    }
+    return url;
+  }
+
+  async warmKnownUsernames() {
+    try {
+      const users = await User.find({}, 'primaryUsername').lean();
+      registerKnownUsernames(users.map((u) => u.primaryUsername));
+      return users.length;
+    } catch (err) {
+      console.warn('[Storage] warmKnownUsernames warning:', err.message);
+      return 0;
+    }
+  }
+
+  async migrateLargeDataAvatars() {
+    try {
+      const usersWithLargeAvatar = await User.find({
+        avatar: { $regex: '^data:' },
+      }).lean();
+
+      let migratedCount = 0;
+      for (const u of usersWithLargeAvatar) {
+        if (!u.avatar || u.avatar.length <= 4096) continue;
+        const mediaUrl = await this.offloadDataUrlToMedia(u.avatar, {
+          filename: `avatar-${u.primaryUsername || u._id}.jpg`,
+          uploadedBy: u._id?.toString(),
+          minLength: 4096,
+        });
+        if (mediaUrl && mediaUrl !== u.avatar) {
+          migratedCount++;
+          await Promise.all([
+            User.updateOne({ _id: u._id }, { $set: { avatar: mediaUrl } }),
+            Contact.updateMany({ username: u.primaryUsername }, { $set: { avatar: mediaUrl } }),
+            Message.updateMany({ senderUsername: u.primaryUsername }, { $set: { senderAvatar: mediaUrl } }),
+            PersonalGroup.updateMany(
+              { 'members.username': u.primaryUsername },
+              { $set: { 'members.$[elem].avatar': mediaUrl } },
+              { arrayFilters: [{ 'elem.username': u.primaryUsername }] }
+            ),
+          ]);
+          invalidateCachedUser(u._id?.toString(), u.primaryUsername);
+        }
+      }
+
+      // Clean any orphaned base64 avatars left on Message docs whose senderUsername differed
+      const residualMsgSenders = await Message.distinct('senderUsername', {
+        senderAvatar: { $regex: '^data:' },
+      });
+      for (const uname of residualMsgSenders) {
+        if (!uname) continue;
+        const u = await User.findOne({ primaryUsername: normalizeUsername(uname) }, 'avatar').lean();
+        const replacement = u?.avatar && !u.avatar.startsWith('data:') ? u.avatar : null;
+        await Message.updateMany(
+          { senderUsername: uname, senderAvatar: { $regex: '^data:' } },
+          { $set: { senderAvatar: replacement } }
+        );
+      }
+
+      if (migratedCount > 0) {
+        console.log(`[Storage] Migrated ${migratedCount} large base64 user avatar(s) to Media collection.`);
+      }
+      return migratedCount;
+    } catch (err) {
+      console.warn('[Storage] migrateLargeDataAvatars warning:', err.message);
+      return 0;
+    }
+  }
+
   async findUserByEmail(email) {
     const clean = (email || '').toLowerCase().trim();
     if (!clean) return null;
-    const user = await User.findOne({ email: clean }).select('+password');
-    return this.mapUser(user);
+    const user = await User.findOne({ email: clean }).select('+password').lean();
+    const mapped = this.mapUser(user);
+    if (mapped) setCachedUser(mapped);
+    return mapped;
   }
 
   async findUserByUsername(username) {
-    const clean = (username || '').toLowerCase().trim().replace(/^@/, '');
+    const clean = normalizeUsername(username);
     if (!clean) return null;
-    const user = await User.findOne({ primaryUsername: clean }).select('+password');
-    return this.mapUser(user);
+    const user = await User.findOne({
+      $or: [{ primaryUsername: clean }, { 'contexts.username': clean }],
+    })
+      .select('+password')
+      .lean();
+    const mapped = this.mapUser(user);
+    if (mapped) setCachedUser(mapped);
+    return mapped;
+  }
+
+  async findUserByUsernameLight(username) {
+    const clean = normalizeUsername(username);
+    if (!clean) return null;
+    const cached = getCachedUserByUsername(clean);
+    if (cached) return cached;
+    return this.findUserByUsername(clean);
   }
 
   async findUserById(id) {
     if (!id) return null;
     let user = null;
     if (mongoose.Types.ObjectId.isValid(id)) {
-      user = await User.findById(id).select('+password');
+      user = await User.findById(id).select('+password').lean();
     }
     if (!user) {
+      const clean = normalizeUsername(id);
       user = await User.findOne({
-        $or: [{ _id: id }, { primaryUsername: id.replace(/^@/, '').toLowerCase() }],
-      }).select('+password');
+        $or: [{ _id: id }, { primaryUsername: clean }],
+      })
+        .select('+password')
+        .lean();
     }
-    return this.mapUser(user);
+    const mapped = this.mapUser(user);
+    if (mapped) setCachedUser(mapped);
+    return mapped;
+  }
+
+  async getUserById(id) {
+    const cached = getCachedUserById(id);
+    if (cached) return cached;
+    return this.findUserById(id);
+  }
+
+  async hashPassword(plainPassword) {
+    return bcrypt.hash(plainPassword, 10);
   }
 
   async createUser({ name, email, primaryUsername, password, avatar, bio }) {
     const cleanEmail = (email || '').toLowerCase().trim();
-    const cleanUsername = (primaryUsername || '').toLowerCase().trim().replace(/^@/, '');
+    const cleanUsername = normalizeUsername(primaryUsername);
 
     const existingUser = await User.findOne({
       $or: [{ email: cleanEmail }, { primaryUsername: cleanUsername }],
-    });
+    }).lean();
 
     if (existingUser) {
       throw new Error('An account with that email or username already exists.');
     }
+
+    const safeAvatar = await this.offloadDataUrlToMedia(avatar || null, {
+      filename: `avatar-${cleanUsername}.jpg`,
+      minLength: 4096,
+    });
 
     const user = await User.create({
       name: name.trim(),
       email: cleanEmail,
       primaryUsername: cleanUsername,
       password,
-      avatar: avatar || null,
+      avatar: safeAvatar || null,
       avatarType: 'ai',
       bio: bio || 'Building contextual communication',
       contexts: [
@@ -137,7 +282,9 @@ class StorageService {
       ],
     });
 
-    return this.mapUser(user);
+    const mapped = this.mapUser(user);
+    if (mapped) setCachedUser(mapped);
+    return mapped;
   }
 
   async verifyPassword(plainPassword, hashedPassword) {
@@ -154,23 +301,41 @@ class StorageService {
     const update = {};
     if (name !== undefined) update.name = name;
     if (bio !== undefined) update.bio = bio;
-    if (avatar !== undefined) update.avatar = avatar;
+
+    let finalAvatar = avatar;
+    if (avatar !== undefined) {
+      finalAvatar = await this.offloadDataUrlToMedia(avatar, {
+        filename: `avatar-${userId}.jpg`,
+        uploadedBy: userId?.toString(),
+        minLength: 4096,
+      });
+      update.avatar = finalAvatar;
+    }
 
     let user = null;
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      user = await User.findByIdAndUpdate(userId, update, { new: true });
+      user = await User.findByIdAndUpdate(userId, update, { new: true }).lean();
     } else {
-      user = await User.findOneAndUpdate({ _id: userId }, update, { new: true });
+      user = await User.findOneAndUpdate({ _id: userId }, update, { new: true }).lean();
     }
 
-    if (user && avatar !== undefined) {
-      await Contact.updateMany({ username: user.primaryUsername }, { avatar }).catch(() => {});
-      await Message.updateMany({ senderUsername: user.primaryUsername }, { senderAvatar: avatar }).catch(() => {});
-    }
-
-    if (user && name !== undefined) {
-      await Contact.updateMany({ username: user.primaryUsername }, { name }).catch(() => {});
-      await Message.updateMany({ senderUsername: user.primaryUsername }, { senderName: name }).catch(() => {});
+    if (user) {
+      const sideUpdates = [];
+      if (avatar !== undefined) {
+        sideUpdates.push(Contact.updateMany({ username: user.primaryUsername }, { avatar: finalAvatar }).catch(() => {}));
+        sideUpdates.push(Message.updateMany({ senderUsername: user.primaryUsername }, { senderAvatar: finalAvatar }).catch(() => {}));
+      }
+      if (name !== undefined) {
+        sideUpdates.push(Contact.updateMany({ username: user.primaryUsername }, { name }).catch(() => {}));
+        sideUpdates.push(Message.updateMany({ senderUsername: user.primaryUsername }, { senderName: name }).catch(() => {}));
+      }
+      if (sideUpdates.length > 0) {
+        await Promise.all(sideUpdates);
+      }
+      const mapped = this.mapUser(user);
+      invalidateCachedUser(userId?.toString(), user.primaryUsername);
+      if (mapped) setCachedUser(mapped);
+      return mapped;
     }
 
     return this.mapUser(user);
@@ -184,8 +349,13 @@ class StorageService {
         filter,
         { status: status || 'offline', lastActive: new Date() },
         { new: true }
-      );
-      return updated ? this.mapUser(updated) : null;
+      ).lean();
+      if (updated) {
+        const mapped = this.mapUser(updated);
+        setCachedUser(mapped);
+        return mapped;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -195,10 +365,12 @@ class StorageService {
     const q = (query || '').toLowerCase().trim().replace(/^@/, '');
     const filter = {};
     if (q) {
+      const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$or = [
-        { primaryUsername: { $regex: q, $options: 'i' } },
-        { name: { $regex: q, $options: 'i' } },
-        { email: { $regex: q, $options: 'i' } },
+        { primaryUsername: { $regex: escapedQ, $options: 'i' } },
+        { 'contexts.username': { $regex: escapedQ, $options: 'i' } },
+        { name: { $regex: escapedQ, $options: 'i' } },
+        { email: { $regex: escapedQ, $options: 'i' } },
       ];
     }
     if (excludeUserId) {
@@ -206,14 +378,13 @@ class StorageService {
         filter._id = { $ne: excludeUserId };
       }
     }
-    const users = await User.find(filter).limit(30);
+    const users = await User.find(filter).limit(30).lean();
+    registerKnownUsernames(users.map((u) => u.primaryUsername));
     return users.map((u) => this.mapUser(u));
   }
 
   getCanonicalDmId(username1, username2) {
-    const u1 = (username1 || '').toLowerCase().trim().replace(/^@/, '');
-    const u2 = (username2 || '').toLowerCase().trim().replace(/^@/, '');
-    return 'dm_' + [u1, u2].sort().join('_');
+    return buildCanonicalDmId(username1, username2);
   }
 
   async getMessagesByChat(chatId) {
@@ -254,28 +425,15 @@ class StorageService {
         att.mimeType = 'image/jpeg';
       }
 
-      // If attachment has a base64 dataUrl, persist it directly to MongoDB Media collection!
       if (typeof url === 'string' && url.startsWith('data:')) {
-        try {
-          const matches = url.match(/^data:([^;]+);base64,(.+)$/);
-          if (matches) {
-            const dataContentType = matches[1] || mime;
-            const buffer = Buffer.from(matches[2], 'base64');
-            const mediaDoc = await Media.create({
-              filename: name,
-              contentType: dataContentType,
-              data: buffer,
-              size: buffer.length,
-              uploadedBy: message.senderId || null,
-            });
-            if (mediaDoc?._id) {
-              url = `/api/upload/media/${mediaDoc._id}`;
-              att.url = url;
-              delete att.dataUrl;
-            }
-          }
-        } catch (mediaErr) {
-          console.warn('[Storage] Auto-persist base64 to Media skipped:', mediaErr.message);
+        const persistedUrl = await this.offloadDataUrlToMedia(url, {
+          filename: name,
+          uploadedBy: message.senderId || null,
+          minLength: 0,
+        });
+        if (persistedUrl !== url) {
+          url = persistedUrl;
+          delete att.dataUrl;
         }
       }
 
@@ -283,68 +441,107 @@ class StorageService {
       finalAttachment = att;
     }
 
-    const saved = await Message.create({
-      id: messageId,
-      chatId: message.chatId,
-      chatType: message.chatType || (message.chatId?.startsWith('dm_') ? 'direct' : 'workspace-node'),
-      senderId: message.senderId || 'user-1',
-      senderName: message.senderName || 'User',
-      senderUsername: message.senderUsername || '',
-      senderAvatar: message.senderAvatar || null,
-      content: finalContent,
-      type: message.type || (finalAttachment?.type || 'text'),
-      callDetails: message.callDetails || null,
-      attachment: finalAttachment,
-      reactions: message.reactions || [],
-      isEdited: Boolean(message.isEdited),
-      isRead: Boolean(message.isRead),
-      readBy: [message.senderId, message.senderUsername].filter(Boolean),
-      timestamp: message.timestamp ? new Date(message.timestamp) : new Date(),
-    });
+    // Never store huge inline base64 data URLs inside every Message document
+    let cleanSenderAvatar = message.senderAvatar || null;
+    if (typeof cleanSenderAvatar === 'string' && cleanSenderAvatar.startsWith('data:') && cleanSenderAvatar.length > 4096) {
+      const cachedSender = await this.findUserByUsernameLight(message.senderUsername).catch(() => null);
+      if (cachedSender?.avatar && !cachedSender.avatar.startsWith('data:')) {
+        cleanSenderAvatar = cachedSender.avatar;
+      } else {
+        cleanSenderAvatar = await this.offloadDataUrlToMedia(cleanSenderAvatar, {
+          filename: `avatar-${normalizeUsername(message.senderUsername) || message.senderId || 'user'}.jpg`,
+          uploadedBy: message.senderId || null,
+          minLength: 4096,
+        });
+      }
+    }
+
+    let saved;
+    try {
+      saved = await Message.create({
+        id: messageId,
+        chatId: message.chatId,
+        chatType: message.chatType || (message.chatId?.startsWith('dm_') ? 'direct' : 'workspace-node'),
+        senderId: message.senderId || 'user-1',
+        senderName: message.senderName || 'User',
+        senderUsername: normalizeUsername(message.senderUsername) || message.senderUsername || '',
+        senderAvatar: cleanSenderAvatar,
+        content: finalContent,
+        type: message.type || (finalAttachment?.type || 'text'),
+        callDetails: message.callDetails || null,
+        attachment: finalAttachment,
+        reactions: message.reactions || [],
+        isEdited: Boolean(message.isEdited),
+        isRead: Boolean(message.isRead),
+        readBy: [message.senderId, normalizeUsername(message.senderUsername)].filter(Boolean),
+        timestamp: message.timestamp ? new Date(message.timestamp) : new Date(),
+      });
+    } catch (createErr) {
+      // Idempotent handling when REST + Socket or client retries send the same message id
+      if (createErr?.code === 11000 && messageId) {
+        const existing = await Message.findOne({ id: messageId }).lean();
+        if (existing) {
+          return {
+            ...existing,
+            id: existing.id || existing._id?.toString(),
+            timestamp: existing.timestamp ? new Date(existing.timestamp).toISOString() : new Date().toISOString(),
+          };
+        }
+      }
+      throw createErr;
+    }
 
     const previewText = finalContent || (finalAttachment?.type === 'image' ? '📷 Photo' : `📎 ${finalAttachment?.name || 'Attachment'}`);
 
     // If DM, ensure reciprocal contact relationships exist so both users see the conversation
     if (message.chatId && message.chatId.startsWith('dm_')) {
-      const parts = message.chatId.replace('dm_', '').split('_');
-      if (parts.length === 2) {
+      const participants = extractDmParticipants(
+        message.chatId,
+        message.senderUsername,
+        [message.recipientUsername]
+      );
+      if (participants.length === 2) {
         try {
-          const u1 = await this.findUserByUsername(parts[0]);
-          const u2 = await this.findUserByUsername(parts[1]);
+          const [u1, u2] = await Promise.all([
+            this.findUserByUsernameLight(participants[0]),
+            this.findUserByUsernameLight(participants[1]),
+          ]);
           if (u1 && u2) {
-            await Contact.findOneAndUpdate(
-              { ownerId: u1._id.toString(), username: u2.primaryUsername },
-              {
-                $set: {
-                  id: message.chatId,
-                  ownerId: u1._id.toString(),
-                  name: u2.name,
-                  username: u2.primaryUsername,
-                  avatar: u2.avatar,
-                  bio: u2.bio,
-                  lastMessage: previewText,
-                  lastMessageTime: new Date(),
+            const now = new Date();
+            await Promise.all([
+              Contact.findOneAndUpdate(
+                { ownerId: u1._id.toString(), username: u2.primaryUsername },
+                {
+                  $set: {
+                    id: message.chatId,
+                    ownerId: u1._id.toString(),
+                    name: u2.name,
+                    username: u2.primaryUsername,
+                    avatar: this.sanitizeAvatar(u2.avatar) || u2.avatar,
+                    bio: u2.bio,
+                    lastMessage: previewText,
+                    lastMessageTime: now,
+                  },
                 },
-              },
-              { upsert: true, new: true }
-            );
-
-            await Contact.findOneAndUpdate(
-              { ownerId: u2._id.toString(), username: u1.primaryUsername },
-              {
-                $set: {
-                  id: message.chatId,
-                  ownerId: u2._id.toString(),
-                  name: u1.name,
-                  username: u1.primaryUsername,
-                  avatar: u1.avatar,
-                  bio: u1.bio,
-                  lastMessage: previewText,
-                  lastMessageTime: new Date(),
+                { upsert: true, new: true }
+              ),
+              Contact.findOneAndUpdate(
+                { ownerId: u2._id.toString(), username: u1.primaryUsername },
+                {
+                  $set: {
+                    id: message.chatId,
+                    ownerId: u2._id.toString(),
+                    name: u1.name,
+                    username: u1.primaryUsername,
+                    avatar: this.sanitizeAvatar(u1.avatar) || u1.avatar,
+                    bio: u1.bio,
+                    lastMessage: previewText,
+                    lastMessageTime: now,
+                  },
                 },
-              },
-              { upsert: true, new: true }
-            );
+                { upsert: true, new: true }
+              ),
+            ]);
           }
         } catch (e) {
           console.warn('[DB] Auto-link DM contacts warning:', e.message);
@@ -453,44 +650,54 @@ class StorageService {
   }
 
   async getUserConversations(currentUserId, currentUsername) {
-    const cleanUsername = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
+    const cleanUsername = normalizeUsername(currentUsername);
     const uidStr = currentUserId ? currentUserId.toString() : '';
 
     if (!uidStr && !cleanUsername) {
       return { contacts: [], groups: [] };
     }
 
+    if (cleanUsername) {
+      registerKnownUsernames([cleanUsername]);
+    }
+
+    const escapedUname = cleanUsername ? cleanUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '';
+
     // Fetch user contacts, DM chat IDs, and personal groups concurrently in parallel
     const [contacts, dmChatIds, formattedGroups] = await Promise.all([
       Contact.find({ ownerId: uidStr }).sort({ lastMessageTime: -1 }).lean(),
-      Message.distinct('chatId', {
-        $or: [
-          { chatId: new RegExp(`^dm_${cleanUsername}_`) },
-          { chatId: new RegExp(`_${cleanUsername}$`) },
-        ],
-      }),
+      escapedUname
+        ? Message.distinct('chatId', {
+            $or: [
+              { chatId: new RegExp(`^dm_${escapedUname}_`, 'i') },
+              { chatId: new RegExp(`^dm_.*_${escapedUname}$`, 'i') },
+            ],
+          })
+        : Promise.resolve([]),
       groupService.getUserGroups(currentUserId, currentUsername),
     ]);
 
     const partnerUsernames = new Set();
     for (const chatId of dmChatIds) {
-      const parts = chatId.replace('dm_', '').split('_');
-      if (parts.length === 2) {
-        const partner = parts[0] === cleanUsername ? parts[1] : (parts[1] === cleanUsername ? parts[0] : null);
+      const participants = extractDmParticipants(chatId, cleanUsername);
+      if (participants.length === 2) {
+        const partner = participants[0] === cleanUsername ? participants[1] : participants[0];
         if (partner && partner !== cleanUsername) {
           partnerUsernames.add(partner);
         }
       }
     }
 
-    const existingUnames = new Set(contacts.map((c) => c.username?.toLowerCase()).filter(Boolean));
+    const existingUnames = new Set(contacts.map((c) => normalizeUsername(c.username)).filter(Boolean));
     const missingPartners = Array.from(partnerUsernames).filter((u) => !existingUnames.has(u));
 
     if (missingPartners.length > 0) {
+      registerKnownUsernames(missingPartners);
       const canonicalIds = missingPartners.map((u) => this.getCanonicalDmId(cleanUsername, u));
       const [partnerUsers, latestDmMessages] = await Promise.all([
         User.find({ primaryUsername: { $in: missingPartners } }).lean(),
         Message.find({ chatId: { $in: canonicalIds } })
+          .select('id chatId content type attachment timestamp')
           .sort({ timestamp: -1 })
           .limit(missingPartners.length * 5)
           .lean(),
@@ -502,7 +709,7 @@ class StorageService {
       });
 
       partnerUsers.forEach((pUser) => {
-        const uname = pUser.primaryUsername.toLowerCase();
+        const uname = normalizeUsername(pUser.primaryUsername);
         const dmId = this.getCanonicalDmId(cleanUsername, uname);
         const lastMsg = lastMsgMap.get(dmId);
         contacts.push({
@@ -521,18 +728,50 @@ class StorageService {
       });
     }
 
-    // Populate user profile info for latest avatars
-    const userNames = contacts.map((c) => c.username?.toLowerCase()).filter(Boolean);
+    // Populate user profile info & compute unread counts concurrently
+    const userNames = contacts.map((c) => normalizeUsername(c.username)).filter(Boolean);
+    registerKnownUsernames(userNames);
+
+    const contactChatIds = contacts.map((c) => c.id || this.getCanonicalDmId(cleanUsername, c.username)).filter(Boolean);
+    const groupChatIds = (formattedGroups || []).map((g) => g.id).filter(Boolean);
+    const allChatIds = Array.from(new Set([...contactChatIds, ...groupChatIds]));
+    const readerTokens = [uidStr, cleanUsername].filter(Boolean);
+
+    const [matchedUsers, unreadAgg] = await Promise.all([
+      userNames.length > 0 ? User.find({ primaryUsername: { $in: userNames } }).lean() : Promise.resolve([]),
+      allChatIds.length > 0
+        ? Message.aggregate([
+            {
+              $match: {
+                chatId: { $in: allChatIds },
+                isRead: false,
+                ...(readerTokens.length > 0 ? { readBy: { $nin: readerTokens } } : {}),
+                ...(uidStr ? { senderId: { $ne: uidStr } } : {}),
+                ...(cleanUsername ? { senderUsername: { $ne: cleanUsername } } : {}),
+              },
+            },
+            { $group: { _id: '$chatId', count: { $sum: 1 } } },
+          ])
+        : Promise.resolve([]),
+    ]);
+
     const userMap = new Map();
-    if (userNames.length > 0) {
-      const matchedUsers = await User.find({ primaryUsername: { $in: userNames } }).lean();
-      matchedUsers.forEach((u) => userMap.set(u.primaryUsername.toLowerCase(), u));
-    }
+    matchedUsers.forEach((u) => {
+      const uname = normalizeUsername(u.primaryUsername);
+      userMap.set(uname, u);
+      setCachedUser(this.mapUser(u));
+    });
+
+    const unreadMap = new Map();
+    unreadAgg.forEach((entry) => {
+      if (entry?._id) unreadMap.set(entry._id, entry.count || 0);
+    });
 
     const conversations = contacts.map((c) => {
-      const u = userMap.get(c.username?.toLowerCase());
+      const u = userMap.get(normalizeUsername(c.username));
+      const chatId = c.id || this.getCanonicalDmId(cleanUsername, c.username);
       return {
-        id: c.id || this.getCanonicalDmId(cleanUsername, c.username),
+        id: chatId,
         userId: u?._id?.toString() || c.userId || c.ownerId,
         username: c.username,
         name: u?.name || c.name,
@@ -541,15 +780,21 @@ class StorageService {
         bio: u?.bio || c.bio || '',
         lastMessage: c.lastMessage || 'Connected on ChatRooms',
         lastMessageTime: c.lastMessageTime ? new Date(c.lastMessageTime).toISOString() : new Date().toISOString(),
+        unreadCount: unreadMap.get(chatId) || 0,
         type: 'contact',
       };
     });
 
     conversations.sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime));
 
+    const groupsWithUnread = (formattedGroups || []).map((g) => ({
+      ...g,
+      unreadCount: unreadMap.get(g.id) || 0,
+    }));
+
     return {
       contacts: conversations,
-      groups: formattedGroups,
+      groups: groupsWithUnread,
     };
   }
 
@@ -563,23 +808,36 @@ class StorageService {
 
     if (!cleanTarget) return null;
 
-    const targetUser = await User.findOne({ primaryUsername: cleanTarget });
-    const dmId = this.getCanonicalDmId(cleanCurrent, cleanTarget);
+    const targetUser = await User.findOne({
+      $or: [
+        { primaryUsername: cleanTarget },
+        { 'contexts.username': cleanTarget },
+      ],
+    });
+    const resolvedTarget = (targetUser?.primaryUsername || cleanTarget).toLowerCase().trim().replace(/^@/, '');
+    const dmId = this.getCanonicalDmId(cleanCurrent, resolvedTarget);
     const uidStr = currentUserId ? currentUserId.toString() : 'user-1';
 
-    let contact = await Contact.findOne({ ownerId: uidStr, username: cleanTarget });
+    let contact = await Contact.findOne({
+      ownerId: uidStr,
+      username: { $in: Array.from(new Set([resolvedTarget, cleanTarget])) },
+    });
     if (!contact) {
       contact = await Contact.create({
         id: dmId,
         ownerId: uidStr,
-        name: targetUser?.name || name?.trim() || cleanTarget,
-        username: cleanTarget,
+        name: targetUser?.name || name?.trim() || resolvedTarget,
+        username: resolvedTarget,
         avatar: targetUser?.avatar || avatar || null,
         status: targetUser?.status || 'online',
         bio: targetUser?.bio || bio || '',
         lastMessage: 'Connected on ChatRooms',
         lastMessageTime: new Date(),
       });
+    } else if (contact.username !== resolvedTarget || contact.id !== dmId) {
+      contact.username = resolvedTarget;
+      contact.id = dmId;
+      await contact.save().catch(() => {});
     }
 
     // Reciprocal contact if target user is registered
@@ -604,13 +862,14 @@ class StorageService {
     return {
       id: dmId,
       userId: targetUser ? targetUser._id.toString() : contact._id.toString(),
-      username: cleanTarget,
+      username: resolvedTarget,
+      primaryUsername: targetUser?.primaryUsername || resolvedTarget,
       name: contact.name,
       avatar: contact.avatar,
       status: contact.status || 'online',
       bio: contact.bio || '',
       lastMessage: contact.lastMessage || 'Connected on ChatRooms',
-      lastMessageTime: new Date().toISOString(),
+      lastMessageTime: contact.lastMessageTime?.toISOString?.() || new Date().toISOString(),
       type: 'contact',
     };
   }
@@ -643,13 +902,13 @@ class StorageService {
     if (!chatId) return { success: false };
 
     const uidStr = currentUserId ? currentUserId.toString() : '';
-    const cleanUsername = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
+    const cleanUsername = normalizeUsername(currentUsername);
 
     // 1. Delete all messages for this chat from MongoDB
     try {
       const chatIdsToDelete = [chatId];
       if (chatId.startsWith('dm_')) {
-        const parts = chatId.replace('dm_', '').split('_');
+        const parts = extractDmParticipants(chatId, cleanUsername);
         if (parts.length === 2) {
           chatIdsToDelete.push(`dm_${parts[1]}_${parts[0]}`);
         }
@@ -674,8 +933,10 @@ class StorageService {
         ];
 
         if (chatId.startsWith('dm_')) {
-          const parts = chatId.replace('dm_', '').split('_');
-          deleteConditions.push({ id: `dm_${parts[1]}_${parts[0]}`, ownerId: uidStr });
+          const parts = extractDmParticipants(chatId, cleanUsername);
+          if (parts.length === 2) {
+            deleteConditions.push({ id: `dm_${parts[1]}_${parts[0]}`, ownerId: uidStr });
+          }
           parts.forEach((p) => {
             if (p && p !== cleanUsername) {
               deleteConditions.push({ username: p.toLowerCase(), ownerId: uidStr });
@@ -705,14 +966,29 @@ class StorageService {
       workspaces = await Workspace.find({}).sort({ createdAt: 1 }).lean();
     }
 
+    // Batch fetch ALL workspace nodes in ONE query instead of N+1 queries
+    const wsIds = workspaces.map((w) => w.id).filter(Boolean);
+    const allNodes = wsIds.length > 0
+      ? await WorkspaceNode.find({ workspaceId: { $in: wsIds } }).lean()
+      : [];
+
+    const nodesByWorkspace = new Map();
+    for (const n of allNodes) {
+      if (!nodesByWorkspace.has(n.workspaceId)) {
+        nodesByWorkspace.set(n.workspaceId, []);
+      }
+      nodesByWorkspace.get(n.workspaceId).push(n);
+    }
+
     const result = [];
     for (const w of workspaces) {
-      const nodes = await WorkspaceNode.find({ workspaceId: w.id }).lean();
+      const nodes = nodesByWorkspace.get(w.id) || [];
+      const nodeMap = new Map(nodes.map((n) => [n.id, n]));
       let formattedNodes = nodes.map((n) => ({
         id: n.id,
         name: n.name,
         membersCount: n.memberCount || 1,
-        folder: n.parentId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
+        folder: n.parentId ? (nodeMap.get(n.parentId)?.name || null) : null,
         isAnnouncement: Boolean(n.isAnnouncement),
       }));
 

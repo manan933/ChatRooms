@@ -13,6 +13,7 @@ import api from '../../api/api';
 import useChatStore from '../../store/chatStore';
 
 export const NewChatPanel = ({
+  currentUser,
   onClose,
   onAddContact,
   onCreateGroup,
@@ -36,10 +37,24 @@ export const NewChatPanel = ({
   // Root groups available as parents for subgroups
   const availableParentGroups = groups.filter((g) => !g.parentGroupId);
 
+  const getMyUsername = () => {
+    const direct = (currentUser?.primaryUsername || currentUser?.username || '').toLowerCase().trim().replace(/^@/, '');
+    if (direct) return direct;
+    try {
+      const raw = localStorage.getItem('chatrooms_user') || localStorage.getItem('zyntra_user');
+      const cached = raw ? JSON.parse(raw) : null;
+      return (cached?.primaryUsername || cached?.username || '').toLowerCase().trim().replace(/^@/, '');
+    } catch {
+      return '';
+    }
+  };
+
   // Search registered users
   useEffect(() => {
+    const cleanQuery = search.replace(/^@/, '').trim();
     if (!search.trim()) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
@@ -47,10 +62,19 @@ export const NewChatPanel = ({
       setIsSearching(true);
       setError(null);
       try {
-        const cleanQuery = search.replace(/^@/, '').trim();
         const res = await api.contacts.search(cleanQuery);
         if (res.ok) {
-          setSearchResults(Array.isArray(res.data) ? res.data : (res.data.users || []));
+          const list = Array.isArray(res.data) ? res.data : (res.data?.users || []);
+          const myUname = getMyUsername();
+          const myId = String(currentUser?._id || currentUser?.id || '').toLowerCase();
+          const filtered = list.filter((u) => {
+            const uid = String(u?._id || u?.id || '').toLowerCase();
+            const uname = String(u?.primaryUsername || u?.username || '').toLowerCase().replace(/^@/, '');
+            if (myId && uid && uid === myId) return false;
+            if (myUname && uname && uname === myUname) return false;
+            return Boolean(uname);
+          });
+          setSearchResults(filtered);
         } else {
           setSearchResults([]);
         }
@@ -59,34 +83,46 @@ export const NewChatPanel = ({
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, currentUser]);
 
-  const handleSelectUser = async (user) => {
-    setIsSubmitting(true);
+  const handleSelectUser = (targetUser) => {
+    const targetUsername = String(targetUser?.primaryUsername || targetUser?.username || '')
+      .toLowerCase()
+      .trim()
+      .replace(/^@/, '');
+    if (!targetUsername) return;
+
+    const myUname = getMyUsername();
+    const dmId = myUname ? `dm_${[myUname, targetUsername].sort().join('_')}` : `dm_${targetUsername}`;
+    const optimisticContact = {
+      id: dmId,
+      userId: targetUser._id || targetUser.id,
+      username: targetUsername,
+      primaryUsername: targetUser.primaryUsername || targetUsername,
+      name: targetUser.name || targetUsername,
+      avatar: targetUser.avatar || null,
+      status: targetUser.status || 'online',
+      bio: targetUser.bio || '',
+      type: 'contact',
+    };
+
     setError(null);
-    try {
-      const targetUsername = user.primaryUsername || user.username;
-      const res = await onAddContact(targetUsername);
-      if (res?.success) {
-        const contactToOpen = res.contact || {
-          id: `dm_${targetUsername}`,
-          username: targetUsername,
-          name: user.name || targetUsername,
-          avatar: user.avatar || null,
-          status: user.status || 'online',
-          type: 'contact',
-        };
-        onStartDirectChat?.(contactToOpen);
-      } else {
-        setError(res?.error || 'Failed to add contact');
-      }
-    } catch (e) {
-      setError(e?.message || 'An error occurred');
-    } finally {
-      setIsSubmitting(false);
+    onStartDirectChat?.(optimisticContact);
+
+    // Persist contact & sync in the background so tapping Chat opens immediately
+    if (onAddContact) {
+      Promise.resolve(onAddContact(targetUsername))
+        .then((res) => {
+          if (res?.success && res.contact && res.contact.id && res.contact.id !== dmId) {
+            onStartDirectChat?.(res.contact);
+          }
+        })
+        .catch((e) => {
+          console.warn('Background addContact error:', e);
+        });
     }
   };
 

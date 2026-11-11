@@ -2,6 +2,36 @@ import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import storageService from '../services/storageService.js';
+import { getCachedUserById, setCachedUser } from '../utils/userCache.js';
+
+const resolveUserForToken = async (decodedId) => {
+  if (!decodedId) return null;
+  const cached = getCachedUserById(decodedId);
+  if (cached) return cached;
+
+  let user = null;
+  if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(decodedId)) {
+    try {
+      const doc = await User.findById(decodedId).lean();
+      if (doc) {
+        user = {
+          ...doc,
+          id: doc._id.toString(),
+          _id: doc._id.toString(),
+        };
+      }
+    } catch {}
+  }
+
+  if (!user) {
+    user = await storageService.findUserById(decodedId);
+  }
+
+  if (user) {
+    setCachedUser(user);
+  }
+  return user;
+};
 
 export const protect = async (req, res, next) => {
   let token;
@@ -28,16 +58,7 @@ export const protect = async (req, res, next) => {
       decoded = jwt.verify(token, 'zyntra_jwt_secret_dev_key_2026');
     }
 
-    let user = null;
-    if (mongoose.connection.readyState === 1) {
-      try {
-        user = await User.findById(decoded.id);
-      } catch {}
-    }
-
-    if (!user) {
-      user = await storageService.findUserById(decoded.id);
-    }
+    const user = await resolveUserForToken(decoded.id);
 
     if (!user) {
       return res.status(401).json({
@@ -77,15 +98,7 @@ export const optionalProtect = async (req, res, next) => {
     } catch {
       decoded = jwt.verify(token, 'zyntra_jwt_secret_dev_key_2026');
     }
-    let user = null;
-    if (mongoose.connection.readyState === 1) {
-      try {
-        user = await User.findById(decoded.id);
-      } catch {}
-    }
-    if (!user) {
-      user = await storageService.findUserById(decoded.id);
-    }
+    const user = await resolveUserForToken(decoded.id);
     if (user) {
       req.user = user;
     }

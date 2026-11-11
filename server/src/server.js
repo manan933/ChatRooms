@@ -13,6 +13,8 @@ import { Server } from 'socket.io';
 import app from './app.js';
 import { connectDB } from './config/db.js';
 import { setupChatSocket } from './sockets/chatSocket.js';
+import storageService from './services/storageService.js';
+import Message from './models/Message.js';
 
 const server = http.createServer(app);
 
@@ -60,6 +62,13 @@ const startServer = async () => {
   try {
     await connectDB();
     console.log(`🍃 MongoDB Atlas connection established successfully`);
+
+    // Warm DM username registry, ensure indexes, and offload any legacy inline base64 avatars in background
+    Promise.all([
+      storageService.warmKnownUsernames(),
+      Message.syncIndexes().catch(() => {}),
+      storageService.migrateLargeDataAvatars(),
+    ]).catch(() => {});
   } catch (err) {
     console.error(`❌ MongoDB Atlas connection error: ${err.message}`);
     console.warn(`⚠️ Starting server in standby mode; operations requiring database will retry.`);

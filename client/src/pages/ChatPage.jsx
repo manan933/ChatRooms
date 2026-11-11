@@ -10,7 +10,7 @@ import ForwardModal from '../components/modals/ForwardModal';
 import Avatar from '../components/ui/Avatar';
 import { X } from '../components/ui/Icons';
 import ErrorBoundary from '../components/ui/ErrorBoundary';
-import useChatStore from '../store/chatStore';
+import useChatStore, { matchesChatId } from '../store/chatStore';
 import useAuthStore from '../store/authStore';
 import socketService from '../api/socket';
 import { playReceivedSound } from '../utils/chatroomsSound';
@@ -24,6 +24,7 @@ export const ChatPage = () => {
     groups,
     workspaces,
     messages,
+    unreadCounts,
     typingStatus,
     onlineUsers,
     mutedChats,
@@ -64,14 +65,35 @@ export const ChatPage = () => {
   const [inAppToast, setInAppToast] = useState(null);
   const bufferedIceCandidatesRef = React.useRef([]);
 
-  // Auto-request notifications permission on login
+  // Request notifications permission immediately if allowed, plus on first user gesture when 'default'
   useEffect(() => {
     notificationService.requestPermission().catch(() => {});
+    const onFirstGesture = () => {
+      if (notificationService.getPermissionState() === 'default') {
+        notificationService.requestPermission().catch(() => {});
+      }
+      window.removeEventListener('pointerdown', onFirstGesture);
+      window.removeEventListener('keydown', onFirstGesture);
+    };
+    window.addEventListener('pointerdown', onFirstGesture, { once: true });
+    window.addEventListener('keydown', onFirstGesture, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', onFirstGesture);
+      window.removeEventListener('keydown', onFirstGesture);
+    };
   }, []);
+
+  // Live unread badge in browser tab title
+  useEffect(() => {
+    const totalUnread = Object.values(unreadCounts || {}).reduce((acc, n) => acc + (Number(n) || 0), 0);
+    document.title = totalUnread > 0 ? `(${totalUnread}) ChatRooms` : 'ChatRooms';
+  }, [unreadCounts]);
 
   // ── Mobile Hardware & Gesture Back Navigation ────────────────────
   const activeChatRef = React.useRef(activeChat);
   const leftViewRef = React.useRef(leftView);
+  const incomingCallRef = React.useRef(incomingCall);
+  const activeCallSessionRef = React.useRef(activeCallSession);
   const modalsRef = React.useRef({
     workspace: false,
     forward: false,
@@ -85,6 +107,14 @@ export const ChatPage = () => {
   useEffect(() => {
     leftViewRef.current = leftView;
   }, [leftView]);
+
+  useEffect(() => {
+    incomingCallRef.current = incomingCall;
+  }, [incomingCall]);
+
+  useEffect(() => {
+    activeCallSessionRef.current = activeCallSession;
+  }, [activeCallSession]);
 
   useEffect(() => {
     modalsRef.current = {
@@ -212,9 +242,24 @@ export const ChatPage = () => {
     loadChats(true);
 
     const handleReceive = (msg) => {
-      if (!msg) return;
-      const isMuted = (mutedChats || []).includes(msg.chatId);
-      const isFromMe = (user?.id && msg.senderId === user.id) || (user?._id && msg.senderId === user._id);
+      if (!msg || !msg.chatId) return;
+
+      // Read fresh store state so mutedChats / blockedUsers / activeChat are never stale
+      const storeState = useChatStore.getState();
+      const senderUid = (msg.senderId || '').toString().toLowerCase();
+      const senderUname = (msg.senderUsername || '').toLowerCase().replace(/^@/, '');
+      const isBlocked = (storeState.blockedUsers || []).some(
+        (b) => b === senderUid || b === senderUname || b === msg.chatId
+      );
+      if (isBlocked) return;
+
+      const isMuted = (storeState.mutedChats || []).includes(msg.chatId);
+      const myUid = (user?.id || user?._id || '').toString().toLowerCase();
+      const myUname = (user?.primaryUsername || user?.username || '').toLowerCase().replace(/^@/, '');
+      const isFromMe = Boolean(
+        (myUid && senderUid && senderUid === myUid) ||
+        (myUname && senderUname && senderUname === myUname)
+      );
 
       receiveMessage(msg);
 
@@ -235,10 +280,13 @@ export const ChatPage = () => {
           icon: '/android-chrome-192x192.png',
         });
 
-        // Real-Time in-app banner if looking at another chat or general view
-        if (!activeChatRef.current || activeChatRef.current.id !== msg.chatId) {
+        // Real-Time in-app banner if user has not opened this chat (or is on chat list / another chat)
+        const currActive = activeChatRef.current;
+        if (!currActive || !matchesChatId(currActive, msg.chatId)) {
           setInAppToast({
             chatId: msg.chatId,
+            senderId: msg.senderId,
+            senderUsername: msg.senderUsername,
             senderName: msg.senderName || msg.senderUsername || 'ChatRooms',
             senderAvatar: msg.senderAvatar,
             text: snippet,
@@ -272,21 +320,33 @@ export const ChatPage = () => {
     };
 
     const handleIncomingCall = (callData) => {
-      const myUsername = (user?.primaryUsername || '').toLowerCase().replace(/^@/, '');
-      if (callData.from && (callData.from === myUsername || callData.from === user?.id)) return;
+      const myUsername = (user?.primaryUsername || user?.username || '').toLowerCase().trim().replace(/^@/, '');
+      const callerFrom = (callData?.from || callData?.callerUsername || '').toLowerCase().trim().replace(/^@/, '');
+      if (callerFrom && (callerFrom === myUsername || callerFrom === String(user?.id || '').toLowerCase())) return;
 
       // Auto-reject incoming call if caller is blocked
-      const callerFrom = (callData.from || '').toLowerCase().replace(/^@/, '');
-      const callerId = (callData.callerId || '').toString().toLowerCase();
+      const callerId = (callData?.callerId || '').toString().toLowerCase();
       const isBlocked = (blockedUsers || []).some(
         (b) => b === callerFrom || b === callerId
       );
       if (isBlocked) {
-        socketService.rejectCall({ target: callData.from, roomId: callData.roomId });
+        socketService.rejectCall({
+          to: callData.from,
+          chatId: callData.chatId || callData.roomId,
+          callId: callData.callId,
+        });
+        return;
+      }
+
+      // Deduplicate repeated call_incoming for the same callId so buffered ICE candidates aren't wiped
+      const existingIncomingId = incomingCallRef.current?.callId;
+      const existingActiveId = activeCallSessionRef.current?.callId;
+      if (callData?.callId && (existingIncomingId === callData.callId || existingActiveId === callData.callId)) {
         return;
       }
 
       bufferedIceCandidatesRef.current = [];
+      incomingCallRef.current = callData;
       setIncomingCall(callData);
 
       // System notification for incoming call
@@ -298,13 +358,21 @@ export const ChatPage = () => {
     };
 
     const handleGlobalIceCandidate = (data) => {
-      if (data?.candidate) {
-        bufferedIceCandidatesRef.current.push(data.candidate);
-      }
+      if (!data?.candidate) return;
+      const pendingCallId = incomingCallRef.current?.callId;
+      if (data.callId && pendingCallId && data.callId !== pendingCallId) return;
+      bufferedIceCandidatesRef.current.push(data.candidate);
     };
 
     const handleCallEndedGlobal = (data) => {
       const endedCallId = data?.callId;
+      if (endedCallId && incomingCallRef.current?.callId === endedCallId) {
+        incomingCallRef.current = null;
+        bufferedIceCandidatesRef.current = [];
+      } else if (!endedCallId) {
+        incomingCallRef.current = null;
+        bufferedIceCandidatesRef.current = [];
+      }
       setIncomingCall((prev) => {
         if (!prev) return null;
         if (!endedCallId || prev.callId === endedCallId) return null;
@@ -315,13 +383,20 @@ export const ChatPage = () => {
         if (!endedCallId || prev.callId === endedCallId) return null;
         return prev;
       });
-      bufferedIceCandidatesRef.current = [];
     };
 
     const handleChatCleared = ({ chatId }) => {
       if (chatId) {
         useChatStore.getState().deleteChat(chatId);
       }
+    };
+
+    const handleGroupEvent = (payload) => {
+      const grpId = payload?.group?.id || payload?.groupId || payload?.id;
+      if (grpId) {
+        socketService.joinRoom(grpId);
+      }
+      loadChats(true);
     };
 
     socketService.on('receive_message', handleReceive);
@@ -331,6 +406,10 @@ export const ChatPage = () => {
     socketService.on('online_users_list', handleOnlineList);
     socketService.on('contact_added', handleConversationUpdate);
     socketService.on('new_conversation', handleConversationUpdate);
+    socketService.on('group_created', handleGroupEvent);
+    socketService.on('group_updated', handleGroupEvent);
+    socketService.on('group_member_added', handleGroupEvent);
+    socketService.on('group_member_removed', handleGroupEvent);
     socketService.on('chat_cleared', handleChatCleared);
     socketService.on('call_incoming', handleIncomingCall);
     socketService.on('ice_candidate', handleGlobalIceCandidate);
@@ -378,6 +457,10 @@ export const ChatPage = () => {
       socketService.off('online_users_list', handleOnlineList);
       socketService.off('contact_added', handleConversationUpdate);
       socketService.off('new_conversation', handleConversationUpdate);
+      socketService.off('group_created', handleGroupEvent);
+      socketService.off('group_updated', handleGroupEvent);
+      socketService.off('group_member_added', handleGroupEvent);
+      socketService.off('group_member_removed', handleGroupEvent);
       socketService.off('chat_cleared', handleChatCleared);
       socketService.off('call_incoming', handleIncomingCall);
       socketService.off('ice_candidate', handleGlobalIceCandidate);
@@ -406,22 +489,27 @@ export const ChatPage = () => {
 
   const handleAcceptIncomingCall = () => {
     if (!incomingCall) return;
-    const newCallId = incomingCall.callId || `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const callSnapshot = incomingCall;
+    const queuedIce = [...bufferedIceCandidatesRef.current];
+    bufferedIceCandidatesRef.current = [];
+    incomingCallRef.current = null;
+    setIncomingCall(null);
+
+    const newCallId = callSnapshot.callId || `call_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     setActiveCallSession({
       callId: newCallId,
       chat: {
-        name: incomingCall.callerName || 'Participant',
-        avatar: incomingCall.callerAvatar,
-        id: incomingCall.chatId || incomingCall.from,
-        username: incomingCall.callerUsername || incomingCall.from,
+        name: callSnapshot.callerName || 'Participant',
+        avatar: callSnapshot.callerAvatar,
+        id: callSnapshot.chatId || callSnapshot.from,
+        username: callSnapshot.callerUsername || callSnapshot.from,
       },
-      isVideo: incomingCall.isVideo,
+      isVideo: callSnapshot.isVideo,
       isInitiator: false,
-      incomingSignal: incomingCall.signalData,
-      callerInfo: incomingCall,
-      initialIceCandidates: [...bufferedIceCandidatesRef.current],
+      incomingSignal: callSnapshot.signalData,
+      callerInfo: callSnapshot,
+      initialIceCandidates: queuedIce,
     });
-    setIncomingCall(null);
   };
 
   const handleCallEndedSummary = ({ chatId, targetUsername, isVideo, duration, status }) => {
@@ -484,7 +572,13 @@ export const ChatPage = () => {
 
   const handleDeclineIncomingCall = () => {
     if (incomingCall) {
-      socketService.rejectCall({ to: incomingCall.from });
+      socketService.rejectCall({
+        to: incomingCall.from,
+        chatId: incomingCall.chatId || incomingCall.roomId,
+        callId: incomingCall.callId,
+      });
+      incomingCallRef.current = null;
+      bufferedIceCandidatesRef.current = [];
       setIncomingCall(null);
     }
   };
@@ -591,11 +685,13 @@ export const ChatPage = () => {
             />
           ) : leftView === 'newChat' ? (
             <NewChatPanel
+              currentUser={user}
               onClose={handleCloseNewChat}
               onAddContact={addContact}
               onCreateGroup={createGroup}
               onStartDirectChat={(contact) => {
                 setLeftView('chats');
+                chatPushedRef.current = true;
                 selectChat(contact);
                 try {
                   window.history.replaceState({ chatroomsView: 'chat', id: contact.id }, '');
@@ -674,7 +770,31 @@ export const ChatPage = () => {
       {inAppToast && (
         <div
           onClick={() => {
-            selectChat(inAppToast.chatId);
+            const store = useChatStore.getState();
+            const cid = inAppToast.chatId;
+            let targetObj =
+              (store.contacts || []).find((c) => matchesChatId(c, cid)) ||
+              (store.groups || []).find((g) => matchesChatId(g, cid));
+            if (!targetObj) {
+              for (const ws of store.workspaces || []) {
+                const node = (ws.nodes || []).find((n) => n.id === cid);
+                if (node) {
+                  targetObj = node;
+                  break;
+                }
+              }
+            }
+            if (!targetObj) {
+              targetObj = {
+                id: cid,
+                userId: inAppToast.senderId,
+                username: inAppToast.senderUsername,
+                name: inAppToast.senderName,
+                avatar: inAppToast.senderAvatar,
+                type: String(cid).startsWith('dm_') ? 'contact' : 'group',
+              };
+            }
+            selectChat(targetObj);
             setInAppToast(null);
           }}
           className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-sm w-full mx-4 p-3 rounded-2xl bg-[var(--bg-glass)] backdrop-blur-xl border border-[var(--border)] shadow-2xl flex items-center justify-between gap-3 cursor-pointer hover:border-[var(--accent)] transition-all animate-bounceIn select-none"

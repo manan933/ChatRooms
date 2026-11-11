@@ -93,12 +93,20 @@ class SocketService {
     }
   }
 
-  sendMessage(data) {
+  isConnected() {
+    return Boolean(this.socket && this.socket.connected);
+  }
+
+  sendMessage(data, ack) {
     if (!this.socket || !this.socket.connected) {
       this.connect();
     }
     if (this.socket) {
-      this.socket.emit('send_message', data);
+      if (typeof ack === 'function') {
+        this.socket.emit('send_message', data, ack);
+      } else {
+        this.socket.emit('send_message', data);
+      }
     }
   }
 

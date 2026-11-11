@@ -89,6 +89,18 @@ export const Sidebar = ({
   const [globalUsers, setGlobalUsers] = useState([]);
   const [isSearchingGlobal, setIsSearchingGlobal] = useState(false);
 
+  const resolveCurrentUsername = () => {
+    const direct = (currentUser?.primaryUsername || currentUser?.username || '').toLowerCase().trim().replace(/^@/, '');
+    if (direct) return direct;
+    try {
+      const raw = localStorage.getItem('chatrooms_user') || localStorage.getItem('zyntra_user');
+      const cached = raw ? JSON.parse(raw) : null;
+      return (cached?.primaryUsername || cached?.username || '').toLowerCase().trim().replace(/^@/, '');
+    } catch {
+      return '';
+    }
+  };
+
   // Search registered users directory when typing in search bar
   React.useEffect(() => {
     const q = search.trim().replace(/^@/, '');
@@ -104,14 +116,27 @@ export const Sidebar = ({
         const res = await api.contacts.search(q);
         if (res.ok) {
           const raw = Array.isArray(res.data) ? res.data : (res.data?.users || []);
-          const existingIds = new Set(contacts.map((c) => (c.userId || c.id || '').toString().toLowerCase()));
-          const existingUnames = new Set(contacts.map((c) => (c.username || c.primaryUsername || '').toLowerCase().replace(/^@/, '')));
+          const myUname = resolveCurrentUsername();
+          const myId = String(currentUser?._id || currentUser?.id || '').toLowerCase();
+          const qLower = q.toLowerCase();
+
+          // Exclude self and contacts already visible in the filtered direct conversations list
+          const visibleContactUnames = new Set(
+            contacts
+              .filter(
+                (c) =>
+                  c.name?.toLowerCase().includes(qLower) ||
+                  c.username?.toLowerCase().replace(/^@/, '').includes(qLower) ||
+                  c.primaryUsername?.toLowerCase().replace(/^@/, '').includes(qLower)
+              )
+              .map((c) => (c.primaryUsername || c.username || '').toLowerCase().replace(/^@/, ''))
+          );
+
           const filtered = raw.filter((u) => {
             const uid = (u._id || u.id || '').toString().toLowerCase();
             const uname = (u.primaryUsername || u.username || '').toLowerCase().replace(/^@/, '');
-            const isMe = (currentUser?._id && uid === currentUser._id.toString().toLowerCase()) ||
-              (currentUser?.primaryUsername && uname === currentUser.primaryUsername.toLowerCase().replace(/^@/, ''));
-            return !isMe && !existingIds.has(uid) && !existingUnames.has(uname);
+            const isMe = (myId && uid === myId) || (myUname && uname === myUname);
+            return !isMe && uname && !visibleContactUnames.has(uname);
           });
           setGlobalUsers(filtered);
         } else {
@@ -122,37 +147,47 @@ export const Sidebar = ({
       } finally {
         setIsSearchingGlobal(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(timer);
   }, [search, contacts, currentUser]);
 
-  const handleStartChatWithGlobalUser = async (u) => {
-    try {
-      const username = u.primaryUsername || u.username;
-      const res = await useChatStore.getState().addContact(username);
-      if (res.success && res.contact) {
-        onSelectChat(res.contact);
-        setSearch('');
-      } else {
-        const myUname = (currentUser?.primaryUsername || '').toLowerCase().replace(/^@/, '');
-        const targetUname = (username || '').toLowerCase().replace(/^@/, '');
-        const dmId = 'dm_' + [myUname, targetUname].sort().join('_');
-        const fallback = {
-          id: dmId,
-          userId: u._id || u.id,
-          username: targetUname,
-          name: u.name || targetUname,
-          avatar: u.avatar || null,
-          status: u.status || 'online',
-          type: 'contact',
-        };
-        onSelectChat(fallback);
-        setSearch('');
-      }
-    } catch (e) {
-      console.warn('Error starting chat with user:', e);
-    }
+  const handleStartChatWithGlobalUser = (u) => {
+    const targetUname = String(u?.primaryUsername || u?.username || '')
+      .toLowerCase()
+      .trim()
+      .replace(/^@/, '');
+    if (!targetUname) return;
+
+    const myUname = resolveCurrentUsername();
+    const dmId = myUname ? `dm_${[myUname, targetUname].sort().join('_')}` : `dm_${targetUname}`;
+    const optimisticContact = {
+      id: dmId,
+      userId: u._id || u.id,
+      username: targetUname,
+      primaryUsername: u.primaryUsername || targetUname,
+      name: u.name || targetUname,
+      avatar: u.avatar || null,
+      status: u.status || 'online',
+      bio: u.bio || '',
+      type: 'contact',
+    };
+
+    onSelectChat(optimisticContact);
+    setSearch('');
+
+    // Persist contact & sync in background so tapping Chat opens instantaneously
+    useChatStore
+      .getState()
+      .addContact(targetUname)
+      .then((res) => {
+        if (res?.success && res.contact && res.contact.id && res.contact.id !== dmId) {
+          onSelectChat(res.contact);
+        }
+      })
+      .catch((e) => {
+        console.warn('Background addContact error:', e);
+      });
   };
 
   const { theme, toggleTheme } = useThemeStore();
@@ -186,13 +221,14 @@ export const Sidebar = ({
       ...contacts.map((c) => ({ ...c, type: 'contact' })),
       ...groups.map((g) => ({ ...g, type: 'group' })),
     ];
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
+    const cleanQ = search.trim().toLowerCase().replace(/^@/, '');
+    if (!cleanQ) return list;
     return list.filter(
       (item) =>
-        item.name?.toLowerCase().includes(q) ||
-        item.username?.toLowerCase().includes(q) ||
-        item.lastMessage?.toLowerCase().includes(q)
+        item.name?.toLowerCase().includes(cleanQ) ||
+        item.username?.toLowerCase().replace(/^@/, '').includes(cleanQ) ||
+        item.primaryUsername?.toLowerCase().replace(/^@/, '').includes(cleanQ) ||
+        item.lastMessage?.toLowerCase().includes(cleanQ)
     );
   }, [contacts, groups, search]);
 
@@ -498,7 +534,7 @@ export const Sidebar = ({
               {search.trim() ? (
                 <>
                   <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No conversations matching &ldquo;{search}&rdquo;</p>
-                  {search.trim().length >= 2 ? (
+                  {search.trim().replace(/^@/, '').length >= 2 ? (
                     <div className="mt-3 pt-2 border-t border-[var(--border-subtle)] text-left">
                       <div className="px-1 py-1 flex items-center justify-between font-heading">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">
@@ -805,7 +841,7 @@ export const Sidebar = ({
               })}
 
               {/* ── Global Directory Search Results when searching ── */}
-              {search.trim().length >= 2 && (
+              {search.trim().replace(/^@/, '').length >= 2 && (
                 <div className="mt-3 pt-2 border-t border-[var(--border-subtle)]">
                   <div className="px-2 py-1 flex items-center justify-between font-heading">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--accent)]">

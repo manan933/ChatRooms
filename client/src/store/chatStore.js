@@ -12,7 +12,40 @@ const getCachedData = (key, fallback) => {
   }
 };
 
+let messagesCacheTimer = null;
+
+const sanitizeCacheMessage = (m) => {
+  if (!m || typeof m !== 'object') return m;
+  let next = m;
+  if (typeof m.senderAvatar === 'string' && m.senderAvatar.startsWith('data:') && m.senderAvatar.length > 4096) {
+    next = { ...next, senderAvatar: null };
+  }
+  if (m.attachment && typeof m.attachment.url === 'string' && m.attachment.url.startsWith('data:') && m.attachment.url.length > 32768) {
+    next = { ...next, attachment: { ...m.attachment, url: '', _omittedLargeData: true } };
+  }
+  return next;
+};
+
+const scheduleMessagesCache = (messagesMap) => {
+  if (messagesCacheTimer) clearTimeout(messagesCacheTimer);
+  messagesCacheTimer = setTimeout(() => {
+    try {
+      const compact = {};
+      Object.entries(messagesMap || {}).forEach(([cid, list]) => {
+        if (Array.isArray(list) && list.length > 0) {
+          compact[cid] = list.slice(-50).map(sanitizeCacheMessage);
+        }
+      });
+      localStorage.setItem('chatrooms_cached_messages', JSON.stringify(compact));
+    } catch {}
+  }, 500);
+};
+
 const setCachedData = (key, data) => {
+  if (key === 'chatrooms_cached_messages') {
+    scheduleMessagesCache(data);
+    return;
+  }
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch {}
@@ -26,26 +59,88 @@ const getInitialBlockedUsers = () => {
   return getCachedData('chatrooms_blocked_users', []);
 };
 
+const getStoredUserInfo = () => {
+  try {
+    const raw = localStorage.getItem('chatrooms_user') || localStorage.getItem('zyntra_user');
+    const u = raw ? JSON.parse(raw) : null;
+    const uname = (u?.primaryUsername || u?.username || '').toLowerCase().trim().replace(/^@/, '');
+    const uid = String(u?.id || u?._id || '').toLowerCase().trim();
+    return { uname, uid };
+  } catch {
+    return { uname: '', uid: '' };
+  }
+};
+
+const extractDmOther = (dmId, knownHandle) => {
+  const idStr = String(dmId || '').toLowerCase().trim();
+  const handle = String(knownHandle || '').toLowerCase().trim().replace(/^@/, '');
+  if (!idStr.startsWith('dm_') || !handle) return null;
+  const body = idStr.slice(3);
+  const prefix = `${handle}_`;
+  const suffix = `_${handle}`;
+  if (body.startsWith(prefix) && !body.endsWith(suffix)) {
+    return body.slice(prefix.length) || null;
+  }
+  if (body.endsWith(suffix) && !body.startsWith(prefix)) {
+    return body.slice(0, body.length - suffix.length) || null;
+  }
+  if (body.startsWith(prefix) && body.endsWith(suffix)) {
+    const candAfter = body.slice(prefix.length);
+    const candBefore = body.slice(0, body.length - suffix.length);
+    return handle <= candAfter ? candAfter : candBefore;
+  }
+  return null;
+};
+
+const sanitizeDeletedChats = (list) => {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const { uname, uid } = getStoredUserInfo();
+  const cleaned = list.filter((entry) => {
+    const v = String(entry || '').toLowerCase().trim().replace(/^@/, '');
+    if (!v) return false;
+    if (uname && v === uname) return false;
+    if (uid && v === uid) return false;
+    return true;
+  });
+  if (cleaned.length !== list.length) {
+    setCachedData('chatrooms_deleted_chats', cleaned);
+  }
+  return cleaned;
+};
+
 export const matchesChatId = (c, targetId) => {
   if (!c || !targetId) return false;
   const tid = String(targetId).toLowerCase().trim();
   const cid = String(c.id || '').toLowerCase().trim();
   const cUid = String(c.userId || c._id || '').toLowerCase().trim();
   const cUname = String(c.username || c.primaryUsername || '').toLowerCase().trim().replace(/^@/, '');
+  const { uname: myUname } = getStoredUserInfo();
 
-  if (cid === tid || cUid === tid || (cUname && cUname === tid)) {
+  if (cid === tid || (cUid && cUid === tid) || (cUname && cUname === tid)) {
     return true;
   }
 
-  // Handle DM permutations: dm_u1_u2 vs dm_u2_u1
+  // Handle DM permutations cleanly even when usernames contain underscores
   if (tid.startsWith('dm_')) {
-    const tParts = tid.replace('dm_', '').split('_');
+    const tOtherByC = cUname ? extractDmOther(tid, cUname) : null;
+    const tOtherByMe = myUname ? extractDmOther(tid, myUname) : null;
+
+    if (cUname && tOtherByMe && cUname === tOtherByMe) {
+      return true;
+    }
+    if (cid.startsWith('dm_') && cUname && tOtherByC) {
+      if (cid === `dm_${cUname}_${tOtherByC}` || cid === `dm_${tOtherByC}_${cUname}`) {
+        return true;
+      }
+    }
+
+    const tParts = tid.slice(3).split('_');
     if (tParts.length === 2) {
       const reversedTid = `dm_${tParts[1]}_${tParts[0]}`;
       if (cid === reversedTid) return true;
-      if (cUname && (cUname === tParts[0] || cUname === tParts[1])) return true;
+      if (!myUname && cUname && (cUname === tParts[0] || cUname === tParts[1])) return true;
       if (cid.startsWith('dm_')) {
-        const cParts = cid.replace('dm_', '').split('_');
+        const cParts = cid.slice(3).split('_');
         if (cParts.length === 2) {
           const sortedT = [...tParts].sort().join('_');
           const sortedC = [...cParts].sort().join('_');
@@ -56,9 +151,14 @@ export const matchesChatId = (c, targetId) => {
   }
 
   if (cid.startsWith('dm_')) {
-    const cParts = cid.replace('dm_', '').split('_');
-    if (cParts.length === 2 && (cParts[0] === tid || cParts[1] === tid)) {
-      return true;
+    if (!myUname || tid !== myUname) {
+      if (extractDmOther(cid, tid) !== null) {
+        return true;
+      }
+      const cParts = cid.slice(3).split('_');
+      if (cParts.length === 2 && (cParts[0] === tid || cParts[1] === tid)) {
+        return true;
+      }
     }
   }
 
@@ -67,14 +167,14 @@ export const matchesChatId = (c, targetId) => {
 
 const getFilteredInitialContacts = () => {
   const cached = getCachedData('chatrooms_cached_contacts', []);
-  const deleted = getCachedData('chatrooms_deleted_chats', []);
+  const deleted = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
   if (!deleted || deleted.length === 0) return cached;
   return cached.filter((c) => !deleted.some((d) => matchesChatId(c, d)));
 };
 
 const getFilteredInitialGroups = () => {
   const cached = getCachedData('chatrooms_cached_groups', []);
-  const deleted = getCachedData('chatrooms_deleted_chats', []);
+  const deleted = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
   if (!deleted || deleted.length === 0) return cached;
   return cached.filter((g) => !deleted.some((d) => matchesChatId(g, d)));
 };
@@ -152,7 +252,7 @@ export const useChatStore = create((set, get) => ({
           : prevWorkspaces;
       }
 
-      const deletedList = getCachedData('chatrooms_deleted_chats', []);
+      const deletedList = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
       const isBlacklisted = (item) => {
         if (!item || !deletedList || deletedList.length === 0) return false;
         return deletedList.some((d) => matchesChatId(item, d));
@@ -173,11 +273,32 @@ export const useChatStore = create((set, get) => ({
         };
       });
 
-      set({
-        contacts: contactsWithPresence,
-        groups: safeGroups,
-        workspaces: rawWorkspaces,
-        isLoadingChats: false,
+      set((state) => {
+        // Reconcile server-computed unread counts so offline messages surface badges cleanly
+        const nextUnread = { ...(state.unreadCounts || {}) };
+        let unreadChanged = false;
+        const currActive = state.activeChat;
+
+        [...contactsWithPresence, ...safeGroups].forEach((item) => {
+          if (item?.id && typeof item.unreadCount === 'number' && item.unreadCount > 0) {
+            const isCurrentlyOpen = currActive && matchesChatId(currActive, item.id);
+            if (!isCurrentlyOpen && (nextUnread[item.id] || 0) < item.unreadCount) {
+              nextUnread[item.id] = item.unreadCount;
+              unreadChanged = true;
+            }
+          }
+        });
+        if (unreadChanged) {
+          setCachedData('chatrooms_unread_counts', nextUnread);
+        }
+
+        return {
+          contacts: contactsWithPresence,
+          groups: safeGroups,
+          workspaces: rawWorkspaces,
+          unreadCounts: unreadChanged ? nextUnread : state.unreadCounts,
+          isLoadingChats: false,
+        };
       });
 
       // Cache locally for instant loading without disappearing on future auto-reloads
@@ -222,21 +343,29 @@ export const useChatStore = create((set, get) => ({
 
   // Select active conversation
   selectChat: async (chat) => {
-    if (!chat || !chat.id) return;
+    if (!chat) return;
+    let targetChat = chat;
+    if (!targetChat.id && (targetChat.username || targetChat.primaryUsername)) {
+      const { uname: myUname } = getStoredUserInfo();
+      const targetU = (targetChat.primaryUsername || targetChat.username).toLowerCase().trim().replace(/^@/, '');
+      const canonicalId = myUname ? `dm_${[myUname, targetU].sort().join('_')}` : `dm_${targetU}`;
+      targetChat = { ...targetChat, id: canonicalId, username: targetU, type: targetChat.type || 'contact' };
+    }
+    if (!targetChat.id) return;
+
     const prev = get().activeChat;
-    if (prev?.id === chat.id) return;
+    socketService.joinRoom(targetChat.id);
 
-    socketService.joinRoom(chat.id);
+    set({ activeChat: targetChat });
+    get().clearUnreadCount(targetChat.id, targetChat);
+    get().markMessagesAsRead(targetChat.id);
 
-    set({ activeChat: chat });
-    get().clearUnreadCount(chat.id, chat);
-    get().markMessagesAsRead(chat.id);
-
-    await get().loadMessages(chat.id);
+    await get().loadMessages(targetChat.id, prev?.id === targetChat.id);
   },
 
   clearUnreadCount: (chatId, item = null) => {
     if (!chatId) return;
+    const { uname: myUname } = getStoredUserInfo();
     set((state) => {
       const keys = [String(chatId).toLowerCase()];
       if (item) {
@@ -245,11 +374,17 @@ export const useChatStore = create((set, get) => ({
         if (item.userId) keys.push(String(item.userId).toLowerCase());
         if (item.primaryUsername) keys.push(String(item.primaryUsername).toLowerCase().replace(/^@/, ''));
       }
-      if (String(chatId).startsWith('dm_')) {
-        const parts = String(chatId).replace('dm_', '').split('_');
-        if (parts.length === 2) {
-          keys.push(`dm_${parts[1]}_${parts[0]}`.toLowerCase());
-          keys.push(parts[0].toLowerCase(), parts[1].toLowerCase());
+      if (String(chatId).toLowerCase().startsWith('dm_')) {
+        const partner = myUname ? extractDmOther(chatId, myUname) : null;
+        if (partner && partner !== myUname) {
+          keys.push(`dm_${myUname}_${partner}`, `dm_${partner}_${myUname}`, partner);
+        } else {
+          const parts = String(chatId).replace(/^dm_/i, '').split('_');
+          if (parts.length === 2) {
+            keys.push(`dm_${parts[1]}_${parts[0]}`.toLowerCase());
+            if (parts[0].toLowerCase() !== myUname) keys.push(parts[0].toLowerCase());
+            if (parts[1].toLowerCase() !== myUname) keys.push(parts[1].toLowerCase());
+          }
         }
       }
       const next = { ...state.unreadCounts };
@@ -270,6 +405,7 @@ export const useChatStore = create((set, get) => ({
     const counts = get().unreadCounts || {};
     if (!counts) return 0;
     if (counts[chatId]) return counts[chatId];
+    const { uname: myUname } = getStoredUserInfo();
     const keys = [String(chatId).toLowerCase()];
     if (item) {
       if (item.id) keys.push(String(item.id).toLowerCase());
@@ -277,11 +413,17 @@ export const useChatStore = create((set, get) => ({
       if (item.userId) keys.push(String(item.userId).toLowerCase());
       if (item.primaryUsername) keys.push(String(item.primaryUsername).toLowerCase().replace(/^@/, ''));
     }
-    if (String(chatId).startsWith('dm_')) {
-      const parts = String(chatId).replace('dm_', '').split('_');
-      if (parts.length === 2) {
-        keys.push(`dm_${parts[1]}_${parts[0]}`.toLowerCase());
-        keys.push(parts[0].toLowerCase(), parts[1].toLowerCase());
+    if (String(chatId).toLowerCase().startsWith('dm_')) {
+      const partner = myUname ? extractDmOther(chatId, myUname) : null;
+      if (partner && partner !== myUname) {
+        keys.push(`dm_${myUname}_${partner}`, `dm_${partner}_${myUname}`, partner);
+      } else {
+        const parts = String(chatId).replace(/^dm_/i, '').split('_');
+        if (parts.length === 2) {
+          keys.push(`dm_${parts[1]}_${parts[0]}`.toLowerCase());
+          if (parts[0].toLowerCase() !== myUname) keys.push(parts[0].toLowerCase());
+          if (parts[1].toLowerCase() !== myUname) keys.push(parts[1].toLowerCase());
+        }
       }
     }
     for (const k of keys) {
@@ -297,25 +439,36 @@ export const useChatStore = create((set, get) => ({
   deleteChat: async (chatId, target = null) => {
     if (!chatId) return;
 
-    // Collect all identifiers to blacklist and evict
-    const deletedList = getCachedData('chatrooms_deleted_chats', []);
+    const { uname: myUname, uid: myUid } = getStoredUserInfo();
+    const deletedList = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
     const newDeleted = new Set(deletedList);
     newDeleted.add(String(chatId).toLowerCase());
 
     if (target) {
       if (target.id) newDeleted.add(String(target.id).toLowerCase());
-      if (target.userId) newDeleted.add(String(target.userId).toLowerCase());
-      if (target._id) newDeleted.add(String(target._id).toLowerCase());
-      if (target.username) newDeleted.add(String(target.username).toLowerCase().replace(/^@/, ''));
+      const tUid = String(target.userId || target._id || '').toLowerCase().trim();
+      if (tUid && tUid !== myUid) newDeleted.add(tUid);
+      const tUname = String(target.username || target.primaryUsername || '').toLowerCase().trim().replace(/^@/, '');
+      if (tUname && tUname !== myUname) newDeleted.add(tUname);
     }
 
-    if (String(chatId).startsWith('dm_')) {
-      const parts = String(chatId).replace('dm_', '').split('_');
-      if (parts.length === 2) {
-        newDeleted.add(`dm_${parts[1]}_${parts[0]}`);
-        newDeleted.add(`dm_${[...parts].sort().join('_')}`);
-        newDeleted.add(parts[0].toLowerCase());
-        newDeleted.add(parts[1].toLowerCase());
+    if (String(chatId).toLowerCase().startsWith('dm_')) {
+      const chatLower = String(chatId).toLowerCase();
+      const partner = (myUname ? extractDmOther(chatLower, myUname) : null)
+        || (target?.username ? String(target.username).toLowerCase().trim().replace(/^@/, '') : null);
+      if (myUname && partner && partner !== myUname) {
+        newDeleted.add(`dm_${myUname}_${partner}`);
+        newDeleted.add(`dm_${partner}_${myUname}`);
+        newDeleted.add(`dm_${[myUname, partner].sort().join('_')}`);
+      } else {
+        const parts = chatLower.replace(/^dm_/, '').split('_');
+        if (parts.length === 2) {
+          newDeleted.add(`dm_${parts[1]}_${parts[0]}`);
+          newDeleted.add(`dm_${[...parts].sort().join('_')}`);
+        }
+      }
+      if (partner && partner !== myUname) {
+        newDeleted.add(partner);
       }
     }
 
@@ -324,11 +477,19 @@ export const useChatStore = create((set, get) => ({
     set((state) => {
       const nextMessages = { ...state.messages };
       delete nextMessages[chatId];
-      if (String(chatId).startsWith('dm_')) {
-        const parts = String(chatId).replace('dm_', '').split('_');
-        if (parts.length === 2) {
-          delete nextMessages[`dm_${parts[1]}_${parts[0]}`];
-          delete nextMessages[`dm_${[...parts].sort().join('_')}`];
+      if (String(chatId).toLowerCase().startsWith('dm_')) {
+        const chatLower = String(chatId).toLowerCase();
+        const partner = myUname ? extractDmOther(chatLower, myUname) : null;
+        if (myUname && partner && partner !== myUname) {
+          delete nextMessages[`dm_${myUname}_${partner}`];
+          delete nextMessages[`dm_${partner}_${myUname}`];
+          delete nextMessages[`dm_${[myUname, partner].sort().join('_')}`];
+        } else {
+          const parts = chatLower.replace(/^dm_/, '').split('_');
+          if (parts.length === 2) {
+            delete nextMessages[`dm_${parts[1]}_${parts[0]}`];
+            delete nextMessages[`dm_${[...parts].sort().join('_')}`];
+          }
         }
       }
 
@@ -465,9 +626,25 @@ export const useChatStore = create((set, get) => ({
     }
     try {
       const res = await api.messages.byChat(chatId);
-      const rawList = res.ok && Array.isArray(res.data) && res.data.length > 0
-        ? res.data
-        : (get().messages[chatId] || []);
+      const localList = get().messages[chatId] || [];
+      let rawList = localList;
+
+      if (res.ok && Array.isArray(res.data)) {
+        const serverMsgs = res.data;
+        const serverIds = new Set(serverMsgs.map((m) => m.id || m._id).filter(Boolean));
+        const nowMs = Date.now();
+        // Preserve in-flight optimistic messages or very recent (< 2m) local socket messages not yet flushed to DB
+        const pendingLocal = localList.filter((m) => {
+          const mid = m.id || m._id;
+          if (mid && serverIds.has(mid)) return false;
+          const ageMs = nowMs - new Date(m.timestamp || 0).getTime();
+          return Boolean(m._optimistic) || (Number.isFinite(ageMs) && ageMs >= 0 && ageMs < 120000);
+        });
+
+        rawList = [...serverMsgs, ...pendingLocal].sort(
+          (a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+        );
+      }
 
       const list = rawList.map((m) => {
         if (m.attachment) {
@@ -506,16 +683,7 @@ export const useChatStore = create((set, get) => ({
   // Mark messages in a conversation as read (1 tick -> 2 ticks for sender)
   markMessagesAsRead: (chatId) => {
     if (!chatId) return;
-    const currentUser = (() => {
-      try {
-        const raw = localStorage.getItem('user');
-        return raw ? JSON.parse(raw) : null;
-      } catch {
-        return null;
-      }
-    })();
-    const currentUid = (currentUser?.id || currentUser?._id || '').toString();
-    const currentUname = (currentUser?.primaryUsername || currentUser?.username || '').toLowerCase().replace(/^@/, '');
+    const { uid: currentUid, uname: currentUname } = getStoredUserInfo();
 
     // 1. Emit read receipt over socket
     socketService.emit('mark_read', {
@@ -582,56 +750,138 @@ export const useChatStore = create((set, get) => ({
     });
   },
 
-  // Send message with instant optimistic update
+  // Send message with instant optimistic update and single-path ack/fallback persistence
   sendMessage: async (chatId, content, attachment = null, currentUser, extra = {}) => {
     if (!chatId || (!content?.trim() && !attachment && !extra?.callDetails)) return;
 
+    const { uname: myUname } = getStoredUserInfo();
+    const senderUname = (currentUser?.primaryUsername || currentUser?.username || myUname || '').toLowerCase().trim().replace(/^@/, '');
+
+    let recipientUsername = extra?.recipientUsername || '';
+    if (!recipientUsername && String(chatId).startsWith('dm_')) {
+      const matchedContact = (get().contacts || []).find((c) => matchesChatId(c, chatId));
+      const active = get().activeChat;
+      recipientUsername =
+        matchedContact?.username ||
+        (active && matchesChatId(active, chatId) ? active.username : '') ||
+        extractDmOther(chatId, senderUname) ||
+        '';
+    }
+
+    const derivedChatType = extra?.chatType || (
+      String(chatId).startsWith('dm_')
+        ? 'direct'
+        : String(chatId).startsWith('group-') || String(chatId).startsWith('subgroup-')
+        ? 'group'
+        : 'workspace-node'
+    );
+
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const nowIso = new Date().toISOString();
     const optimisticMessage = {
       id: messageId,
       chatId,
+      chatType: derivedChatType,
       content: content ? content.trim() : '',
       type: extra?.type || attachment?.type || 'text',
       callDetails: extra?.callDetails || null,
       attachment: attachment || null,
       senderId: currentUser?.id || currentUser?._id || 'user-1',
       senderName: currentUser?.name || 'You',
-      senderUsername: currentUser?.primaryUsername || '',
+      senderUsername: senderUname,
       senderAvatar: currentUser?.avatar || null,
+      recipientUsername: recipientUsername ? recipientUsername.toLowerCase().trim().replace(/^@/, '') : undefined,
       reactions: [],
       isForwarded: Boolean(extra?.isForwarded),
-      timestamp: new Date().toISOString(),
+      timestamp: nowIso,
+      _optimistic: true,
       ...extra,
     };
 
-    // 1. Optimistic UI update
+    // 1. Optimistic UI update + debounced local cache
     set((state) => {
       const existing = state.messages[chatId] || [];
-      return {
-        messages: {
-          ...state.messages,
-          [chatId]: [...existing, optimisticMessage],
-        },
+      const nextMap = {
+        ...state.messages,
+        [chatId]: [...existing, optimisticMessage],
       };
+      setCachedData('chatrooms_cached_messages', nextMap);
+      return { messages: nextMap };
     });
 
-    // 2. Broadcast through socket
-    socketService.sendMessage(optimisticMessage);
+    const finalizeMessage = (persistedMsg) => {
+      set((state) => {
+        const list = state.messages[chatId] || [];
+        let changed = false;
+        const updated = list.map((m) => {
+          if (m.id === messageId) {
+            changed = true;
+            const merged = persistedMsg ? { ...m, ...persistedMsg } : { ...m };
+            delete merged._optimistic;
+            return merged;
+          }
+          return m;
+        });
+        if (!changed) return state;
+        const nextMap = { ...state.messages, [chatId]: updated };
+        setCachedData('chatrooms_cached_messages', nextMap);
+        return { messages: nextMap };
+      });
+    };
 
-    // 3. Persist to API
-    api.messages.send(chatId, optimisticMessage).catch((e) => { console.error('ignored', e); });
+    // 2. Socket-first with Ack; fall back to HTTP only if socket is disconnected or ack times out
+    const httpPayload = {
+      ...optimisticMessage,
+    };
+    delete httpPayload._optimistic;
 
-    // 4. Update last message preview
+    if (socketService.isConnected()) {
+      let settled = false;
+      const fallbackTimer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          api.messages
+            .send(chatId, httpPayload)
+            .then((res) => finalizeMessage(res?.ok ? res.data : null))
+            .catch((e) => console.error('Fallback HTTP send failed:', e));
+        }
+      }, 5000);
+
+      socketService.sendMessage(httpPayload, (ack) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(fallbackTimer);
+        if (ack?.ok) {
+          finalizeMessage(ack.message || null);
+        } else {
+          api.messages
+            .send(chatId, httpPayload)
+            .then((res) => finalizeMessage(res?.ok ? res.data : null))
+            .catch((e) => console.error('HTTP retry send failed:', e));
+        }
+      });
+    } else {
+      api.messages
+        .send(chatId, httpPayload)
+        .then((res) => finalizeMessage(res?.ok ? res.data : null))
+        .catch((e) => console.error('HTTP send failed:', e));
+    }
+
+    // 3. Update last message preview immediately in sidebar
     const previewText = extra?.type === 'call'
       ? (extra?.callDetails?.isVideo ? '📹 ' : '📞 ') + (optimisticMessage.content || 'Call')
       : (optimisticMessage.content || (attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment'));
     set((state) => ({
-      contacts: state.contacts.map((c) =>
-        c.id === chatId ? { ...c, lastMessage: previewText, lastMessageTime: new Date().toISOString() } : c
-      ),
-      groups: state.groups.map((g) =>
-        g.id === chatId ? { ...g, lastMessage: previewText, lastMessageTime: new Date().toISOString() } : g
-      ),
+      contacts: state.contacts
+        .map((c) =>
+          matchesChatId(c, chatId) ? { ...c, lastMessage: previewText, lastMessageTime: nowIso } : c
+        )
+        .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)),
+      groups: state.groups
+        .map((g) =>
+          matchesChatId(g, chatId) ? { ...g, lastMessage: previewText, lastMessageTime: nowIso } : g
+        )
+        .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)),
     }));
   },
 
@@ -648,6 +898,19 @@ export const useChatStore = create((set, get) => ({
     );
     if (isBlocked) {
       return;
+    }
+
+    // Un-blacklist this chat if the user had previously deleted it and a new message arrived
+    const prevDeleted = getCachedData('chatrooms_deleted_chats', []);
+    if (Array.isArray(prevDeleted) && prevDeleted.length > 0) {
+      const chatLower = String(chatId).toLowerCase();
+      const cleanedDeleted = prevDeleted.filter((d) => {
+        const dl = String(d || '').toLowerCase();
+        return dl !== chatLower && dl !== senderUname && dl !== senderUid;
+      });
+      if (cleanedDeleted.length !== prevDeleted.length) {
+        setCachedData('chatrooms_deleted_chats', cleanedDeleted);
+      }
     }
 
     // Immediately join the room so subsequent updates flow seamlessly
@@ -670,23 +933,30 @@ export const useChatStore = create((set, get) => ({
       }
     }
 
+    let wasDuplicate = false;
     set((state) => {
       const existing = state.messages[chatId] || [];
       if (existing.some((m) => m.id === safeMsg.id)) {
+        wasDuplicate = true;
         return state;
       }
-      return {
-        messages: {
-          ...state.messages,
-          [chatId]: [...existing, safeMsg],
-        },
+      const nextMap = {
+        ...state.messages,
+        [chatId]: [...existing, safeMsg],
       };
+      setCachedData('chatrooms_cached_messages', nextMap);
+      return { messages: nextMap };
     });
+
+    if (wasDuplicate) return;
 
     const preview = message.type === 'call'
       ? (message.callDetails?.isVideo ? '📹 ' : '📞 ') + (message.content || 'Call')
       : (message.content || (message.attachment?.type === 'image' ? '📷 Photo' : '📎 Attachment'));
-    const hasChat = get().contacts.some((c) => c.id === chatId) || get().groups.some((g) => g.id === chatId);
+    const msgTime = message.timestamp || new Date().toISOString();
+
+    const { uname: myUname, uid: myUid } = getStoredUserInfo();
+    const isFromSelf = (myUid && senderUid === myUid) || (myUname && senderUname === myUname);
 
     // Unread count & instant mark read reconciliation
     const activeChat = get().activeChat;
@@ -698,9 +968,11 @@ export const useChatStore = create((set, get) => ({
     );
 
     if (isActive) {
-      get().clearUnreadCount(chatId);
-      get().markMessagesAsRead(chatId);
-    } else {
+      get().clearUnreadCount(chatId, activeChat);
+      if (!isFromSelf) {
+        get().markMessagesAsRead(chatId);
+      }
+    } else if (!isFromSelf) {
       set((state) => {
         const prevCount = state.unreadCounts[chatId] || 0;
         const next = {
@@ -712,22 +984,47 @@ export const useChatStore = create((set, get) => ({
       });
     }
 
-    if (!hasChat) {
-      // New conversation initiated by another user: immediately load chats into sidebar!
+    const hasContact = get().contacts.some((c) => matchesChatId(c, chatId));
+    const hasGroup = get().groups.some((g) => matchesChatId(g, chatId));
+    const hasWorkspaceNode = get().workspaces.some((ws) => (ws.nodes || []).some((n) => n.id === chatId));
+
+    if (!hasContact && !hasGroup && !hasWorkspaceNode) {
+      // New conversation initiated by another user: optimistically inject into sidebar immediately, then sync!
+      if (String(chatId).startsWith('dm_') && !isFromSelf) {
+        const partnerHandle = senderUname || extractDmOther(chatId, myUname) || chatId;
+        const optimisticContact = {
+          id: chatId,
+          userId: message.senderId,
+          username: partnerHandle,
+          name: message.senderName || partnerHandle,
+          avatar: message.senderAvatar || null,
+          status: 'online',
+          online: true,
+          lastMessage: preview,
+          lastMessageTime: msgTime,
+          type: 'contact',
+        };
+        set((state) => {
+          if (state.contacts.some((c) => matchesChatId(c, chatId))) return state;
+          const nextContacts = [optimisticContact, ...state.contacts];
+          setCachedData('chatrooms_cached_contacts', nextContacts);
+          return { contacts: nextContacts };
+        });
+      }
       get().loadChats(true);
     } else {
       set((state) => ({
         contacts: state.contacts
           .map((c) =>
-            c.id === chatId
-              ? { ...c, lastMessage: preview, lastMessageTime: message.timestamp || new Date().toISOString() }
+            matchesChatId(c, chatId)
+              ? { ...c, lastMessage: preview, lastMessageTime: msgTime }
               : c
           )
           .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)),
         groups: state.groups
           .map((g) =>
-            g.id === chatId
-              ? { ...g, lastMessage: preview, lastMessageTime: message.timestamp || new Date().toISOString() }
+            matchesChatId(g, chatId)
+              ? { ...g, lastMessage: preview, lastMessageTime: msgTime }
               : g
           )
           .sort((a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime)),
@@ -856,17 +1153,58 @@ export const useChatStore = create((set, get) => ({
   },
 
   addContact: async (username) => {
-    const cleanUsername = username.replace(/^@/, '').trim();
+    const cleanUsername = String(username || '').replace(/^@/, '').trim().toLowerCase();
+    if (!cleanUsername) return { success: false, error: 'Invalid username' };
+
+    const { uname: myUname } = getStoredUserInfo();
+    const canonicalDmId = myUname ? `dm_${[myUname, cleanUsername].sort().join('_')}` : `dm_${cleanUsername}`;
+    const reversedDmId = myUname ? `dm_${cleanUsername}_${myUname}` : '';
+    const forwardDmId = myUname ? `dm_${myUname}_${cleanUsername}` : '';
+
+    // Un-blacklist this contact/DM immediately if it was previously deleted
+    try {
+      const deletedList = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
+      if (deletedList.length > 0) {
+        const probe = { id: canonicalDmId, username: cleanUsername, primaryUsername: cleanUsername };
+        const filteredDeleted = deletedList.filter((d) => {
+          const dl = String(d || '').toLowerCase().trim().replace(/^@/, '');
+          if (dl === cleanUsername || dl === canonicalDmId || (reversedDmId && dl === reversedDmId) || (forwardDmId && dl === forwardDmId)) {
+            return false;
+          }
+          return !matchesChatId(probe, dl);
+        });
+        if (filteredDeleted.length !== deletedList.length) {
+          setCachedData('chatrooms_deleted_chats', filteredDeleted);
+        }
+      }
+    } catch {}
+
     const res = await api.contacts.add(cleanUsername);
     if (res.ok && res.data) {
       const contactData = res.data.data || res.data;
+      try {
+        const deletedList = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
+        if (deletedList.length > 0) {
+          const filteredDeleted = deletedList.filter((d) => !matchesChatId(contactData, d));
+          if (filteredDeleted.length !== deletedList.length) {
+            setCachedData('chatrooms_deleted_chats', filteredDeleted);
+          }
+        }
+      } catch {}
+
       set((state) => {
-        const existing = state.contacts.find((c) => c.id === contactData.id || c.username === contactData.username);
-        const nextContacts = existing ? state.contacts : [contactData, ...state.contacts];
+        const existingIdx = state.contacts.findIndex(
+          (c) => matchesChatId(c, contactData.id) || (contactData.username && matchesChatId(c, contactData.username))
+        );
+        const nextContacts =
+          existingIdx >= 0
+            ? state.contacts.map((c, idx) => (idx === existingIdx ? { ...c, ...contactData } : c))
+            : [contactData, ...state.contacts];
         setCachedData('chatrooms_cached_contacts', nextContacts);
         return { contacts: nextContacts };
       });
-      await get().loadChats(true);
+      // Sync in background so tapping Chat is never blocked by full workspace/contact reload
+      get().loadChats(true).catch(() => {});
       return { success: true, contact: contactData };
     }
 

@@ -21,8 +21,53 @@ const RTC_CONFIG = {
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.relay.metered.ca:80' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:80?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
+    {
+      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject',
+    },
   ],
   iceCandidatePoolSize: 10,
+};
+
+const extractDmTarget = (dmId, myUsername) => {
+  const idStr = String(dmId || '').toLowerCase().trim();
+  const me = String(myUsername || '').toLowerCase().trim().replace(/^@/, '');
+  if (!idStr.startsWith('dm_') || !me) return null;
+  const body = idStr.slice(3);
+  const prefix = `${me}_`;
+  const suffix = `_${me}`;
+  if (body.startsWith(prefix) && !body.endsWith(suffix)) {
+    return body.slice(prefix.length) || null;
+  }
+  if (body.endsWith(suffix) && !body.startsWith(prefix)) {
+    return body.slice(0, body.length - suffix.length) || null;
+  }
+  if (body.startsWith(prefix) && body.endsWith(suffix)) {
+    const candAfter = body.slice(prefix.length);
+    const candBefore = body.slice(0, body.length - suffix.length);
+    return me <= candAfter ? candAfter : candBefore;
+  }
+  const parts = body.split('_');
+  if (parts.length === 2) {
+    return parts[0] === me ? parts[1] : parts[0];
+  }
+  return null;
 };
 
 export const CallModal = ({
@@ -44,11 +89,13 @@ export const CallModal = ({
   const [facingMode, setFacingMode] = useState('user'); // 'user' (front) | 'environment' (back)
   const [duration, setDuration] = useState(0);
   const [callError, setCallError] = useState(null);
+  const [audioBlocked, setAudioBlocked] = useState(false);
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
-  const remoteStreamRef = useRef(null);
+  const remoteAudioStreamRef = useRef(null);
+  const remoteVideoStreamRef = useRef(null);
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
   const candidateQueue = useRef([]);
@@ -61,18 +108,16 @@ export const CallModal = ({
   const onSummaryRef = useRef(onCallEndedSummary);
 
   const resolveTargetUsername = () => {
-    if (callerInfo?.from) return String(callerInfo.from).toLowerCase().replace(/^@/, '');
-    if (callerInfo?.callerUsername) return String(callerInfo.callerUsername).toLowerCase().replace(/^@/, '');
-    if (chat?.username) return String(chat.username).toLowerCase().replace(/^@/, '');
-    if (chat?.primaryUsername) return String(chat.primaryUsername).toLowerCase().replace(/^@/, '');
-    if (chat?.userId) return String(chat.userId).toLowerCase();
-    if (chat?.id && String(chat.id).startsWith('dm_')) {
-      const parts = String(chat.id).replace('dm_', '').split('_');
-      const myUsername = (currentUser?.primaryUsername || currentUser?.username || '').toLowerCase().replace(/^@/, '');
-      if (parts.length === 2 && myUsername) {
-        return parts[0].toLowerCase() === myUsername ? parts[1].toLowerCase() : parts[0].toLowerCase();
-      }
+    if (callerInfo?.from) return String(callerInfo.from).toLowerCase().trim().replace(/^@/, '');
+    if (callerInfo?.callerUsername) return String(callerInfo.callerUsername).toLowerCase().trim().replace(/^@/, '');
+    if (chat?.primaryUsername) return String(chat.primaryUsername).toLowerCase().trim().replace(/^@/, '');
+    if (chat?.username) return String(chat.username).toLowerCase().trim().replace(/^@/, '');
+    if (chat?.id && String(chat.id).toLowerCase().startsWith('dm_')) {
+      const myUsername = (currentUser?.primaryUsername || currentUser?.username || '').toLowerCase().trim().replace(/^@/, '');
+      const extracted = extractDmTarget(chat.id, myUsername);
+      if (extracted) return extracted;
     }
+    if (chat?.userId) return String(chat.userId).toLowerCase();
     return chat?.id ? String(chat.id).toLowerCase() : null;
   };
 
@@ -118,6 +163,26 @@ export const CallModal = ({
     }
   };
 
+  const attemptRemoteAudioPlay = async () => {
+    const audioEl = remoteAudioRef.current;
+    const audioStream = remoteAudioStreamRef.current;
+    if (!audioEl || !audioStream) return;
+    if (audioEl.srcObject !== audioStream) {
+      audioEl.srcObject = audioStream;
+    }
+    audioEl.muted = false;
+    audioEl.volume = 1;
+    try {
+      await audioEl.play();
+      setAudioBlocked(false);
+    } catch (err) {
+      console.warn('[WebRTC] Remote audio play error:', err?.name || err?.message);
+      if (err?.name === 'NotAllowedError') {
+        setAudioBlocked(true);
+      }
+    }
+  };
+
   // ── Initialize WebRTC Call Session ────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
@@ -131,6 +196,7 @@ export const CallModal = ({
     durationRef.current = 0;
     summarySentRef.current = false;
     setCallError(null);
+    setAudioBlocked(false);
     setMicMuted(false);
     setCameraOff(!isVideo);
     candidateQueue.current = [...(initialIceCandidates || [])];
@@ -138,49 +204,62 @@ export const CallModal = ({
 
     playCallStartSound();
 
-    const startWebRtc = async () => {
-      try {
-        // 1. Acquire local media stream (Voice or Video) with fallback
-        let stream = null;
-        if (isVideo) {
+    const acquireLocalStream = async () => {
+      if (isVideo) {
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          });
+        } catch {
           try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-              video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-            });
-          } catch {
+            return await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+          } catch (camErr2) {
+            console.warn('[WebRTC] Camera unavailable, falling back to audio:', camErr2.message);
+            if (isMounted) setCameraOff(true);
             try {
-              stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: true,
-              });
-            } catch (camErr2) {
-              console.warn('[WebRTC] Camera unavailable, falling back to audio:', camErr2.message);
-              stream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: true, noiseSuppression: true },
+              return await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
                 video: false,
               });
-              if (isMounted) setCameraOff(true);
+            } catch {
+              return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             }
           }
-        } else {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-            video: false,
-          });
         }
+      }
+
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false,
+        });
+      } catch {
+        return await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      }
+    };
+
+    const startWebRtc = async () => {
+      try {
+        // 1. Acquire local media stream (Voice or Video) with safe audio constraints fallback
+        const stream = await acquireLocalStream();
 
         if (!isMounted) {
           stream?.getTracks().forEach((t) => t.stop());
           return;
         }
 
+        // Ensure microphone audio tracks start unmuted
+        stream.getAudioTracks().forEach((t) => {
+          t.enabled = true;
+        });
+
         localStreamRef.current = stream;
         if (localVideoRef.current && isVideo && !cameraOff) {
           localVideoRef.current.srcObject = stream;
         }
 
-        // 2. Instantiate RTCPeerConnection with STUN servers
+        // 2. Instantiate RTCPeerConnection with STUN & TURN servers
         const pc = new RTCPeerConnection(RTC_CONFIG);
         pcRef.current = pc;
 
@@ -189,37 +268,49 @@ export const CallModal = ({
           pc.addTrack(track, stream);
         });
 
-        // Setup persistent remote stream
-        remoteStreamRef.current = new MediaStream();
+        // Setup separate remote audio & video streams so hidden video never blocks call audio
+        remoteAudioStreamRef.current = new MediaStream();
+        remoteVideoStreamRef.current = new MediaStream();
+
+        // Prime audio element immediately so remote audio starts flowing on first RTP frame
+        if (remoteAudioRef.current) {
+          remoteAudioRef.current.srcObject = remoteAudioStreamRef.current;
+          remoteAudioRef.current.muted = false;
+          remoteAudioRef.current.volume = 1;
+        }
 
         // Handle incoming remote media tracks (both audio and video)
         pc.ontrack = (event) => {
-          console.log('[WebRTC] Received remote stream track:', event.track.kind);
-          if (event.streams && event.streams[0]) {
-            remoteStreamRef.current = event.streams[0];
-          } else if (event.track) {
-            if (!remoteStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
-              remoteStreamRef.current.addTrack(event.track);
-            }
-          }
+          const incomingTracks =
+            event.streams && event.streams[0]
+              ? event.streams[0].getTracks()
+              : event.track
+              ? [event.track]
+              : [];
 
-          if (isVideo) {
-            // For video calls, video element plays both video and audio
-            if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStreamRef.current) {
-              remoteVideoRef.current.srcObject = remoteStreamRef.current;
-              remoteVideoRef.current.play().catch((err) => console.log('Video autoplay:', err));
+          incomingTracks.forEach((track) => {
+            console.log('[WebRTC] Received remote stream track:', track.kind, track.readyState);
+            if (track.kind === 'audio' && remoteAudioStreamRef.current) {
+              if (!remoteAudioStreamRef.current.getTracks().some((t) => t.id === track.id)) {
+                remoteAudioStreamRef.current.addTrack(track);
+              }
+              track.onunmute = () => {
+                if (isMounted) attemptRemoteAudioPlay();
+              };
+              attemptRemoteAudioPlay();
+            } else if (track.kind === 'video' && remoteVideoStreamRef.current) {
+              if (!remoteVideoStreamRef.current.getTracks().some((t) => t.id === track.id)) {
+                remoteVideoStreamRef.current.addTrack(track);
+              }
+              if (remoteVideoRef.current) {
+                if (remoteVideoRef.current.srcObject !== remoteVideoStreamRef.current) {
+                  remoteVideoRef.current.srcObject = remoteVideoStreamRef.current;
+                }
+                remoteVideoRef.current.muted = true;
+                remoteVideoRef.current.play().catch(() => {});
+              }
             }
-          } else {
-            // Pipe to audio element for voice-only calls
-            if (remoteAudioRef.current && remoteAudioRef.current.srcObject !== remoteStreamRef.current) {
-              remoteAudioRef.current.srcObject = remoteStreamRef.current;
-              remoteAudioRef.current.play().catch((err) => console.log('Audio autoplay:', err));
-            }
-          }
-
-          if (isMounted) {
-            setCallStatus('connected');
-          }
+          });
         };
 
         // Handle local ICE candidates and relay via Socket.io
@@ -239,6 +330,7 @@ export const CallModal = ({
           console.log('[WebRTC] Connection state:', pc.connectionState);
           if (pc.connectionState === 'connected' && isMounted) {
             setCallStatus('connected');
+            attemptRemoteAudioPlay();
           } else if (pc.connectionState === 'failed') {
             if (pcRef.current && isInitiator) {
               pcRef.current.restartIce?.();
@@ -251,11 +343,14 @@ export const CallModal = ({
 
         pc.oniceconnectionstatechange = () => {
           console.log('[WebRTC] ICE state:', pc.iceConnectionState);
-          if (
+          if (pc.iceConnectionState === 'checking' && isMounted) {
+            setCallStatus((prev) => (prev === 'calling' ? 'connecting' : prev));
+          } else if (
             (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') &&
             isMounted
           ) {
             setCallStatus('connected');
+            attemptRemoteAudioPlay();
           } else if (pc.iceConnectionState === 'failed') {
             if (pcRef.current && isInitiator) {
               pcRef.current.restartIce?.();
@@ -329,7 +424,9 @@ export const CallModal = ({
               console.warn('[WebRTC] drain candidate err:', e);
             }
           }
-          if (isMounted) setCallStatus('connected');
+          if (isMounted) {
+            setCallStatus((prev) => (prev === 'calling' ? 'connecting' : prev));
+          }
         } catch (e) {
           console.error('[WebRTC] setRemoteDescription error:', e);
         }
@@ -411,10 +508,18 @@ export const CallModal = ({
       socketService.off('call_ended', handleCallEnded);
       socketService.off('call_rejected', handleCallRejected);
 
-      // Stop local tracks
+      // Stop local & remote tracks
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
         localStreamRef.current = null;
+      }
+      if (remoteAudioStreamRef.current) {
+        remoteAudioStreamRef.current.getTracks().forEach((track) => track.stop());
+        remoteAudioStreamRef.current = null;
+      }
+      if (remoteVideoStreamRef.current) {
+        remoteVideoStreamRef.current.getTracks().forEach((track) => track.stop());
+        remoteVideoStreamRef.current = null;
       }
       if (pcRef.current) {
         pcRef.current.close();
@@ -423,15 +528,16 @@ export const CallModal = ({
     };
   }, [isOpen]);
 
-  // Synchronize remote media tracks when call connects
+  // Synchronize remote audio & video streams whenever call connects
   useEffect(() => {
-    if (callStatus === 'connected' && remoteStreamRef.current) {
-      if (isVideo && remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStreamRef.current) {
-        remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    if (callStatus === 'connected') {
+      attemptRemoteAudioPlay();
+      if (isVideo && remoteVideoRef.current && remoteVideoStreamRef.current) {
+        if (remoteVideoRef.current.srcObject !== remoteVideoStreamRef.current) {
+          remoteVideoRef.current.srcObject = remoteVideoStreamRef.current;
+        }
+        remoteVideoRef.current.muted = true;
         remoteVideoRef.current.play().catch(() => {});
-      } else if (!isVideo && remoteAudioRef.current && remoteAudioRef.current.srcObject !== remoteStreamRef.current) {
-        remoteAudioRef.current.srcObject = remoteStreamRef.current;
-        remoteAudioRef.current.play().catch(() => {});
       }
     }
   }, [callStatus, isVideo]);
@@ -547,8 +653,13 @@ export const CallModal = ({
   const contactAvatar = chat?.avatar || callerInfo?.callerAvatar;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm select-none animate-fadeIn">
-      {/* Hidden dedicated audio element: Guarantees continuous voice stream playback */}
+    <div
+      onClick={() => {
+        if (audioBlocked) attemptRemoteAudioPlay();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm select-none animate-fadeIn"
+    >
+      {/* Dedicated audio element: Guarantees continuous remote voice stream playback for both Voice & Video calls */}
       <audio ref={remoteAudioRef} autoPlay playsInline />
 
       <div className="w-full max-w-2xl bg-[var(--bg-primary)] border border-[var(--border)] rounded-2xl shadow-2xl flex flex-col items-center relative overflow-hidden font-heading">
@@ -573,7 +684,7 @@ export const CallModal = ({
               <span className="text-xs text-[var(--text-muted)] font-semibold">Call Ended</span>
             ) : (
               <span className="text-xs text-[var(--accent)] font-semibold animate-pulse">
-                {isInitiator ? 'Ringing...' : 'Connecting...'}
+                {callStatus === 'connecting' ? 'Connecting...' : isInitiator ? 'Ringing...' : 'Connecting...'}
               </span>
             )}
 
@@ -582,6 +693,21 @@ export const CallModal = ({
             </div>
           </div>
         </div>
+
+        {/* Autoplay blocked banner so user can unlock call audio in one tap */}
+        {audioBlocked && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              attemptRemoteAudioPlay();
+            }}
+            className="w-full p-2.5 bg-amber-500/20 hover:bg-amber-500/30 border-b border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-center gap-2 px-4 cursor-pointer border-x-0 border-t-0 animate-pulse"
+          >
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>Tap here to enable call audio</span>
+          </button>
+        )}
 
         {/* Call Error Notice if Permissions or Media Failed */}
         {callError && (
@@ -593,11 +719,12 @@ export const CallModal = ({
 
         {/* Center Stage: Video Viewport or Voice Avatar */}
         <div className="relative w-full h-80 sm:h-96 bg-black flex items-center justify-center overflow-hidden">
-          {/* Remote Video Stream (Main Stage) */}
+          {/* Remote Video Stream (Main Stage) - muted so all audio flows cleanly through remoteAudioRef */}
           <video
             ref={remoteVideoRef}
             autoPlay
             playsInline
+            muted
             className={`w-full h-full object-cover ${callStatus === 'connected' && isVideo ? 'block' : 'hidden'}`}
           />
 

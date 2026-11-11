@@ -39,12 +39,22 @@ export function register(config) {
 
 export function unregister() {
   if ('serviceWorker' in navigator) {
+    if (typeof navigator.serviceWorker.getRegistrations === 'function') {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => {
+          registrations.forEach((registration) => {
+            registration.unregister();
+          });
+        })
+        .catch((error) => {
+          console.error(error.message);
+        });
+    }
     navigator.serviceWorker.ready
       .then((registration) => {
         registration.unregister();
       })
-      .catch((error) => {
-        console.error(error.message);
-      });
+      .catch(() => {});
   }
 }
