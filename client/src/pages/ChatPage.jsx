@@ -387,7 +387,7 @@ export const ChatPage = () => {
 
     const handleChatCleared = ({ chatId }) => {
       if (chatId) {
-        useChatStore.getState().deleteChat(chatId);
+        useChatStore.getState().deleteChat(chatId, null, { skipApi: true });
       }
     };
 

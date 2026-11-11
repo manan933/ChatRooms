@@ -611,10 +611,17 @@ export const Sidebar = ({
                   const unreadCount = getUnreadCount ? getUnreadCount(item.id, item) : (unreadCounts[item.id] || 0);
 
                   return (
-                    <button
+                    <div
                       key={item.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onSelectChat(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectChat(item);
+                        }
+                      }}
                       className={`group w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left relative ${
                         isActive
                           ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
@@ -681,7 +688,7 @@ export const Sidebar = ({
                           )}
                         </div>
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
 
@@ -703,9 +710,16 @@ export const Sidebar = ({
 
                 return (
                   <div key={item.id} className="flex flex-col">
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onSelectChat(item)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onSelectChat(item);
+                        }
+                      }}
                       className={`group w-full p-2.5 rounded-xl flex items-center gap-3 transition-all cursor-pointer border-none text-left relative ${
                         isActive
                           ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2.5 shadow-sm'
@@ -777,7 +791,7 @@ export const Sidebar = ({
                           </div>
                         )}
                       </div>
-                    </button>
+                    </div>
 
                     {/* Indented Subgroups List */}
                     {hasSubgroups && isExpanded && (
@@ -786,10 +800,17 @@ export const Sidebar = ({
                           const isSubActive = activeChat?.id === sub.id;
                           const subUnreadCount = getUnreadCount ? getUnreadCount(sub.id, sub) : (unreadCounts[sub.id] || 0);
                           return (
-                            <button
+                            <div
                               key={sub.id}
-                              type="button"
+                              role="button"
+                              tabIndex={0}
                               onClick={() => onSelectChat(sub)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  onSelectChat(sub);
+                                }
+                              }}
                               className={`group w-full p-2 rounded-xl flex items-center justify-between gap-2 transition-all cursor-pointer border-none text-left ${
                                 isSubActive
                                   ? 'bg-[var(--accent-highlight-subtle)] text-[var(--text-primary)] border-l-4 border-[var(--accent-highlight)] pl-2 shadow-xs'
@@ -831,7 +852,7 @@ export const Sidebar = ({
                               >
                                 <Trash2 size={12} />
                               </button>
-                            </button>
+                            </div>
                           );
                         })}
                       </div>

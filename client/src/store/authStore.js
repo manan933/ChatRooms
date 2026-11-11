@@ -39,7 +39,7 @@ export const useAuthStore = create((set, get) => ({
         localStorage.setItem('chatrooms_user', JSON.stringify(user));
         set({ user, isAuthenticated: true, error: null });
         socketService.connect();
-      } else if (res.status === 401 || !res.ok) {
+      } else if (res.status === 401 || res.status === 403) {
         get().logout();
       }
     } catch (e) {

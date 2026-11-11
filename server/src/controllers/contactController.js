@@ -299,10 +299,26 @@ export const deleteContactOrGroup = async (req, res, next) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.to(chatId).emit('chat_cleared', { chatId });
+      const cleanCurrent = (currentUsername || '').toLowerCase().trim().replace(/^@/, '');
+      io.to(chatId).emit('chat_cleared', { chatId, clearedBy: cleanCurrent });
       if (chatId.startsWith('dm_')) {
-        const parts = chatId.replace('dm_', '').split('_');
-        parts.forEach((p) => io.to(`user_${p.toLowerCase()}`).emit('chat_cleared', { chatId }));
+        const body = chatId.slice(3).toLowerCase();
+        let partner = null;
+        if (cleanCurrent) {
+          if (body.startsWith(`${cleanCurrent}_`)) partner = body.slice(cleanCurrent.length + 1);
+          else if (body.endsWith(`_${cleanCurrent}`)) partner = body.slice(0, body.length - cleanCurrent.length - 1);
+        }
+        if (cleanCurrent) {
+          io.to(`user_${cleanCurrent}`).emit('chat_cleared', { chatId, clearedBy: cleanCurrent });
+        }
+        if (partner && partner !== cleanCurrent) {
+          io.to(`user_${partner}`).emit('chat_cleared', { chatId, clearedBy: cleanCurrent });
+        } else if (!cleanCurrent) {
+          const parts = body.split('_');
+          if (parts.length === 2) {
+            parts.forEach((p) => io.to(`user_${p}`).emit('chat_cleared', { chatId }));
+          }
+        }
       }
     }
 

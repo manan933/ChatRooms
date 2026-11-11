@@ -179,6 +179,8 @@ const getFilteredInitialGroups = () => {
   return cached.filter((g) => !deleted.some((d) => matchesChatId(g, d)));
 };
 
+const deletingChatsInFlight = new Set();
+
 export const useChatStore = create((set, get) => ({
   activeChat: null,
   contacts: getFilteredInitialContacts(),
@@ -436,8 +438,9 @@ export const useChatStore = create((set, get) => ({
     set({ activeChat: null });
   },
 
-  deleteChat: async (chatId, target = null) => {
+  deleteChat: async (chatId, target = null, options = {}) => {
     if (!chatId) return;
+    const { skipApi = false } = options || {};
 
     const { uname: myUname, uid: myUid } = getStoredUserInfo();
     const deletedList = sanitizeDeletedChats(getCachedData('chatrooms_deleted_chats', []));
@@ -516,14 +519,26 @@ export const useChatStore = create((set, get) => ({
       };
     });
 
+    if (skipApi) return;
+
+    const dedupKey = String(chatId).toLowerCase();
+    if (deletingChatsInFlight.has(dedupKey)) return;
+    deletingChatsInFlight.add(dedupKey);
+
     try {
-      await Promise.allSettled([
-        api.messages.clearChat(chatId),
-        api.contacts.delete(chatId),
-        api.contacts.deleteGroup(chatId),
-      ]);
+      const isDm = String(chatId).toLowerCase().startsWith('dm_') || target?.type === 'contact';
+      const requests = [api.messages.clearChat(chatId)];
+      if (isDm || !target?.type) {
+        requests.push(api.contacts.delete(chatId));
+      }
+      if (!isDm) {
+        requests.push(api.contacts.deleteGroup(chatId));
+      }
+      await Promise.allSettled(requests);
     } catch (e) {
       console.warn('[chatStore] Failed to delete chat on server:', e);
+    } finally {
+      deletingChatsInFlight.delete(dedupKey);
     }
   },
 
