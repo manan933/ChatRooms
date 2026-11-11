@@ -1,5 +1,5 @@
 // ChatRooms Service Worker - Offline Shell & Asset Caching
-const CACHE_NAME = 'chatrooms-v5';
+const CACHE_NAME = 'chatrooms-v6';
 
 const STATIC_SHELL_ASSETS = [
   '/',

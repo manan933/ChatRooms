@@ -114,10 +114,13 @@ export const NewChatPanel = ({
 
     // Persist contact & sync in the background so tapping Chat opens immediately
     if (onAddContact) {
-      Promise.resolve(onAddContact(targetUsername))
+      Promise.resolve(onAddContact(targetUsername, optimisticContact))
         .then((res) => {
           if (res?.success && res.contact && res.contact.id && res.contact.id !== dmId) {
-            onStartDirectChat?.(res.contact);
+            const curActive = useChatStore.getState().activeChat;
+            if (curActive && curActive.id === dmId) {
+              onStartDirectChat?.(res.contact);
+            }
           }
         })
         .catch((e) => {
@@ -278,7 +281,6 @@ export const NewChatPanel = ({
                     key={u.id || u._id}
                     type="button"
                     onClick={() => handleSelectUser(u)}
-                    disabled={isSubmitting}
                     className="w-full p-2.5 rounded-xl hover:bg-[var(--bg-hover)] transition-colors flex items-center justify-between cursor-pointer border-none bg-transparent text-left"
                   >
                     <div className="flex items-center gap-3 min-w-0">

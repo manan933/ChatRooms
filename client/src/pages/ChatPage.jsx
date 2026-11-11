@@ -732,7 +732,7 @@ export const ChatPage = () => {
           }}
           className="md:!flex"
         >
-          <ErrorBoundary onBack={handleCloseChat} onReset={() => selectChat(activeChat)}>
+          <ErrorBoundary key={activeChat?.id || 'dashboard'} onBack={handleCloseChat} onReset={() => selectChat(activeChat)}>
             <ChatArea
               chat={activeChat}
               messages={activeMessages}

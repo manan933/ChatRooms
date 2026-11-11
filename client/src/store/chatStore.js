@@ -1167,7 +1167,7 @@ export const useChatStore = create((set, get) => ({
     api.messages.delete(messageId).catch((e) => { console.error('ignored', e); });
   },
 
-  addContact: async (username) => {
+  addContact: async (username, optimisticSeed = null) => {
     const cleanUsername = String(username || '').replace(/^@/, '').trim().toLowerCase();
     if (!cleanUsername) return { success: false, error: 'Invalid username' };
 
@@ -1194,6 +1194,18 @@ export const useChatStore = create((set, get) => ({
       }
     } catch {}
 
+    if (optimisticSeed && optimisticSeed.id) {
+      set((state) => {
+        const exists = state.contacts.some(
+          (c) => matchesChatId(c, optimisticSeed.id) || matchesChatId(c, cleanUsername)
+        );
+        if (exists) return state;
+        const nextContacts = [optimisticSeed, ...state.contacts];
+        setCachedData('chatrooms_cached_contacts', nextContacts);
+        return { contacts: nextContacts };
+      });
+    }
+
     const res = await api.contacts.add(cleanUsername);
     if (res.ok && res.data) {
       const contactData = res.data.data || res.data;
@@ -1216,7 +1228,13 @@ export const useChatStore = create((set, get) => ({
             ? state.contacts.map((c, idx) => (idx === existingIdx ? { ...c, ...contactData } : c))
             : [contactData, ...state.contacts];
         setCachedData('chatrooms_cached_contacts', nextContacts);
-        return { contacts: nextContacts };
+        const shouldSyncActive =
+          state.activeChat &&
+          (matchesChatId(state.activeChat, contactData.id) || matchesChatId(state.activeChat, cleanUsername));
+        return {
+          contacts: nextContacts,
+          ...(shouldSyncActive ? { activeChat: { ...state.activeChat, ...contactData } } : {}),
+        };
       });
       // Sync in background so tapping Chat is never blocked by full workspace/contact reload
       get().loadChats(true).catch(() => {});

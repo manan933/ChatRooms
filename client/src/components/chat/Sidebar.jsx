@@ -179,10 +179,13 @@ export const Sidebar = ({
     // Persist contact & sync in background so tapping Chat opens instantaneously
     useChatStore
       .getState()
-      .addContact(targetUname)
+      .addContact(targetUname, optimisticContact)
       .then((res) => {
         if (res?.success && res.contact && res.contact.id && res.contact.id !== dmId) {
-          onSelectChat(res.contact);
+          const curActive = useChatStore.getState().activeChat;
+          if (curActive && curActive.id === dmId) {
+            onSelectChat(res.contact);
+          }
         }
       })
       .catch((e) => {
