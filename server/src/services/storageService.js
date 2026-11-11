@@ -988,7 +988,7 @@ class StorageService {
         id: n.id,
         name: n.name,
         membersCount: n.memberCount || 1,
-        folder: n.parentId ? (nodeMap.get(n.parentId)?.name || null) : null,
+        folder: n.folder || (n.parentId ? (nodeMap.get(n.parentId)?.name || null) : null),
         isAnnouncement: Boolean(n.isAnnouncement),
       }));
 
@@ -1007,6 +1007,7 @@ class StorageService {
 
       result.push({
         ...w,
+        parentWorkspaceId: w.parentWorkspaceId || null,
         membersCount: w.memberCount || 5,
         memberCount: w.memberCount || 5,
         settings: w.policy || { allowEmojis: true, allowAttachments: true },
@@ -1085,11 +1086,12 @@ class StorageService {
     return this.getAllNodes();
   }
 
-  async createWorkspace(name, contextualUsername, userId) {
+  async createWorkspace(name, contextualUsername, userId, parentWorkspaceId = null) {
     const wsId = `ws-${Date.now()}`;
     const cleanPrefix = name.substring(0, 4).toUpperCase().replace(/[^A-Z]/g, 'X') || 'WS';
     const salt = Date.now().toString(36).slice(-3).toUpperCase();
     const code = `ZYN-${cleanPrefix}-${Math.floor(1000 + Math.random() * 9000)}-${salt}`;
+    const cleanParentId = parentWorkspaceId ? String(parentWorkspaceId).trim() : null;
 
     const rootNodeId = `root-${wsId}`;
     const defaultNodeId = `${wsId}-general`;
@@ -1098,6 +1100,7 @@ class StorageService {
       id: wsId,
       name: name.trim(),
       joinCode: code,
+      parentWorkspaceId: cleanParentId,
       rootNodeId,
       defaultNodeId,
       type: 'organization',
@@ -1122,6 +1125,7 @@ class StorageService {
       id: wsId,
       name: ws.name,
       joinCode: code,
+      parentWorkspaceId: cleanParentId,
       membersCount: 1,
       memberCount: 1,
       isOwner: true,
@@ -1150,6 +1154,7 @@ class StorageService {
       workspaceId,
       name: cleanName,
       parentId: folder || null,
+      folder: folder ? String(folder).trim() : null,
       children: [],
       memberCount: 1,
       hasConversation: true,
@@ -1188,6 +1193,7 @@ class StorageService {
     const nodes = await WorkspaceNode.find({ workspaceId: workspace.id }).lean();
     return {
       ...workspace,
+      parentWorkspaceId: workspace.parentWorkspaceId || null,
       membersCount: workspace.memberCount || 1,
       memberCount: workspace.memberCount || 1,
       settings: workspace.policy || { allowEmojis: true, allowAttachments: true },
@@ -1195,7 +1201,7 @@ class StorageService {
         id: n.id,
         name: n.name,
         membersCount: n.memberCount || 1,
-        folder: n.parentId,
+        folder: n.folder || n.parentId || null,
         isAnnouncement: Boolean(n.isAnnouncement),
       })),
     };

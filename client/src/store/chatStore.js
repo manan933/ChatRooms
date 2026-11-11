@@ -1343,9 +1343,14 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  createWorkspace: async (name, contextualUsername = '') => {
+  createWorkspace: async (name, contextualUsername = '', parentWorkspaceId = null) => {
     try {
-      const res = await api.workspaces.create({ name, contextualUsername });
+      const payload = {
+        name,
+        contextualUsername,
+        ...(parentWorkspaceId ? { parentWorkspaceId } : {}),
+      };
+      const res = await api.workspaces.create(payload);
       if (res.ok && res.data) {
         await get().loadChats(true);
         const ws = res.data.workspace || res.data;

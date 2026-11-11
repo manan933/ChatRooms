@@ -57,6 +57,7 @@ export const ChatPage = () => {
   // Navigation views: 'chats' (Sidebar) | 'settings' (WhatsApp Settings Panel) | 'newChat' (WhatsApp New Chat Panel)
   const [leftView, setLeftView] = useState('chats');
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
+  const [workspaceModalOptions, setWorkspaceModalOptions] = useState({ tab: 'select', parentWorkspaceId: null });
   const [selectedWorkspace, setSelectedWorkspace] = useState(null);
   const [incomingCall, setIncomingCall] = useState(null);
   const [activeCallSession, setActiveCallSession] = useState(null);
@@ -160,12 +161,18 @@ export const ChatPage = () => {
     }
   };
 
-  const handleOpenWorkspace = () => {
+  const handleOpenWorkspace = (options = null) => {
+    const isCustomOpts = options && typeof options === 'object' && !options.nativeEvent && !options.currentTarget;
+    setWorkspaceModalOptions({
+      tab: isCustomOpts && options.tab ? options.tab : 'select',
+      parentWorkspaceId: isCustomOpts && options.parentWorkspaceId ? options.parentWorkspaceId : null,
+    });
     window.history.pushState({ chatroomsView: 'modal', name: 'workspace' }, '');
     setWorkspaceModalOpen(true);
   };
   const handleCloseWorkspace = () => {
     sessionStorage.setItem('chatrooms_workspace_prompted', 'true');
+    setWorkspaceModalOptions({ tab: 'select', parentWorkspaceId: null });
     if (window.history.state?.chatroomsView === 'modal') {
       window.history.back();
     } else {
@@ -597,6 +604,7 @@ export const ChatPage = () => {
         id: channel.id,
         name: `#${cleanName}`,
         rawName: cleanName,
+        workspaceId: workspace.id,
         workspaceName: workspace.name,
         type: 'channel',
         avatar: null,
@@ -611,6 +619,7 @@ export const ChatPage = () => {
         id: fallbackChannelId,
         name: '#general',
         rawName: 'general',
+        workspaceId: workspace.id,
         workspaceName: workspace.name,
         type: 'channel',
         avatar: null,
@@ -681,7 +690,7 @@ export const ChatPage = () => {
               user={user}
               onClose={handleCloseSettings}
               onUpdateProfile={updateProfile}
-              onOpenWorkspaceModal={() => setWorkspaceModalOpen(true)}
+              onOpenWorkspaceModal={handleOpenWorkspace}
             />
           ) : leftView === 'newChat' ? (
             <NewChatPanel
@@ -836,6 +845,8 @@ export const ChatPage = () => {
         onClose={handleCloseWorkspace}
         workspaces={workspaces}
         activeWorkspace={selectedWorkspace || workspaces[0]}
+        initialTab={workspaceModalOptions.tab}
+        initialParentWorkspaceId={workspaceModalOptions.parentWorkspaceId}
         onSelectWorkspace={handleSelectWorkspace}
         onCreateWorkspace={createWorkspace}
         onJoinWorkspace={joinWorkspace}

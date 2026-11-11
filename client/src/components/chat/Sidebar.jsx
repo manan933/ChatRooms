@@ -17,6 +17,7 @@ import {
   Megaphone,
   BellOff,
   Trash2,
+  Layers,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import api from '../../api/api';
@@ -25,6 +26,7 @@ import useChatStore from '../../store/chatStore';
 import CreateChannelModal from '../modals/CreateChannelModal';
 import { ChatListSkeleton } from '../ui/Skeleton';
 import BrandLogo from '../ui/BrandLogo';
+import { buildWorkspaceHierarchy } from '../../utils/workspaceTree';
 
 const formatTime = (iso) => {
   if (!iso) return '';
@@ -199,7 +201,12 @@ export const Sidebar = ({
   // Sync selected workspace from external selection
   React.useEffect(() => {
     if (selectedWorkspace) {
-      const idx = workspaces.findIndex((w) => w.id === selectedWorkspace.id || w.name === selectedWorkspace.name);
+      let idx = selectedWorkspace.id
+        ? workspaces.findIndex((w) => w.id === selectedWorkspace.id)
+        : -1;
+      if (idx === -1 && selectedWorkspace.name) {
+        idx = workspaces.findIndex((w) => w.name === selectedWorkspace.name);
+      }
       if (idx !== -1) {
         setActiveWorkspaceIndex(idx);
         setActiveTab('workplace');
@@ -209,14 +216,41 @@ export const Sidebar = ({
 
   // Sync activeChat when channel is chosen
   React.useEffect(() => {
-    if (activeChat?.type === 'channel' && activeChat.workspaceName) {
+    if (activeChat?.type === 'channel' && (activeChat.workspaceId || activeChat.workspaceName)) {
       setActiveTab('workplace');
-      const idx = workspaces.findIndex((w) => w.name === activeChat.workspaceName);
+      let idx = activeChat.workspaceId
+        ? workspaces.findIndex((w) => w.id === activeChat.workspaceId)
+        : -1;
+      if (idx === -1 && activeChat.workspaceName) {
+        idx = workspaces.findIndex((w) => w.name === activeChat.workspaceName);
+      }
       if (idx !== -1) setActiveWorkspaceIndex(idx);
     }
   }, [activeChat, workspaces]);
 
   const currentWorkspace = workspaces[activeWorkspaceIndex] || workspaces[0];
+
+  const orderedWorkspaces = useMemo(() => buildWorkspaceHierarchy(workspaces), [workspaces]);
+
+  const parentWorkspace = useMemo(() => {
+    if (!currentWorkspace?.parentWorkspaceId) return null;
+    return workspaces.find((w) => w.id === currentWorkspace.parentWorkspaceId) || null;
+  }, [workspaces, currentWorkspace]);
+
+  const childWorkspaces = useMemo(() => {
+    if (!currentWorkspace?.id) return [];
+    return workspaces.filter((w) => w.parentWorkspaceId === currentWorkspace.id);
+  }, [workspaces, currentWorkspace]);
+
+  const switchToWorkspace = (targetWs) => {
+    if (!targetWs) return;
+    const idx = workspaces.findIndex((w) => w.id === targetWs.id);
+    if (idx !== -1) {
+      setActiveWorkspaceIndex(idx);
+      setWorkspaceDropdownOpen(false);
+      setActiveTab('workplace');
+    }
+  };
 
   // Filter direct contacts + groups
   const directList = useMemo(() => {
@@ -300,6 +334,7 @@ export const Sidebar = ({
         id: n.id,
         name: `#${cleanName}`,
         rawName: cleanName,
+        workspaceId: currentWorkspace.id,
         workspaceName: currentWorkspace.name,
         type: 'channel',
         avatar: null,
@@ -403,13 +438,24 @@ export const Sidebar = ({
       {/* ── Workplace Switcher Header (When in Workplaces Tab) ──────── */}
       {activeTab === 'workplace' && currentWorkspace && (
         <div className="px-3 py-1.5 shrink-0 select-none relative font-heading">
+          {parentWorkspace && (
+            <button
+              type="button"
+              onClick={() => switchToWorkspace(parentWorkspace)}
+              className="w-full mb-1 px-2 py-1 rounded-lg bg-[var(--accent-subtle)]/70 hover:bg-[var(--accent-subtle)] text-[var(--accent)] text-[10px] font-bold flex items-center gap-1.5 border border-[var(--border-subtle)] cursor-pointer transition-colors text-left"
+              title={`Back to parent workspace: ${parentWorkspace.name}`}
+            >
+              <Layers size={11} className="shrink-0" />
+              <span className="truncate">Nested inside: {parentWorkspace.name}</span>
+            </button>
+          )}
           <div
             onClick={() => setWorkspaceDropdownOpen(!workspaceDropdownOpen)}
             className="p-2 rounded-xl bg-[var(--bg-tertiary)]/70 backdrop-blur-md border border-[var(--border)] flex items-center justify-between cursor-pointer hover:border-[var(--border-focus)] transition-colors shadow-xs"
           >
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="w-7 h-7 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--border-subtle)]">
-                {currentWorkspace.name.charAt(0)}
+                {currentWorkspace.parentWorkspaceId ? <Layers size={13} /> : currentWorkspace.name.charAt(0)}
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-semibold text-[var(--text-primary)] truncate flex items-center gap-1">
@@ -435,30 +481,49 @@ export const Sidebar = ({
 
           {/* Switcher Dropdown */}
           {workspaceDropdownOpen && (
-            <div className="absolute top-full left-3 right-3 mt-1 p-1 bg-[var(--bg-secondary)]/95 backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-xl z-30 space-y-0.5">
+            <div className="absolute top-full left-3 right-3 mt-1 p-1 bg-[var(--bg-secondary)]/95 backdrop-blur-xl border border-[var(--border)] rounded-xl shadow-xl z-30 space-y-0.5 max-h-72 overflow-y-auto custom-scrollbar">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-2 py-1 block">
                 Workspaces
               </span>
-              {workspaces.map((ws, idx) => (
+              {orderedWorkspaces.map(({ workspace: ws, depth }) => {
+                const idx = workspaces.findIndex((item) => item.id === ws.id);
+                const isSelectedWs = ws.id === currentWorkspace?.id;
+                return (
+                  <button
+                    key={ws.id}
+                    type="button"
+                    style={{ paddingLeft: `${8 + Math.min(depth, 4) * 14}px` }}
+                    onClick={() => {
+                      if (idx !== -1) setActiveWorkspaceIndex(idx);
+                      setWorkspaceDropdownOpen(false);
+                    }}
+                    className={`w-full py-2 pr-2 rounded-lg text-left flex items-center justify-between cursor-pointer border-none transition-colors ${
+                      isSelectedWs
+                        ? 'bg-[var(--accent)] text-white'
+                        : 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    <span className="text-xs font-semibold truncate flex items-center gap-1.5 min-w-0">
+                      {depth > 0 && <Layers size={11} className="shrink-0 opacity-85" />}
+                      <span className="truncate">{ws.name}</span>
+                    </span>
+                    <span className="text-[10px] opacity-80 shrink-0 ml-1">{ws.nodes?.length || 1} ch</span>
+                  </button>
+                );
+              })}
+
+              <div className="pt-1 border-t border-[var(--border-subtle)] space-y-0.5">
                 <button
-                  key={ws.id}
                   type="button"
                   onClick={() => {
-                    setActiveWorkspaceIndex(idx);
                     setWorkspaceDropdownOpen(false);
+                    onOpenWorkspaceModal?.({ tab: 'create', parentWorkspaceId: currentWorkspace.id });
                   }}
-                  className={`w-full p-2 rounded-lg text-left flex items-center justify-between cursor-pointer border-none transition-colors ${
-                    activeWorkspaceIndex === idx
-                      ? 'bg-[var(--accent)] text-[var(--text-primary)]'
-                      : 'bg-transparent text-[var(--text-secondary)] hover:bg-[var(--bg-hover)] hover:text-[var(--text-primary)]'
-                  }`}
+                  className="w-full py-1.5 px-2 bg-transparent hover:bg-[var(--bg-hover)] text-[var(--accent-highlight)] text-xs font-semibold rounded-lg cursor-pointer border-none flex items-center justify-center gap-1"
                 >
-                  <span className="text-xs font-semibold truncate">{ws.name}</span>
-                  <span className="text-[10px] opacity-80">{ws.nodes?.length || 1} channels</span>
+                  <Layers size={12} />
+                  <span>New Nested Workspace</span>
                 </button>
-              ))}
-
-              <div className="pt-1 border-t border-[var(--border-subtle)]">
                 <button
                   type="button"
                   onClick={() => {
@@ -927,6 +992,46 @@ export const Sidebar = ({
         ) : (
           /* ── WORKPLACES CHANNELS TREE ────────────────────────────── */
           <div className="space-y-1 select-none pt-1 font-heading">
+            {/* Nested Workspaces inside current workspace */}
+            <div className="mb-1.5">
+              <div className="px-2 py-1 flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1">
+                  <Layers size={11} className="text-[var(--accent)]" />
+                  <span>Nested Workspaces {childWorkspaces.length > 0 ? `(${childWorkspaces.length})` : ''}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onOpenWorkspaceModal?.({ tab: 'create', parentWorkspaceId: currentWorkspace?.id })}
+                  className="px-1.5 py-0.5 rounded-md bg-[var(--accent-subtle)] hover:bg-[var(--accent)] text-[var(--accent)] hover:text-white text-[10px] font-bold cursor-pointer border-none flex items-center gap-0.5 transition-colors"
+                  title={`Create nested workspace inside ${currentWorkspace?.name}`}
+                >
+                  <Plus size={10} />
+                  <span>Nest</span>
+                </button>
+              </div>
+
+              {childWorkspaces.length > 0 && (
+                <div className="space-y-0.5 pl-2 ml-2 border-l border-[var(--border)]">
+                  {childWorkspaces.map((subWs) => (
+                    <button
+                      key={subWs.id}
+                      type="button"
+                      onClick={() => switchToWorkspace(subWs)}
+                      className="w-full px-2.5 py-1.5 rounded-lg hover:bg-[var(--bg-hover)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center justify-between cursor-pointer border-none bg-transparent text-left"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Layers size={13} className="text-[var(--accent)] shrink-0" />
+                        <span className="text-xs sm:text-sm font-semibold truncate">{subWs.name}</span>
+                      </div>
+                      <span className="text-[10px] text-[var(--text-muted)] shrink-0">
+                        {subWs.nodes?.length || 1} ch
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {groupedWorkspaceChannels.root.length === 0 && Object.keys(groupedWorkspaceChannels.folders).length === 0 ? (
               <div className="text-center py-6 px-3 text-[var(--text-muted)] text-xs font-body">
                 <p className="font-heading font-semibold mb-1 text-[var(--text-secondary)]">No channels found</p>

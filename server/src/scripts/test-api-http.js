@@ -147,6 +147,30 @@ async function runHttpTests() {
   const joinRes = await post('/workspaces/join', { code: rootNode.joinCode }, token);
   check('POST /workspaces/join with joinCode returns status 200', joinRes.status === 200);
 
+  // Nested workspace creation and retrieval
+  const childWsRes = await post(
+    '/workspaces',
+    {
+      name: `Nested Workspace ${suffix}`,
+      parentWorkspaceId: createdWs.id,
+      description: 'Nested child workspace via automated API suite',
+    },
+    token
+  );
+  check('POST /workspaces nested child returns status 201', childWsRes.status === 201);
+  check(
+    'Nested workspace preserves parentWorkspaceId',
+    childWsRes.data.data?.workspace?.parentWorkspaceId === createdWs.id
+  );
+
+  const listAfterNestRes = await get('/workspaces', token);
+  check(
+    'GET /workspaces returns nested workspace link',
+    listAfterNestRes.data.data?.some(
+      (w) => w.id === childWsRes.data.data?.workspace?.id && w.parentWorkspaceId === createdWs.id
+    )
+  );
+
   // 6. Messages API
   console.log('\n--- 6. Testing Messages Endpoints ---');
   const msgContent = `Automated message test ${suffix}`;

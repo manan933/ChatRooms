@@ -12,6 +12,7 @@ import {
   BellOff,
   Ban,
   Trash2,
+  Layers,
 } from '../ui/Icons';
 import Avatar from '../ui/Avatar';
 import MessageBubble from './MessageBubble';
@@ -22,6 +23,7 @@ import useThemeStore from '../../store/themeStore';
 import useChatStore from '../../store/chatStore';
 import { playSentSound, playReactionSound } from '../../utils/chatroomsSound';
 import BrandLogo from '../ui/BrandLogo';
+import { buildWorkspaceHierarchy } from '../../utils/workspaceTree';
 
 const formatDate = (iso) => {
   if (!iso) return '';
@@ -266,7 +268,7 @@ export const ChatArea = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 font-heading">
-            {workspaces.map((ws) => (
+            {buildWorkspaceHierarchy(workspaces).map(({ workspace: ws, depth, parentWorkspace }) => (
               <div
                 key={ws.id}
                 onClick={() => onSelectWorkspace ? onSelectWorkspace(ws) : onOpenWorkspaceModal?.()}
@@ -274,13 +276,14 @@ export const ChatArea = ({
               >
                 <div className="flex items-center gap-2.5 mb-1.5 w-full">
                   <div className="w-8 h-8 rounded-lg bg-[var(--accent-subtle)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--border-subtle)]">
-                    {ws.name.charAt(0)}
+                    {depth > 0 ? <Layers size={14} /> : ws.name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-semibold text-[var(--text-primary)] m-0 truncate group-hover:text-[var(--accent)] transition-colors">
                       {ws.name}
                     </h4>
-                    <span className="text-[10px] text-[var(--text-muted)]">
+                    <span className="text-[10px] text-[var(--text-muted)] block truncate">
+                      {parentWorkspace ? `Nested in ${parentWorkspace.name} · ` : ''}
                       {ws.membersCount || ws.memberCount || 1} members · {ws.nodes?.length || 1} channels
                     </span>
                   </div>

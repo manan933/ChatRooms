@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Building2,
   KeyRound,
@@ -8,9 +8,11 @@ import {
   Copy,
   Check,
   CheckCircle2,
+  Layers,
 } from '../ui/Icons';
 import Modal from '../ui/Modal';
 import BrandLogo from '../ui/BrandLogo';
+import { buildWorkspaceHierarchy } from '../../utils/workspaceTree';
 
 export const WorkspaceModal = ({
   isOpen,
@@ -21,29 +23,38 @@ export const WorkspaceModal = ({
   onCreateWorkspace,
   onJoinWorkspace,
   initialTab = 'select',
+  initialParentWorkspaceId = null,
 }) => {
   const [activeTab, setActiveTab] = useState('select'); // 'select' | 'join' | 'create'
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
+  const [parentWorkspaceId, setParentWorkspaceId] = useState('');
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [copiedCode, setCopiedCode] = useState(null);
 
-  // Sync initial tab when modal opens
+  const orderedWorkspaces = useMemo(() => buildWorkspaceHierarchy(workspaces), [workspaces]);
+
+  // Sync initial tab and parent workspace when modal opens
   useEffect(() => {
     if (isOpen) {
-      if (workspaces.length > 0) {
+      if (initialParentWorkspaceId) {
+        setActiveTab('create');
+        setParentWorkspaceId(initialParentWorkspaceId);
+      } else if (workspaces.length > 0) {
         setActiveTab(initialTab);
+        setParentWorkspaceId('');
       } else {
         setActiveTab('create');
+        setParentWorkspaceId('');
       }
       setError(null);
       setName('');
       setHandle('');
       setCode('');
     }
-  }, [isOpen, workspaces.length, initialTab]);
+  }, [isOpen, workspaces.length, initialTab, initialParentWorkspaceId]);
 
   const handleCopy = (text, key) => {
     navigator.clipboard?.writeText(text);
@@ -58,7 +69,7 @@ export const WorkspaceModal = ({
     setIsSubmitting(true);
     setError(null);
     try {
-      const res = await onCreateWorkspace(name.trim(), handle.trim());
+      const res = await onCreateWorkspace(name.trim(), handle.trim(), parentWorkspaceId || null);
       if (res?.success) {
         onClose();
         if (res.workspace) {
@@ -175,31 +186,47 @@ export const WorkspaceModal = ({
               Switch to a workspace to access its team channels:
             </span>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1">
-              {workspaces.map((ws) => {
+            <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+              {orderedWorkspaces.map(({ workspace: ws, depth, parentWorkspace, childrenCount }) => {
                 const isSelected = activeWorkspace?.id === ws.id;
+                const indentPx = Math.min(depth, 4) * 16;
                 return (
                   <div
                     key={ws.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between transition-colors ${
+                    style={indentPx > 0 ? { marginLeft: `${indentPx}px` } : undefined}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+                      depth > 0 ? 'border-l-2 border-l-[var(--accent)] ' : ''
+                    }${
                       isSelected
                         ? 'bg-[var(--accent-subtle)] border-[var(--accent)]'
                         : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:border-[var(--border-focus)]'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-[var(--text-primary)] font-bold text-xs flex items-center justify-center shrink-0">
-                        {ws.name.charAt(0)}
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white font-bold text-xs flex items-center justify-center shrink-0">
+                        {depth > 0 ? <Layers size={14} /> : ws.name.charAt(0)}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold text-[var(--text-primary)] truncate flex items-center gap-1.5">
-                          <span>{ws.name}</span>
-                          {isSelected && <CheckCircle2 size={13} className="text-[var(--accent)]" />}
+                          <span className="truncate">{ws.name}</span>
+                          {isSelected && <CheckCircle2 size={13} className="text-[var(--accent)] shrink-0" />}
                         </div>
-                        <div className="text-[10px] text-[var(--text-muted)] font-body flex items-center gap-2">
+                        {parentWorkspace && (
+                          <div className="text-[10px] text-[var(--accent)] font-medium truncate flex items-center gap-1">
+                            <Layers size={10} className="shrink-0" />
+                            <span>Nested in {parentWorkspace.name}</span>
+                          </div>
+                        )}
+                        <div className="text-[10px] text-[var(--text-muted)] font-body flex items-center gap-1.5 flex-wrap">
                           <span>{ws.membersCount || ws.memberCount || 1} members</span>
                           <span>·</span>
                           <span>{ws.nodes?.length || 1} channels</span>
+                          {childrenCount > 0 && (
+                            <>
+                              <span>·</span>
+                              <span>{childrenCount} nested</span>
+                            </>
+                          )}
                           {ws.joinCode && (
                             <>
                               <span>·</span>
@@ -210,7 +237,21 @@ export const WorkspaceModal = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setParentWorkspaceId(ws.id);
+                          setActiveTab('create');
+                          setError(null);
+                        }}
+                        className="py-1 px-2 rounded-lg bg-[var(--bg-primary)] hover:bg-[var(--bg-hover)] text-[var(--accent)] border border-[var(--border)] text-[10px] font-bold cursor-pointer flex items-center gap-0.5"
+                        title={`Create nested workspace inside ${ws.name}`}
+                      >
+                        <Plus size={11} />
+                        <span>Nest</span>
+                      </button>
+
                       {ws.joinCode && (
                         <button
                           type="button"
@@ -231,7 +272,7 @@ export const WorkspaceModal = ({
                         className={`py-1 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer border-none ${
                           isSelected
                             ? 'bg-[var(--bg-primary)] text-[var(--text-primary)] opacity-60 cursor-default'
-                            : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)]'
+                            : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white'
                         }`}
                       >
                         {isSelected ? 'Current' : 'Select'}
@@ -294,6 +335,35 @@ export const WorkspaceModal = ({
               />
             </div>
 
+            {orderedWorkspaces.length > 0 && (
+              <div>
+                <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">
+                  Parent Workspace (Optional — for Nested Workspace)
+                </label>
+                <select
+                  value={parentWorkspaceId}
+                  onChange={(e) => setParentWorkspaceId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl text-xs font-body text-[var(--text-primary)] outline-none focus:border-[var(--border-focus)]"
+                >
+                  <option value="">None (Top-Level Workspace)</option>
+                  {orderedWorkspaces.map(({ workspace: ws, depth }) => (
+                    <option key={ws.id} value={ws.id}>
+                      {`${depth > 0 ? `${'  '.repeat(depth)}└─ ` : ''}${ws.name}`}
+                    </option>
+                  ))}
+                </select>
+                {parentWorkspaceId && (
+                  <span className="text-[10px] text-[var(--accent)] font-body mt-1 flex items-center gap-1">
+                    <Layers size={11} />
+                    <span>
+                      Will be created nested inside{' '}
+                      {workspaces.find((w) => w.id === parentWorkspaceId)?.name || 'selected workspace'}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="text-[11px] font-bold text-[var(--text-secondary)] block mb-1">
                 Your Role / Context Handle in this Workspace (Optional)
@@ -312,8 +382,8 @@ export const WorkspaceModal = ({
               disabled={!name.trim() || isSubmitting}
               className="btn-cta-vibrant w-full py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border-none disabled:opacity-50 mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98]"
             >
-              {isSubmitting ? <Loader2 size={14} /> : <Plus size={14} />}
-              <span>Create Workspace</span>
+              {isSubmitting ? <Loader2 size={14} /> : parentWorkspaceId ? <Layers size={14} /> : <Plus size={14} />}
+              <span>{parentWorkspaceId ? 'Create Nested Workspace' : 'Create Workspace'}</span>
             </button>
           </form>
         )}

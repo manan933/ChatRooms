@@ -23,6 +23,14 @@ const WorkspaceNodeSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    folder: {
+      type: String,
+      default: null,
+    },
+    isAnnouncement: {
+      type: Boolean,
+      default: false,
+    },
     children: {
       type: [String],
       default: [],

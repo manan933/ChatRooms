@@ -55,6 +55,11 @@ const WorkspaceSchema = new mongoose.Schema(
       index: true,
       default: '',
     },
+    parentWorkspaceId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     rootNodeId: {
       type: String,
       required: true,

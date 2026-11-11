@@ -118,12 +118,13 @@ export const getWorkspaces = async (req, res, next) => {
           const nodeById = new Map(nodes.map((n) => [n.id, n]));
           return {
             ...ws,
+            parentWorkspaceId: ws.parentWorkspaceId || null,
             joinCode: wsJoinCode,
             nodes: nodes.map((n) => ({
               id: n.id,
               name: n.name,
               membersCount: n.memberCount || 1,
-              folder: n.parentId && n.parentId !== ws.rootNodeId ? (nodeById.get(n.parentId)?.name || null) : null,
+              folder: n.folder || (n.parentId && n.parentId !== ws.rootNodeId ? (nodeById.get(n.parentId)?.name || null) : null),
               isAnnouncement: Boolean(n.isAnnouncement),
               joinCode: wsJoinCode,
             })),
@@ -253,7 +254,8 @@ export const getWorkspaceTree = async (req, res, next) => {
 // @access  Private / Public
 export const createWorkspace = async (req, res, next) => {
   try {
-    const { name, contextualUsername, description } = req.body;
+    const { name, contextualUsername, description, parentWorkspaceId } = req.body;
+    const cleanParentId = parentWorkspaceId ? String(parentWorkspaceId).trim() : null;
 
     if (!name?.trim()) {
       return res.status(400).json({
@@ -263,7 +265,12 @@ export const createWorkspace = async (req, res, next) => {
     }
 
     if (!isMongoLive()) {
-      const newWs = await storageService.createWorkspace(name.trim(), contextualUsername, req.user?._id || req.user?.id);
+      const newWs = await storageService.createWorkspace(
+        name.trim(),
+        contextualUsername,
+        req.user?._id || req.user?.id,
+        cleanParentId
+      );
       return res.status(201).json({
         success: true,
         data: {
@@ -275,6 +282,18 @@ export const createWorkspace = async (req, res, next) => {
     }
 
     try {
+      let validParentId = null;
+      if (cleanParentId) {
+        const parentWs = await Workspace.findOne({ id: cleanParentId }).lean();
+        if (!parentWs) {
+          return res.status(404).json({
+            success: false,
+            message: 'Parent workspace not found',
+          });
+        }
+        validParentId = parentWs.id;
+      }
+
       const trimmedName = name.trim();
       const wsId = `ws-${Date.now()}`;
       const rootNodeId = `root-${wsId}`;
@@ -324,6 +343,7 @@ export const createWorkspace = async (req, res, next) => {
         id: wsId,
         name: trimmedName,
         joinCode: wsJoinCode,
+        parentWorkspaceId: validParentId,
         rootNodeId,
         defaultNodeId: defaultChannelId,
         type: 'organization',
@@ -384,7 +404,12 @@ export const createWorkspace = async (req, res, next) => {
       });
     } catch (dbErr) {
       console.warn('[CreateWorkspace] Mongoose query failed, using storageService:', dbErr.message);
-      const newWs = await storageService.createWorkspace(name.trim(), contextualUsername);
+      const newWs = await storageService.createWorkspace(
+        name.trim(),
+        contextualUsername,
+        req.user?._id || req.user?.id,
+        cleanParentId
+      );
       return res.status(201).json({
         success: true,
         data: {
@@ -447,6 +472,7 @@ export const createGroup = async (req, res, next) => {
         workspaceId: workspaceId || parent?.workspaceId || 'ws-default',
         name: name.trim(),
         parentId: parentNodeId || null,
+        folder: folder ? String(folder).trim() : null,
         children: [],
         memberCount: 1,
         hasConversation: true,
@@ -704,11 +730,12 @@ export const joinGroupByCode = async (req, res, next) => {
       const nodes = await WorkspaceNode.find({ workspaceId: workspace.id }).lean();
       const formattedWs = {
         ...(workspace.toObject ? workspace.toObject() : workspace),
+        parentWorkspaceId: workspace.parentWorkspaceId || null,
         nodes: nodes.map((n) => ({
           id: n.id,
           name: n.name,
           membersCount: n.memberCount || 1,
-          folder: n.parentId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null,
+          folder: n.folder || (n.parentId && n.parentId !== workspace.rootNodeId ? (nodes.find((p) => p.id === n.parentId)?.name || null) : null),
           isAnnouncement: Boolean(n.isAnnouncement),
           joinCode: workspace.joinCode,
         })),
